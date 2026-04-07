@@ -12,6 +12,8 @@ Endpoints:
     GET  /me/api-keys           — List own API keys
     POST /me/api-keys           — Create API key
     DELETE /me/api-keys/{id}    — Revoke API key
+    GET  /me/preferences         — Get regional preferences
+    PATCH /me/preferences         — Update regional preferences
     GET  /me/module-preferences — Get saved module preferences
     PATCH /me/module-preferences — Save module preferences
     GET  /                      — List users (admin/manager)
@@ -47,6 +49,8 @@ from app.modules.users.schemas import (
     UserAdminUpdate,
     UserCreate,
     UserMeResponse,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
     UserResponse,
     UserUpdate,
 )
@@ -167,6 +171,30 @@ async def change_password(
 ) -> None:
     """Change current user's password."""
     await service.change_password(uuid.UUID(user_id), data)
+
+
+# ── Regional Preferences ──────────────────────────────────────────────────
+
+
+@router.get("/me/preferences", response_model=UserPreferencesResponse)
+async def get_my_preferences(
+    user_id: CurrentUserId,
+    service: UserService = Depends(_get_service),
+) -> UserPreferencesResponse:
+    """Get current user's regional preferences."""
+    user = await service.get_user(uuid.UUID(user_id))
+    return UserPreferencesResponse.model_validate(user)
+
+
+@router.patch("/me/preferences", response_model=UserPreferencesResponse)
+async def update_my_preferences(
+    data: UserPreferencesUpdate,
+    user_id: CurrentUserId,
+    service: UserService = Depends(_get_service),
+) -> UserPreferencesResponse:
+    """Update current user's regional preferences."""
+    user = await service.update_preferences(uuid.UUID(user_id), data)
+    return UserPreferencesResponse.model_validate(user)
 
 
 # ── API Keys ───────────────────────────────────────────────────────────────

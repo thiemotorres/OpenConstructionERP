@@ -38,6 +38,26 @@ class User(Base):
         server_default="{}",
     )
 
+    # Regional preferences
+    timezone: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="UTC", server_default="UTC"
+    )
+    measurement_system: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="metric", server_default="metric"
+    )
+    paper_size: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="A4", server_default="A4"
+    )
+    number_format: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="1.234,56", server_default="1.234,56"
+    )
+    date_format: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="DD.MM.YYYY", server_default="DD.MM.YYYY"
+    )
+    currency_code: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="EUR", server_default="EUR"
+    )
+
     # Relationships
     api_keys: Mapped[list["APIKey"]] = relationship(
         back_populates="user",

@@ -46,6 +46,7 @@ from app.modules.users.schemas import (
     ResetPasswordResponse,
     TokenResponse,
     UserCreate,
+    UserPreferencesUpdate,
 )
 
 logger = logging.getLogger(__name__)
@@ -388,6 +389,20 @@ class UserService:
     async def update_profile(self, user_id: uuid.UUID, **fields: object) -> User:
         """Update user profile fields."""
         await self.user_repo.update_fields(user_id, **fields)
+        user = await self.user_repo.get_by_id(user_id)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return user
+
+    async def update_preferences(
+        self,
+        user_id: uuid.UUID,
+        data: UserPreferencesUpdate,
+    ) -> User:
+        """Update regional preference fields for a user."""
+        fields = data.model_dump(exclude_unset=True)
+        if fields:
+            await self.user_repo.update_fields(user_id, **fields)
         user = await self.user_repo.get_by_id(user_id)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

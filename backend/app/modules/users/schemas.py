@@ -112,6 +112,12 @@ class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
     locale: str | None = Field(default=None, max_length=10)
     metadata: dict[str, Any] | None = None
+    timezone: str | None = Field(default=None, max_length=50)
+    measurement_system: str | None = Field(default=None, max_length=20)
+    paper_size: str | None = Field(default=None, max_length=10)
+    number_format: str | None = Field(default=None, max_length=20)
+    date_format: str | None = Field(default=None, max_length=20)
+    currency_code: str | None = Field(default=None, max_length=10)
 
 
 class UserAdminUpdate(BaseModel):
@@ -135,6 +141,12 @@ class UserResponse(BaseModel):
     locale: str
     is_active: bool
     last_login_at: datetime | None
+    timezone: str
+    measurement_system: str
+    paper_size: str
+    number_format: str
+    date_format: str
+    currency_code: str
     created_at: datetime
     updated_at: datetime
 
@@ -143,6 +155,30 @@ class UserMeResponse(UserResponse):
     """Current user response with extra details."""
 
     permissions: list[str] = Field(default_factory=list)
+
+
+class UserPreferencesUpdate(BaseModel):
+    """Update regional preferences only."""
+
+    timezone: str | None = Field(default=None, max_length=50)
+    measurement_system: str | None = Field(default=None, max_length=20)
+    paper_size: str | None = Field(default=None, max_length=10)
+    number_format: str | None = Field(default=None, max_length=20)
+    date_format: str | None = Field(default=None, max_length=20)
+    currency_code: str | None = Field(default=None, max_length=10)
+
+
+class UserPreferencesResponse(BaseModel):
+    """Regional preferences response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    timezone: str
+    measurement_system: str
+    paper_size: str
+    number_format: str
+    date_format: str
+    currency_code: str
 
 
 class ChangePasswordRequest(BaseModel):

@@ -60,3 +60,12 @@ export { OnboardingTour, DEFAULT_TOUR_STEPS, ONBOARDING_STORAGE_KEY } from './On
 export type { TourStep } from './OnboardingTour';
 
 export { GlobalProgress, useProgressStore } from './GlobalProgress';
+
+export { MoneyDisplay } from './MoneyDisplay';
+export type { MoneyDisplayProps } from './MoneyDisplay';
+
+export { DateDisplay } from './DateDisplay';
+export type { DateDisplayProps } from './DateDisplay';
+
+export { QuantityDisplay } from './QuantityDisplay';
+export type { QuantityDisplayProps } from './QuantityDisplay';

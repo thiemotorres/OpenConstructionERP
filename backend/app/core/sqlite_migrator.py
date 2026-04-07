@@ -50,7 +50,11 @@ async def sqlite_auto_migrate(engine: AsyncEngine, base) -> int:
                 nullable = "NULL" if col.nullable else "NOT NULL"
                 default = ""
                 if col.server_default is not None:
-                    default = f" DEFAULT {col.server_default.arg}"
+                    raw = col.server_default.arg
+                    # Ensure string defaults are properly quoted for SQLite
+                    if isinstance(raw, str) and not raw.startswith("'"):
+                        raw = "'" + raw.replace("'", "''") + "'"
+                    default = f" DEFAULT {raw}"
                 elif col.nullable:
                     default = " DEFAULT NULL"
 
