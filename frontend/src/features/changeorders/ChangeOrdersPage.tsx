@@ -21,6 +21,7 @@ import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -528,7 +529,13 @@ function DetailView({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
+  const userRole = useAuthStore((s) => s.userRole);
   const [showAddItem, setShowAddItem] = useState(false);
+
+  // Only admins and managers can approve/reject change orders. Backend
+  // permission `changeorders.approve` enforces this server-side; we hide
+  // the buttons in the UI to give a better experience than 403 errors.
+  const canApprove = userRole === 'admin' || userRole === 'manager';
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ['changeorder', orderId],
@@ -632,7 +639,7 @@ function DetailView({
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {order.status === 'draft' && (
               <Button variant="primary" size="sm" onClick={() => {
                 if (window.confirm(t('changeorders.submit_confirm', { defaultValue: 'Submit this change order for review? This cannot be undone.' }))) {
@@ -644,24 +651,42 @@ function DetailView({
               </Button>
             )}
             {order.status === 'submitted' && (
-              <>
-                <Button variant="primary" size="sm" onClick={() => {
-                  if (window.confirm(t('changeorders.approve_confirm', { defaultValue: 'Approve this change order? Cost impact will be applied to the project budget.' }))) {
-                    approveMut.mutate();
-                  }
-                }} disabled={approveMut.isPending}>
-                  <CheckCircle2 size={14} className="mr-1.5" />
-                  {t('changeorders.approve', { defaultValue: 'Approve' })}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => {
-                  if (window.confirm(t('changeorders.reject_confirm', { defaultValue: 'Reject this change order?' }))) {
-                    rejectMut.mutate();
-                  }
-                }} disabled={rejectMut.isPending}>
-                  <XCircle size={14} className="mr-1.5" />
-                  {t('changeorders.reject', { defaultValue: 'Reject' })}
-                </Button>
-              </>
+              canApprove ? (
+                <>
+                  <Button variant="primary" size="sm" onClick={() => {
+                    if (window.confirm(t('changeorders.approve_confirm', { defaultValue: 'Approve this change order? Cost impact will be applied to the project budget.' }))) {
+                      approveMut.mutate();
+                    }
+                  }} disabled={approveMut.isPending}>
+                    <CheckCircle2 size={14} className="mr-1.5" />
+                    {t('changeorders.approve', { defaultValue: 'Approve' })}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    if (window.confirm(t('changeorders.reject_confirm', { defaultValue: 'Reject this change order?' }))) {
+                      rejectMut.mutate();
+                    }
+                  }} disabled={rejectMut.isPending}>
+                    <XCircle size={14} className="mr-1.5" />
+                    {t('changeorders.reject', { defaultValue: 'Reject' })}
+                  </Button>
+                </>
+              ) : (
+                // Non-admin/manager: show clear "awaiting approval" state instead
+                // of an Approve button that would just return 403.
+                <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-3 py-1.5">
+                  <CheckCircle2 size={14} className="text-amber-600 dark:text-amber-400" />
+                  <div className="text-xs">
+                    <p className="font-medium text-amber-900 dark:text-amber-200">
+                      {t('changeorders.pending_approval', { defaultValue: 'Awaiting approval' })}
+                    </p>
+                    <p className="text-amber-800 dark:text-amber-300">
+                      {t('changeorders.pending_approval_hint', {
+                        defaultValue: 'Only managers and admins can approve.',
+                      })}
+                    </p>
+                  </div>
+                </div>
+              )
             )}
           </div>
         </div>

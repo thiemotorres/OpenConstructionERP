@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState, useCallback, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './layout';
 import { DashboardPage } from '@/features/dashboard';
 import { LoginPage, RegisterPage, ForgotPasswordPage } from '@/features/auth';
@@ -131,10 +131,10 @@ function GlobalShortcuts() {
   });
 
   // Ctrl+K / Cmd+K to open command palette
-  // Ctrl+N to create new project
-  // Ctrl+Shift+N to create new BOQ
-  // Ctrl+Shift+V to run validation
-  const navigate = useNavigate();
+  // / to open command palette (when not typing)
+  // Note: Ctrl+N / Ctrl+Shift+N are reserved by the browser (new window/incognito)
+  // and cannot be intercepted reliably — use the `n p` two-key sequence instead.
+  // Ctrl+Shift+V is reserved for Excel paste in BOQ Editor — don't bind it globally.
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -150,21 +150,10 @@ function GlobalShortcuts() {
         e.preventDefault();
         setPaletteOpen(true);
       }
-      if (mod && e.shiftKey && e.key === 'N') {
-        e.preventDefault();
-        navigate('/boq/new');
-      } else if (mod && e.key === 'n') {
-        e.preventDefault();
-        navigate('/projects/new');
-      }
-      if (mod && e.shiftKey && e.key === 'V') {
-        e.preventDefault();
-        navigate('/validation');
-      }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [navigate]);
+  }, []);
 
   return (
     <>

@@ -192,6 +192,8 @@ export function RegisterPage() {
 
           {/* Form */}
           <div className="glass-strong rounded-2xl px-6 py-5 shadow-lg animate-form-scale-in" style={{ animationDelay: '150ms' }}>
+            {/* Visually hidden h1 for screen readers + a11y tools — visible text uses h2 below */}
+            <h1 className="sr-only">{t('auth.create_account', 'Create account')}</h1>
             <div className="animate-stagger-in" style={{ animationDelay: '200ms' }}>
               <h2 className="text-base font-semibold text-content-primary mb-0.5">
                 {t('auth.create_account', 'Create account')}
@@ -201,9 +203,11 @@ export function RegisterPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-3" aria-label={t('auth.register', 'Create account')}>
               <div className="animate-stagger-in" style={{ animationDelay: '260ms' }}>
                 <Input
+                  id="register-full-name"
+                  name="full_name"
                   label={t('auth.full_name', 'Full Name')}
                   type="text"
                   value={fullName}
@@ -211,12 +215,15 @@ export function RegisterPage() {
                   placeholder={t('auth.full_name_placeholder', 'John Smith')}
                   required
                   autoFocus
+                  autoComplete="name"
                   icon={<User size={15} />}
                 />
               </div>
 
               <div className="animate-stagger-in" style={{ animationDelay: '300ms' }}>
                 <Input
+                  id="register-email"
+                  name="email"
                   label={t('auth.email', 'Email')}
                   type="email"
                   value={email}
@@ -229,7 +236,7 @@ export function RegisterPage() {
               </div>
 
               <div className="flex flex-col gap-1 animate-stagger-in" style={{ animationDelay: '340ms' }}>
-                <label className="text-sm font-medium text-content-primary">
+                <label htmlFor="register-password" className="text-sm font-medium text-content-primary">
                   {t('auth.password', 'Password')}
                 </label>
                 <div className="relative">
@@ -237,6 +244,8 @@ export function RegisterPage() {
                     <Lock size={15} />
                   </div>
                   <input
+                    id="register-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -249,6 +258,7 @@ export function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? t('auth.hide_password', 'Hide password') : t('auth.show_password', 'Show password')}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-content-tertiary hover:text-content-secondary transition-colors"
                     tabIndex={-1}
                   >
@@ -269,6 +279,8 @@ export function RegisterPage() {
 
               <div className="animate-stagger-in" style={{ animationDelay: '380ms' }}>
                 <Input
+                  id="register-confirm-password"
+                  name="confirm_password"
                   label={t('auth.confirm_password', 'Confirm Password')}
                   type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}

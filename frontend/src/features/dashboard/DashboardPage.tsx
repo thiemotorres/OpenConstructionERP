@@ -806,13 +806,29 @@ export function DashboardPage() {
     retry: false,
   });
 
-  // Determine the most recently updated BOQ for "Continue last estimate"
-  const lastBoqId = useMemo(() => {
+  // Determine the most recently updated BOQ for "Continue your work"
+  const lastBoq = useMemo(() => {
     if (!allBoqs || allBoqs.length === 0) return null;
-    // BOQs are returned from API in order; pick the first draft, or just the first
-    const drafts = allBoqs.filter((b) => b.status === 'draft');
-    return drafts.length > 0 ? drafts[0]!.id : allBoqs[0]!.id;
-  }, [allBoqs]);
+    // Sort by updated_at descending (most recent first)
+    const sorted = [...allBoqs].sort((a, b) => {
+      const da = new Date((a as unknown as { updated_at?: string }).updated_at ?? 0).getTime();
+      const db = new Date((b as unknown as { updated_at?: string }).updated_at ?? 0).getTime();
+      return db - da;
+    });
+    const picked = sorted[0]!;
+    const project = projects?.find((p) => p.id === picked.project_id);
+    return {
+      id: picked.id,
+      name: picked.name,
+      status: picked.status,
+      projectName: project?.name ?? '',
+      positionCount: (picked as unknown as { position_count?: number }).position_count ?? 0,
+      grandTotal: (picked as unknown as { grand_total?: number }).grand_total ?? 0,
+      currency: project?.currency ?? 'EUR',
+      updatedAt: (picked as unknown as { updated_at?: string }).updated_at,
+    };
+  }, [allBoqs, projects]);
+  const lastBoqId = lastBoq?.id ?? null;
 
   return (
     <div className="max-w-content mx-auto space-y-6">
@@ -962,6 +978,53 @@ export function DashboardPage() {
       {/* KPI hint */}
       <InfoHint text={t('dashboard.kpi_hint', { defaultValue: 'Summary across all projects. Values update as you add estimates and schedule activities.' })} />
 
+      {/* Continue Your Work — prominent card for returning users */}
+      {lastBoq && (
+        <div
+          className="group relative overflow-hidden rounded-xl border-2 border-oe-blue/30 bg-gradient-to-br from-oe-blue-subtle/40 via-surface-elevated to-violet-500/5 p-5 cursor-pointer hover:border-oe-blue/60 hover:shadow-lg transition-all animate-card-in"
+          style={{ animationDelay: '60ms' }}
+          onClick={() => navigate(`/boq/${lastBoq.id}`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/boq/${lastBoq.id}`); }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xs font-semibold text-oe-blue uppercase tracking-wider">
+                  {t('dashboard.continue_work', { defaultValue: 'Continue your work' })}
+                </span>
+                <span className="text-2xs text-content-quaternary">·</span>
+                <span className="text-2xs text-content-tertiary">
+                  {lastBoq.status === 'draft' ? t('boq.status_draft', { defaultValue: 'Draft' }) : lastBoq.status}
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-content-primary truncate">{lastBoq.name}</h2>
+              {lastBoq.projectName && (
+                <p className="text-xs text-content-tertiary truncate mt-0.5">
+                  {lastBoq.projectName}
+                </p>
+              )}
+              <div className="mt-3 flex items-center gap-4 text-xs text-content-secondary">
+                {lastBoq.positionCount > 0 && (
+                  <span className="tabular-nums">
+                    <strong className="text-content-primary">{lastBoq.positionCount}</strong> {t('boq.positions', { defaultValue: 'positions' })}
+                  </span>
+                )}
+                {lastBoq.grandTotal > 0 && (
+                  <span className="tabular-nums">
+                    <strong className="text-content-primary">{lastBoq.currency} {lastBoq.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-oe-blue text-white shadow-md group-hover:scale-110 transition-transform">
+              <ArrowRight size={22} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* KPI Ribbon */}
       <KpiRibbon boqs={allBoqs} schedules={allSchedules} projects={projects} />
 
@@ -1024,8 +1087,7 @@ export function DashboardPage() {
           >
             {t('costs.import_title', { defaultValue: 'Import Database' })}
           </Button>
-        </div>
-      )}
+      </div>
 
       {/* Onboarding Steps */}
       <OnboardingSteps projects={projects} regionStats={regionStats} boqs={allBoqs} vectorCount={vectorCount} />

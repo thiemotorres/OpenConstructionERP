@@ -1,9 +1,32 @@
 import { create } from 'zustand';
 
+/**
+ * Decode the `role` claim from a JWT access token without external deps.
+ *
+ * The token shape is `header.payload.signature`, all base64url-encoded JSON.
+ * We only need the `role` claim — everything else is verified server-side.
+ * Returns the role string, or `null` for any decoding error / missing claim.
+ */
+function decodeRoleFromToken(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    // base64url → base64
+    const payload = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+    const json = JSON.parse(atob(padded)) as { role?: string };
+    return typeof json.role === 'string' ? json.role : null;
+  } catch {
+    return null;
+  }
+}
+
 interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   userEmail: string | null;
+  userRole: string | null;
   setTokens: (access: string, refresh: string, remember?: boolean, email?: string) => void;
   logout: () => void;
   loadFromStorage: () => void;
@@ -18,6 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   isAuthenticated: false,
   userEmail: null,
+  userRole: null,
 
   setTokens: (access, refresh, remember = false, email) => {
     if (remember) {
@@ -34,7 +58,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       sessionStorage.setItem(KEY_REFRESH, refresh);
     }
     if (email) localStorage.setItem(KEY_EMAIL, email);
-    set({ accessToken: access, isAuthenticated: true, userEmail: email ?? null });
+    set({
+      accessToken: access,
+      isAuthenticated: true,
+      userEmail: email ?? null,
+      userRole: decodeRoleFromToken(access),
+    });
   },
 
   logout: () => {
@@ -44,13 +73,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem(KEY_EMAIL);
     sessionStorage.removeItem(KEY_ACCESS);
     sessionStorage.removeItem(KEY_REFRESH);
-    set({ accessToken: null, isAuthenticated: false, userEmail: null });
+    set({ accessToken: null, isAuthenticated: false, userEmail: null, userRole: null });
   },
 
   loadFromStorage: () => {
     const token =
       localStorage.getItem(KEY_ACCESS) || sessionStorage.getItem(KEY_ACCESS);
     const email = localStorage.getItem(KEY_EMAIL);
-    set({ accessToken: token, isAuthenticated: Boolean(token), userEmail: email });
+    set({
+      accessToken: token,
+      isAuthenticated: Boolean(token),
+      userEmail: email,
+      userRole: decodeRoleFromToken(token),
+    });
   },
 }));

@@ -14,7 +14,6 @@ import {
   ArrowUpDown, ChevronDown, ChevronRight, ChevronLeft, Layers, X, Save,
   Download as DownloadIcon, Columns3, Search as SearchIcon,
   Upload, FileUp, Loader2, CheckCircle2, Settings, AlertCircle, FolderOpen,
-  Trash2 as TrashIcon, Clock, FileText, ExternalLink,
 } from 'lucide-react';
 import { Button, Card, Badge, Breadcrumb, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
@@ -1507,79 +1506,6 @@ function UploadConvertZone({
         )}
       </div>
     </div>
-  );
-}
-
-/* ── Saved Sessions List (integrated into landing page) ─────────────── */
-/* Kept as reference — session list is now rendered directly in CadDataExplorerPage */
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _SavedSessionsList({ onOpen }: { onOpen: (sessionId: string) => void }) {
-  const { t } = useTranslation();
-  const addToast = useToastStore((s) => s.addToast);
-  const queryClient = useQueryClient();
-  const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
-
-  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
-    queryKey: ['cad-saved-sessions', activeProjectId],
-    queryFn: () => listSessions(activeProjectId || undefined),
-  });
-
-  const delMut = useMutation({
-    mutationFn: deleteSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cad-saved-sessions'] });
-      addToast({ type: 'success', title: t('explorer.session_deleted', { defaultValue: 'Analysis deleted' }) });
-    },
-  });
-
-  if (sessionsLoading) return <div className="flex justify-center py-6"><div className="h-5 w-5 animate-spin rounded-full border-2 border-oe-blue border-t-transparent" /></div>;
-  if (sessions.length === 0) return null;
-
-  return (
-    <Card className="p-4">
-      <h3 className="text-xs font-semibold text-content-primary mb-3 flex items-center gap-1.5">
-        <Clock size={13} className="text-content-tertiary" />
-        {t('explorer.saved_analyses', { defaultValue: 'Saved Analyses' })}
-        <Badge variant="neutral" size="sm">{sessions.length}</Badge>
-      </h3>
-      <div className="divide-y divide-border-light">
-        {sessions.map((s) => (
-          <div
-            key={s.session_id}
-            className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-surface-secondary/30 rounded-lg px-2 -mx-2 transition-colors"
-            onClick={() => onOpen(s.session_id)}
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-oe-blue-subtle shrink-0">
-              <FileText size={16} className="text-oe-blue" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-content-primary truncate">{s.display_name}</p>
-              <p className="text-2xs text-content-tertiary">
-                {s.filename} · {s.element_count.toLocaleString()} elements · {s.file_format.toUpperCase()}
-                {s.created_at && ` · ${new Date(s.created_at).toLocaleDateString()}`}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpen(s.session_id); }}
-                className="p-1.5 rounded-md hover:bg-surface-secondary text-oe-blue"
-                title={t('explorer.open', { defaultValue: 'Open' })}
-              >
-                <ExternalLink size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); delMut.mutate(s.session_id); }}
-                className="p-1.5 rounded-md hover:bg-surface-secondary text-content-tertiary hover:text-semantic-error"
-                title={t('common.delete', { defaultValue: 'Delete' })}
-              >
-                <TrashIcon size={14} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
   );
 }
 

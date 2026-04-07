@@ -22,8 +22,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     titleKey: 'shortcuts.group.general',
     items: [
-      { keys: ['Ctrl', 'Z'], descriptionKey: 'shortcuts.undo' },
-      { keys: ['Ctrl', 'Y'], descriptionKey: 'shortcuts.redo' },
+      { keys: ['/'], descriptionKey: 'shortcuts.open_search' },
       { keys: ['Ctrl', 'K'], descriptionKey: 'shortcuts.command_palette' },
       { keys: ['?'], descriptionKey: 'shortcuts.show_help' },
       { keys: ['Esc'], descriptionKey: 'shortcuts.cancel' },
@@ -40,23 +39,24 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['g', 'v'], descriptionKey: 'shortcuts.nav_validation' },
       { keys: ['g', 's'], descriptionKey: 'shortcuts.nav_schedule' },
       { keys: ['g', '5'], descriptionKey: 'shortcuts.nav_5d' },
+      { keys: ['g', 'r'], descriptionKey: 'shortcuts.nav_reports' },
+      { keys: ['g', 't'], descriptionKey: 'shortcuts.nav_tendering' },
     ],
   },
   {
     titleKey: 'shortcuts.group.actions',
     items: [
-      { keys: ['/'], descriptionKey: 'shortcuts.open_search' },
-      { keys: ['Ctrl', 'N'], descriptionKey: 'shortcuts.new_project' },
-      { keys: ['Ctrl', 'Shift', 'N'], descriptionKey: 'shortcuts.new_boq' },
-      { keys: ['Ctrl', 'Shift', 'V'], descriptionKey: 'shortcuts.run_validation' },
+      { keys: ['n', 'p'], descriptionKey: 'shortcuts.new_project' },
     ],
   },
   {
     titleKey: 'shortcuts.group.boq_editor',
     items: [
+      { keys: ['Ctrl', 'Z'], descriptionKey: 'shortcuts.undo' },
+      { keys: ['Ctrl', 'Y'], descriptionKey: 'shortcuts.redo' },
+      { keys: ['Ctrl', 'Shift', 'V'], descriptionKey: 'shortcuts.paste_from_excel' },
       { keys: ['Tab'], descriptionKey: 'shortcuts.next_field' },
       { keys: ['Enter'], descriptionKey: 'shortcuts.confirm_next_row' },
-      { keys: ['Ctrl', 'Shift', 'V'], descriptionKey: 'shortcuts.paste_from_excel' },
       { keys: ['Esc'], descriptionKey: 'shortcuts.cancel_editing' },
     ],
   },
@@ -166,31 +166,35 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
                 {t(group.titleKey)}
               </h3>
               <div className="space-y-1">
-                {group.items.map((item) => (
-                  <div
-                    key={item.descriptionKey}
-                    className="flex items-center justify-between py-1.5"
-                  >
-                    <span className="text-sm text-content-primary">
-                      {t(item.descriptionKey)}
-                    </span>
-                    <div className="flex items-center gap-1 ml-4 shrink-0">
-                      {item.keys.map((key, keyIdx) => (
-                        <span key={keyIdx} className="flex items-center gap-1">
-                          {keyIdx > 0 && (
-                            <span className="text-xs text-content-tertiary mx-0.5">
-                              {item.keys.length === 2 &&
-                              item.keys[0] === 'Ctrl'
-                                ? '+'
-                                : t('shortcuts.separator_then')}
-                            </span>
-                          )}
-                          <Kbd>{key}</Kbd>
-                        </span>
-                      ))}
+                {group.items.map((item) => {
+                  // If the combo includes a modifier key, separate with "+";
+                  // otherwise it's a sequence (e.g. "g d") — separate with "then".
+                  const hasModifier = item.keys.some((k) =>
+                    ['Ctrl', 'Shift', 'Alt', 'Cmd', 'Meta'].includes(k),
+                  );
+                  return (
+                    <div
+                      key={item.descriptionKey}
+                      className="flex items-center justify-between py-1.5"
+                    >
+                      <span className="text-sm text-content-primary">
+                        {t(item.descriptionKey)}
+                      </span>
+                      <div className="flex items-center gap-1 ml-4 shrink-0">
+                        {item.keys.map((key, keyIdx) => (
+                          <span key={keyIdx} className="flex items-center gap-1">
+                            {keyIdx > 0 && (
+                              <span className="text-xs text-content-tertiary mx-0.5">
+                                {hasModifier ? '+' : t('shortcuts.separator_then')}
+                              </span>
+                            )}
+                            <Kbd>{key}</Kbd>
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -1,11 +1,11 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { X, FolderPlus } from 'lucide-react';
+import { X, FolderPlus, AlertTriangle } from 'lucide-react';
 import { Button, Input, InfoHint } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
-import { projectsApi, type CreateProjectData } from './api';
+import { projectsApi, type CreateProjectData, type Project } from './api';
 
 // ── Regions (grouped by continent) ────────────────────────────────────────
 
@@ -247,6 +247,7 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
   const [customStandard, setCustomStandard] = useState('');
   const [customCurrency, setCustomCurrency] = useState('');
   const [regionalFactor, setRegionalFactor] = useState<number>(1.0);
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -256,8 +257,29 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
       setCustomStandard('');
       setCustomCurrency('');
       setRegionalFactor(1.0);
+      setDuplicateConfirmed(false);
     }
   }, [open]);
+
+  // Fetch existing projects so we can warn the user about duplicate names
+  // before creating a confusing duplicate. Cheap because the list is cached.
+  const { data: existingProjects = [] } = useQuery<Project[]>({
+    queryKey: ['projects'],
+    queryFn: projectsApi.list,
+    enabled: open,
+  });
+
+  const trimmedName = form.name.trim();
+  const duplicateExists =
+    trimmedName.length > 0 &&
+    existingProjects.some(
+      (p) => p.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+    );
+
+  // Reset confirmation when the name changes (user can clear it by editing)
+  useEffect(() => {
+    setDuplicateConfirmed(false);
+  }, [trimmedName]);
 
   const mutation = useMutation({
     mutationFn: projectsApi.create,
@@ -274,7 +296,13 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!trimmedName) return;
+
+    // Block submit until the user confirms they really want a duplicate name
+    if (duplicateExists && !duplicateConfirmed) {
+      setDuplicateConfirmed(true); // Next click submits
+      return;
+    }
 
     const data: CreateProjectData = {
       ...form,
@@ -343,6 +371,28 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
               required
               autoFocus
             />
+
+            {duplicateExists && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-3 py-2 -mt-2">
+                <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    {t('projects.duplicate_name_warning', {
+                      defaultValue: 'A project with this name already exists.',
+                    })}
+                  </p>
+                  <p className="text-amber-800 dark:text-amber-300 mt-0.5">
+                    {duplicateConfirmed
+                      ? t('projects.duplicate_name_confirm_again', {
+                          defaultValue: 'Click Create again to proceed anyway.',
+                        })
+                      : t('projects.duplicate_name_confirm_hint', {
+                          defaultValue: 'Change the name, or click Create again to proceed anyway.',
+                        })}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-content-primary block mb-1.5">

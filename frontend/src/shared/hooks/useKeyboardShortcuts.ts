@@ -38,6 +38,8 @@ export interface UseKeyboardShortcutsOptions {
  *   g v - Validation
  *   g s - 4D Schedule
  *   g 5 - 5D Cost Model
+ *   g r - Reports
+ *   g t - Tendering
  *   n p - New Project
  */
 export function useKeyboardShortcuts({
@@ -68,6 +70,8 @@ export function useKeyboardShortcuts({
         v: '/validation',
         s: '/schedule',
         '5': '/5d',
+        r: '/reports',
+        t: '/tendering',
       },
       n: {
         p: '/projects/new',

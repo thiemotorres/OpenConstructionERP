@@ -191,6 +191,264 @@ const standardLabels: Record<string, string> = {
 // Subcomponents
 // ---------------------------------------------------------------------------
 
+interface HealthCheck {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
+interface NextStep {
+  label: string;
+  description: string;
+  to: string;
+  variant: 'primary' | 'success';
+}
+
+/**
+ * Compute project health checkpoints + the most relevant "next step" to take.
+ *
+ * Checkpoints (in execution order — done from top to bottom):
+ *   1. has_boq            — at least one BOQ exists
+ *   2. has_positions      — at least one BOQ has positions
+ *   3. all_priced         — every position has a non-zero unit_rate
+ *   4. validation_run     — validation has been run on at least one position
+ *   5. no_errors          — no positions have validation_status === 'error'
+ *
+ * `nextStep` always points at the FIRST incomplete checkpoint, so the user
+ * always has a clear, single action to take next.
+ */
+function computeProjectHealth(
+  projectId: string,
+  boqs: BOQSummary[] | undefined,
+  boqDetails: BOQDetail[] | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+): { checks: HealthCheck[]; nextStep: NextStep | null; completeness: number } {
+  // Find the largest BOQ to use as the deep-link target for "next step" actions
+  const largestBoq =
+    boqDetails && boqDetails.length > 0
+      ? [...boqDetails].sort((a, b) => b.positions.length - a.positions.length)[0]
+      : null;
+
+  let unpricedCount = 0;
+  let errorCount = 0;
+  let validatedCount = 0;
+  let totalPositions = 0;
+
+  if (boqDetails) {
+    for (const detail of boqDetails) {
+      for (const pos of detail.positions) {
+        totalPositions++;
+        if (!pos.unit_rate || pos.unit_rate === 0) unpricedCount++;
+        if (pos.validation_status === 'error') errorCount++;
+        if (pos.validation_status && pos.validation_status !== 'pending') {
+          validatedCount++;
+        }
+      }
+    }
+  }
+
+  const hasBoq = (boqs?.length ?? 0) > 0;
+  const hasPositions = totalPositions > 0;
+  const allPriced = hasPositions && unpricedCount === 0;
+  const validationRun = validatedCount > 0;
+  const noErrors = validationRun && errorCount === 0;
+
+  const checks: HealthCheck[] = [
+    { key: 'has_boq', label: t('projects.health_has_boq', { defaultValue: 'BOQ created' }), done: hasBoq },
+    { key: 'has_positions', label: t('projects.health_has_positions', { defaultValue: 'Positions added' }), done: hasPositions },
+    { key: 'all_priced', label: t('projects.health_all_priced', { defaultValue: 'All positions priced' }), done: allPriced },
+    { key: 'validation_run', label: t('projects.health_validation_run', { defaultValue: 'Validation run' }), done: validationRun },
+    { key: 'no_errors', label: t('projects.health_no_errors', { defaultValue: 'No validation errors' }), done: noErrors },
+  ];
+
+  const doneCount = checks.filter((c) => c.done).length;
+  const completeness = doneCount / checks.length;
+
+  // Pick the next step from the first incomplete check
+  let nextStep: NextStep | null = null;
+  if (!hasBoq) {
+    nextStep = {
+      label: t('projects.health_action_create_boq', { defaultValue: 'Create BOQ' }),
+      description: t('projects.health_next_create_boq', {
+        defaultValue: 'Start by creating your first Bill of Quantities for this project.',
+      }),
+      to: `/projects/${projectId}/boq/new`,
+      variant: 'primary',
+    };
+  } else if (!hasPositions && largestBoq) {
+    nextStep = {
+      label: t('projects.health_action_add_positions', { defaultValue: 'Add positions' }),
+      description: t('projects.health_next_add_positions', {
+        defaultValue: 'Open the BOQ editor and add your first positions — manually, from Excel, or with AI.',
+      }),
+      to: `/boq/${largestBoq.id}`,
+      variant: 'primary',
+    };
+  } else if (!allPriced && largestBoq) {
+    nextStep = {
+      label: t('projects.health_action_price_positions', {
+        defaultValue: 'Price {{count}} positions',
+        count: unpricedCount,
+      }),
+      description: t('projects.health_next_price_positions', {
+        defaultValue: '{{count}} positions are missing unit rates. Add prices manually or pick from the cost catalog.',
+        count: unpricedCount,
+      }),
+      to: `/boq/${largestBoq.id}`,
+      variant: 'primary',
+    };
+  } else if (!validationRun) {
+    nextStep = {
+      label: t('projects.health_action_run_validation', { defaultValue: 'Run validation' }),
+      description: t('projects.health_next_run_validation', {
+        defaultValue: 'Check your BOQ against DIN 276, GAEB, and quality rules to catch issues early.',
+      }),
+      to: '/validation',
+      variant: 'primary',
+    };
+  } else if (!noErrors) {
+    nextStep = {
+      label: t('projects.health_action_fix_errors', {
+        defaultValue: 'Fix {{count}} errors',
+        count: errorCount,
+      }),
+      description: t('projects.health_next_fix_errors', {
+        defaultValue: '{{count}} positions have validation errors. Resolve them to clean the project.',
+        count: errorCount,
+      }),
+      to: '/validation',
+      variant: 'primary',
+    };
+  } else {
+    nextStep = {
+      label: t('projects.health_action_export', { defaultValue: 'Export & report' }),
+      description: t('projects.health_next_export', {
+        defaultValue: 'Project is ready. Export to GAEB, Excel, or PDF — or distribute as a tender package.',
+      }),
+      to: '/reports',
+      variant: 'success',
+    };
+  }
+
+  return { checks, nextStep, completeness };
+}
+
+/**
+ * Compact health bar shown above the project summary cards.
+ *
+ * One row, dense, action-oriented. Shows the user instantly:
+ *   - "How complete is this project?" (progress bar + percentage)
+ *   - "What should I do next?" (one prominent button + description)
+ *   - "Where am I in the workflow?" (5 checkpoint dots, hover for label)
+ */
+function ProjectHealthBar({
+  projectId,
+  boqs,
+  boqDetails,
+}: {
+  projectId: string;
+  boqs: BOQSummary[] | undefined;
+  boqDetails: BOQDetail[] | undefined;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { checks, nextStep, completeness } = useMemo(
+    () => computeProjectHealth(projectId, boqs, boqDetails, t),
+    [projectId, boqs, boqDetails, t],
+  );
+
+  const doneCount = checks.filter((c) => c.done).length;
+  const isComplete = completeness === 1;
+  const percent = Math.round(completeness * 100);
+
+  // Color-code the progress ring based on completeness
+  const ringColor = isComplete
+    ? 'text-emerald-500'
+    : completeness >= 0.6
+    ? 'text-oe-blue'
+    : 'text-amber-500';
+
+  return (
+    <Card padding="md" className="mb-6">
+      <div className="flex items-center gap-5">
+        {/* Circular progress ring */}
+        <div className="relative shrink-0">
+          <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
+            <circle
+              cx="32"
+              cy="32"
+              r="28"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              className="text-surface-secondary"
+            />
+            <circle
+              cx="32"
+              cy="32"
+              r="28"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={`${completeness * 175.93} 175.93`}
+              className={`transition-all duration-500 ${ringColor}`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-sm font-bold text-content-primary tabular-nums">{percent}%</span>
+          </div>
+        </div>
+
+        {/* Text + checkpoints */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-2xs font-semibold uppercase tracking-wider text-content-tertiary">
+              {t('projects.health_label', { defaultValue: 'Project Health' })}
+            </span>
+            <span className="text-2xs text-content-quaternary">·</span>
+            <span className="text-2xs text-content-tertiary tabular-nums">
+              {doneCount}/{checks.length} {t('projects.health_complete', { defaultValue: 'complete' })}
+            </span>
+          </div>
+          {nextStep && (
+            <p className="text-sm text-content-primary truncate">
+              <span className="font-semibold">
+                {t('projects.health_next', { defaultValue: 'Next:' })}
+              </span>{' '}
+              <span className="text-content-secondary">{nextStep.description}</span>
+            </p>
+          )}
+          {/* Checkpoint dots — hover shows label */}
+          <div className="mt-2 flex items-center gap-1.5">
+            {checks.map((check) => (
+              <div
+                key={check.key}
+                title={check.label + (check.done ? ' ✓' : '')}
+                className={`h-1.5 flex-1 max-w-[60px] rounded-full transition-colors ${
+                  check.done ? (isComplete ? 'bg-emerald-500' : 'bg-oe-blue') : 'bg-surface-secondary'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Next action button */}
+        {nextStep && (
+          <Button
+            variant={nextStep.variant === 'success' ? 'secondary' : 'primary'}
+            size="sm"
+            onClick={() => navigate(nextStep.to)}
+            className="shrink-0"
+          >
+            {nextStep.label}
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function SummaryCard({
   label,
   value,
@@ -925,6 +1183,9 @@ export function ProjectDetailPage() {
           </div>
         </div>
       </Card>
+
+      {/* ── Project Health & Next Step ──────────────────────────────────── */}
+      <ProjectHealthBar projectId={projectId!} boqs={boqs} boqDetails={boqDetails} />
 
       {/* ── Summary Cards ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
