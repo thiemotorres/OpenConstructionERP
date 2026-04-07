@@ -10,7 +10,7 @@ Stateless service layer. Handles:
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -69,9 +69,7 @@ class PunchListService:
             metadata_=data.metadata,
         )
         item = await self.repo.create(item)
-        logger.info(
-            "Punch item created: %s for project %s", item.title[:40], data.project_id
-        )
+        logger.info("Punch item created: %s for project %s", item.title[:40], data.project_id)
         return item
 
     # ── Read ──────────────────────────────────────────────────────────────
@@ -178,7 +176,7 @@ class PunchListService:
                 detail=f"Cannot transition from '{current}' to '{target}'",
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         update_fields = {"status": target}
 
         if transition.notes:
@@ -319,7 +317,7 @@ class PunchListService:
         lines: list[str] = []
         lines.append("PUNCH LIST REPORT")
         lines.append(f"Project: {project_id}")
-        lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+        lines.append(f"Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}")
         lines.append(f"Total Items: {len(items)}")
         lines.append("")
         lines.append("-" * 80)
@@ -383,13 +381,9 @@ def _build_minimal_pdf(text: str) -> bytes:
         "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
     )
     # Object 4: Content stream
-    objects.append(
-        f"4 0 obj\n<< /Length {len(stream_content)} >>\nstream\n{stream_content}\nendstream\nendobj"
-    )
+    objects.append(f"4 0 obj\n<< /Length {len(stream_content)} >>\nstream\n{stream_content}\nendstream\nendobj")
     # Object 5: Font
-    objects.append(
-        "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj"
-    )
+    objects.append("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj")
 
     # Build the PDF
     parts: list[str] = ["%PDF-1.4"]
@@ -409,9 +403,6 @@ def _build_minimal_pdf(text: str) -> bytes:
     parts.append("\n".join(xref_lines))
 
     # Trailer
-    parts.append(
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-        f"startxref\n{xref_offset}\n%%EOF"
-    )
+    parts.append(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF")
 
     return "\n".join(parts).encode("latin-1")

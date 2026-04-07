@@ -88,11 +88,7 @@ class ActivityRepository:
         total = (await self.session.execute(count_stmt)).scalar_one()
 
         # Fetch ordered by sort_order, then wbs_code
-        stmt = (
-            base.order_by(Activity.sort_order, Activity.wbs_code)
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = base.order_by(Activity.sort_order, Activity.wbs_code).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         activities = list(result.scalars().all())
 
@@ -119,9 +115,7 @@ class ActivityRepository:
 
     async def get_max_sort_order(self, schedule_id: uuid.UUID) -> int:
         """Get the highest sort_order for activities in a schedule."""
-        stmt = select(func.coalesce(func.max(Activity.sort_order), -1)).where(
-            Activity.schedule_id == schedule_id
-        )
+        stmt = select(func.coalesce(func.max(Activity.sort_order), -1)).where(Activity.schedule_id == schedule_id)
         result = (await self.session.execute(stmt)).scalar_one()
         return int(result)
 

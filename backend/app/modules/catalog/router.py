@@ -51,10 +51,7 @@ REGION_MAP: dict[str, str] = {
     "ZH_SHANGHAI": "ZH___DDC_CWICR",
 }
 
-_GITHUB_BASE = (
-    "https://raw.githubusercontent.com/"
-    "datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR/main"
-)
+_GITHUB_BASE = "https://raw.githubusercontent.com/datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR/main"
 
 
 # ── Import from GitHub ───────────────────────────────────────────────────
@@ -100,21 +97,28 @@ async def import_catalog_from_github(
     text = raw_bytes.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
 
+    from sqlalchemy import delete as sql_delete
+
     from app.modules.catalog.models import CatalogResource
-    from sqlalchemy import select, delete as sql_delete
 
     # Delete existing resources for this region (clean reimport)
-    await session.execute(
-        sql_delete(CatalogResource).where(CatalogResource.region == region)
-    )
+    await session.execute(sql_delete(CatalogResource).where(CatalogResource.region == region))
     await session.flush()
 
     imported = 0
     skipped = 0
 
     _MAPPED_FIELDS = {
-        "resource_code", "name", "type", "category", "unit",
-        "price_avg", "price_min", "price_max", "currency", "usage_count",
+        "resource_code",
+        "name",
+        "type",
+        "category",
+        "unit",
+        "price_avg",
+        "price_min",
+        "price_max",
+        "currency",
+        "usage_count",
     }
 
     batch: list[CatalogResource] = []
@@ -166,7 +170,9 @@ async def import_catalog_from_github(
 
     logger.info(
         "Catalog import complete for %s: %d imported, %d skipped",
-        region, imported, skipped,
+        region,
+        imported,
+        skipped,
     )
 
     return {"imported": imported, "skipped": skipped, "region": region}
@@ -218,9 +224,7 @@ async def adjust_prices(
     factor: float = Query(
         ..., gt=0, le=10, description="Multiplication factor (e.g. 1.05 for +5%), must be 0 < f ≤ 10"
     ),
-    resource_type: str | None = Query(
-        default=None, description="Filter by type: material, labor, equipment"
-    ),
+    resource_type: str | None = Query(default=None, description="Filter by type: material, labor, equipment"),
     category: str | None = Query(default=None, description="Filter by category"),
     region: str | None = Query(default=None, description="Filter by region"),
 ) -> dict:
@@ -294,9 +298,7 @@ async def adjust_prices(
 async def search_catalog(
     service: CatalogResourceService = Depends(_get_service),
     q: str | None = Query(default=None, description="Text search on code and name"),
-    resource_type: str | None = Query(
-        default=None, description="Filter: material, equipment, labor, operator"
-    ),
+    resource_type: str | None = Query(default=None, description="Filter: material, equipment, labor, operator"),
     category: str | None = Query(default=None, description="Filter by category"),
     region: str | None = Query(default=None, description="Filter by region"),
     unit: str | None = Query(default=None, description="Filter by unit"),

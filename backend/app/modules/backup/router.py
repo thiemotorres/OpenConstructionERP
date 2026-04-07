@@ -12,7 +12,7 @@ import json
 import logging
 import uuid
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -246,7 +246,7 @@ async def export_backup(user_id: CurrentUserId) -> StreamingResponse:
                 data[backup_key] = []
                 record_counts[backup_key] = 0
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     manifest: dict[str, Any] = {
         "app": APP_ID,
         "format_version": BACKUP_FORMAT_VERSION,
@@ -359,9 +359,7 @@ async def restore_backup(
                         count_imported += 1
                     except Exception as exc:
                         count_skipped += 1
-                        logger.warning(
-                            "Skipped record in %s: %s", backup_key, str(exc)[:100]
-                        )
+                        logger.warning("Skipped record in %s: %s", backup_key, str(exc)[:100])
 
                 imported[backup_key] = count_imported
                 skipped[backup_key] = count_skipped
@@ -370,16 +368,11 @@ async def restore_backup(
                 try:
                     await session.flush()
                 except Exception as exc:
-                    warnings.append(
-                        f"Flush error after {backup_key}: {str(exc)[:200]}"
-                    )
+                    warnings.append(f"Flush error after {backup_key}: {str(exc)[:200]}")
                     # Attempt to continue — some tables may have partial success
                     await session.rollback()
                     # Re-open transaction for remaining tables
-                    warnings.append(
-                        f"Rolled back {backup_key} due to error; subsequent tables "
-                        "may also be affected"
-                    )
+                    warnings.append(f"Rolled back {backup_key} due to error; subsequent tables may also be affected")
 
             await session.commit()
         except Exception as exc:
@@ -431,10 +424,7 @@ async def validate_backup(
     # Check format version compatibility
     backup_version = manifest.get("format_version", "unknown")
     if backup_version != BACKUP_FORMAT_VERSION:
-        warnings.append(
-            f"Format version mismatch: backup={backup_version}, "
-            f"current={BACKUP_FORMAT_VERSION}"
-        )
+        warnings.append(f"Format version mismatch: backup={backup_version}, current={BACKUP_FORMAT_VERSION}")
 
     # Build set of known backup keys
     known_keys = {key for key, _, _, _ in _BACKUP_TABLE_DEFS}

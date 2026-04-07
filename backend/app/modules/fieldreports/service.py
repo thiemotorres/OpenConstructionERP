@@ -10,7 +10,7 @@ Stateless service layer. Handles:
 
 import logging
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -109,15 +109,11 @@ class FieldReportService:
             status=status_filter,
         )
 
-    async def get_by_date(
-        self, project_id: uuid.UUID, report_date: date
-    ) -> FieldReport | None:
+    async def get_by_date(self, project_id: uuid.UUID, report_date: date) -> FieldReport | None:
         """Get a field report for a specific date."""
         return await self.repo.get_by_date(project_id, report_date)
 
-    async def get_calendar(
-        self, project_id: uuid.UUID, year: int, month: int
-    ) -> list[FieldReport]:
+    async def get_calendar(self, project_id: uuid.UUID, year: int, month: int) -> list[FieldReport]:
         """Get all reports for a month (calendar view)."""
         return await self.repo.get_for_month(project_id, year, month)
 
@@ -144,8 +140,7 @@ class FieldReportService:
         # Convert workforce entries from Pydantic models to dicts
         if "workforce" in fields and fields["workforce"] is not None:
             fields["workforce"] = [
-                entry.model_dump() if hasattr(entry, "model_dump") else entry
-                for entry in fields["workforce"]
+                entry.model_dump() if hasattr(entry, "model_dump") else entry for entry in fields["workforce"]
             ]
 
         if not fields:
@@ -181,9 +176,7 @@ class FieldReportService:
         logger.info("Field report submitted: %s", report_id)
         return report
 
-    async def approve_report(
-        self, report_id: uuid.UUID, user_id: str
-    ) -> FieldReport:
+    async def approve_report(self, report_id: uuid.UUID, user_id: str) -> FieldReport:
         """Approve a submitted report (submitted -> approved)."""
         report = await self.get_report(report_id)
         if report.status != "submitted":
@@ -192,7 +185,7 @@ class FieldReportService:
                 detail=f"Cannot approve report with status '{report.status}' — must be submitted",
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         await self.repo.update_fields(
             report_id,
             status="approved",
@@ -229,9 +222,7 @@ class FieldReportService:
 
     # ── Weather (optional) ────────────────────────────────────────────────
 
-    async def get_weather(
-        self, lat: float, lon: float
-    ) -> dict[str, Any]:
+    async def get_weather(self, lat: float, lon: float) -> dict[str, Any]:
         """Fetch current weather from OpenWeatherMap API.
 
         Requires OPENWEATHERMAP_API_KEY env var. Falls back gracefully
@@ -291,7 +282,7 @@ class FieldReportService:
             total_delay_hours += report.delay_hours or 0.0
 
             # Sum workforce hours
-            for entry in (report.workforce or []):
+            for entry in report.workforce or []:
                 if isinstance(entry, dict):
                     count = entry.get("count", 0)
                     hours = entry.get("hours", 0.0)
@@ -321,9 +312,7 @@ class FieldReportService:
         lines.append(f"Date: {report.report_date}")
         lines.append(f"Type: {report.report_type}")
         lines.append(f"Status: {report.status}")
-        lines.append(
-            f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
-        )
+        lines.append(f"Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}")
         lines.append("")
         lines.append("-" * 80)
 
@@ -344,9 +333,7 @@ class FieldReportService:
             for entry in workforce:
                 if isinstance(entry, dict):
                     lines.append(
-                        f"  {entry.get('trade', '?')}: "
-                        f"{entry.get('count', 0)} workers, "
-                        f"{entry.get('hours', 0)} hrs"
+                        f"  {entry.get('trade', '?')}: {entry.get('count', 0)} workers, {entry.get('hours', 0)} hrs"
                     )
         else:
             lines.append("  (none recorded)")
@@ -410,13 +397,8 @@ def _build_minimal_pdf(text: str) -> bytes:
         "/MediaBox [0 0 612 792] "
         "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
     )
-    objects.append(
-        f"4 0 obj\n<< /Length {len(stream_content)} >>\n"
-        f"stream\n{stream_content}\nendstream\nendobj"
-    )
-    objects.append(
-        "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj"
-    )
+    objects.append(f"4 0 obj\n<< /Length {len(stream_content)} >>\nstream\n{stream_content}\nendstream\nendobj")
+    objects.append("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj")
 
     parts: list[str] = ["%PDF-1.4"]
     offsets: list[int] = []
@@ -433,9 +415,6 @@ def _build_minimal_pdf(text: str) -> bytes:
         xref_lines.append(f"{off:010d} 00000 n ")
     parts.append("\n".join(xref_lines))
 
-    parts.append(
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-        f"startxref\n{xref_offset}\n%%EOF"
-    )
+    parts.append(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF")
 
     return "\n".join(parts).encode("latin-1")

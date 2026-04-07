@@ -9,7 +9,6 @@ Each function takes an API key, prompt, optional image, and returns raw text.
 JSON extraction is handled separately.
 """
 
-import base64
 import json
 import logging
 import re
@@ -70,14 +69,16 @@ async def call_anthropic(
 
     content: list[dict[str, Any]] = []
     if image_base64:
-        content.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": image_media_type,
-                "data": image_base64,
-            },
-        })
+        content.append(
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image_media_type,
+                    "data": image_base64,
+                },
+            }
+        )
     content.append({"type": "text", "text": prompt})
 
     payload = {
@@ -98,9 +99,7 @@ async def call_anthropic(
         data = response.json()
 
     text = data["content"][0]["text"]
-    tokens = data.get("usage", {}).get("input_tokens", 0) + data.get("usage", {}).get(
-        "output_tokens", 0
-    )
+    tokens = data.get("usage", {}).get("input_tokens", 0) + data.get("usage", {}).get("output_tokens", 0)
     return text, tokens
 
 
@@ -138,10 +137,12 @@ async def call_openai(
     user_content: list[dict[str, Any]] = []
     if image_base64:
         data_url = f"data:{image_media_type};base64,{image_base64}"
-        user_content.append({
-            "type": "image_url",
-            "image_url": {"url": data_url},
-        })
+        user_content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": data_url},
+            }
+        )
     user_content.append({"type": "text", "text": prompt})
 
     payload = {
@@ -194,19 +195,18 @@ async def call_gemini(
     Returns:
         Tuple of (response_text, tokens_used).
     """
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
-        f":generateContent?key={api_key}"
-    )
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
     parts: list[dict[str, Any]] = []
     if image_base64:
-        parts.append({
-            "inline_data": {
-                "mime_type": image_media_type,
-                "data": image_base64,
-            },
-        })
+        parts.append(
+            {
+                "inline_data": {
+                    "mime_type": image_media_type,
+                    "data": image_base64,
+                },
+            }
+        )
     parts.append({"text": prompt})
 
     payload: dict[str, Any] = {
@@ -283,10 +283,12 @@ async def call_openai_compatible(
     user_content: list[dict[str, Any]] = []
     if image_base64:
         data_url = f"data:{image_media_type};base64,{image_base64}"
-        user_content.append({
-            "type": "image_url",
-            "image_url": {"url": data_url},
-        })
+        user_content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": data_url},
+            }
+        )
     user_content.append({"type": "text", "text": prompt})
 
     payload = {
@@ -353,7 +355,12 @@ async def call_ai(
     if provider in _OPENAI_COMPAT_CONFIG:
         try:
             return await call_openai_compatible(
-                provider, api_key, system, prompt, image_base64, image_media_type,
+                provider,
+                api_key,
+                system,
+                prompt,
+                image_base64,
+                image_media_type,
                 max_tokens=max_tokens,
             )
         except httpx.HTTPStatusError:
@@ -365,7 +372,11 @@ async def call_ai(
 
     try:
         return await caller(
-            api_key, system, prompt, image_base64, image_media_type,
+            api_key,
+            system,
+            prompt,
+            image_base64,
+            image_media_type,
             max_tokens=max_tokens,
         )
     except httpx.HTTPStatusError as exc:

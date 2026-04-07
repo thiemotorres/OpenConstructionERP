@@ -5,9 +5,9 @@ Usage:
     openestimate-server.exe          # Production (PyInstaller bundle)
 """
 
+import multiprocessing
 import os
 import sys
-import multiprocessing
 
 
 def main() -> None:
@@ -41,6 +41,7 @@ def main() -> None:
 
     # Use direct app import for PyInstaller compatibility
     from app.main import create_app
+
     app = create_app()
 
     uvicorn.run(

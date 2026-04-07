@@ -20,20 +20,20 @@ Idempotent: skips creation if demo BOQs with these names already exist.
 
 import asyncio
 import uuid
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 
-from app.database import Base, engine, async_session_factory
-from app.modules.users.models import User  # noqa: F401
-from app.modules.projects.models import Project  # noqa: F401
+from app.database import Base, async_session_factory, engine
 from app.modules.boq.models import BOQ, Position  # noqa: F401
+from app.modules.projects.models import Project  # noqa: F401
 from app.modules.schedule.models import Schedule  # noqa: F401
-
+from app.modules.users.models import User  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _money(value: float) -> str:
     """Format a float to 2-decimal string (SQLite-compatible storage)."""
@@ -66,13 +66,30 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 3.20,
                     "equipment_cost": 4.80,
                     "resources": [
-                        {"name": "General laborer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.12, "unit_rate": 22, "total": 2.64},
-                        {"name": "Excavator operator", "type": "operator", "unit": "hrs",
-                         "quantity": 0.03, "unit_rate": 35, "total": 1.05},
-                        {"name": "Mini excavator", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.03, "unit_rate": 65,
-                         "total": 1.95},
+                        {
+                            "name": "General laborer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.12,
+                            "unit_rate": 22,
+                            "total": 2.64,
+                        },
+                        {
+                            "name": "Excavator operator",
+                            "type": "operator",
+                            "unit": "hrs",
+                            "quantity": 0.03,
+                            "unit_rate": 35,
+                            "total": 1.05,
+                        },
+                        {
+                            "name": "Mini excavator",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.03,
+                            "unit_rate": 65,
+                            "total": 1.95,
+                        },
                     ],
                 },
             },
@@ -88,16 +105,38 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 12.80,
                     "equipment_cost": 18.50,
                     "resources": [
-                        {"name": "Excavator operator", "type": "operator", "unit": "hrs",
-                         "quantity": 0.25, "unit_rate": 35, "total": 8.75},
-                        {"name": "General laborer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.35, "unit_rate": 22, "total": 7.70},
-                        {"name": "Excavator CAT 320", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.25, "unit_rate": 85,
-                         "total": 21.25},
-                        {"name": "Dump truck 10t", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.15, "unit_rate": 55,
-                         "total": 8.25},
+                        {
+                            "name": "Excavator operator",
+                            "type": "operator",
+                            "unit": "hrs",
+                            "quantity": 0.25,
+                            "unit_rate": 35,
+                            "total": 8.75,
+                        },
+                        {
+                            "name": "General laborer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.35,
+                            "unit_rate": 22,
+                            "total": 7.70,
+                        },
+                        {
+                            "name": "Excavator CAT 320",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.25,
+                            "unit_rate": 85,
+                            "total": 21.25,
+                        },
+                        {
+                            "name": "Dump truck 10t",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.15,
+                            "unit_rate": 55,
+                            "total": 8.25,
+                        },
                     ],
                 },
             },
@@ -114,18 +153,46 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "equipment_cost": 35.00,
                     "material_cost": 85.00,
                     "resources": [
-                        {"name": "Concrete worker", "type": "labor", "unit": "hrs",
-                         "quantity": 1.8, "unit_rate": 28, "total": 50.40},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.7, "unit_rate": 22, "total": 15.40},
-                        {"name": "Concrete C25/30", "type": "material", "unit": "m3",
-                         "quantity": 1.05, "unit_rate": 95, "total": 99.75},
-                        {"name": "Concrete pump", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.15, "unit_rate": 120,
-                         "total": 18.00},
-                        {"name": "Vibrator", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.3, "unit_rate": 15,
-                         "total": 4.50},
+                        {
+                            "name": "Concrete worker",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 1.8,
+                            "unit_rate": 28,
+                            "total": 50.40,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.7,
+                            "unit_rate": 22,
+                            "total": 15.40,
+                        },
+                        {
+                            "name": "Concrete C25/30",
+                            "type": "material",
+                            "unit": "m3",
+                            "quantity": 1.05,
+                            "unit_rate": 95,
+                            "total": 99.75,
+                        },
+                        {
+                            "name": "Concrete pump",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.15,
+                            "unit_rate": 120,
+                            "total": 18.00,
+                        },
+                        {
+                            "name": "Vibrator",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.3,
+                            "unit_rate": 15,
+                            "total": 4.50,
+                        },
                     ],
                 },
             },
@@ -147,12 +214,30 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 1.20,
                     "material_cost": 1.15,
                     "resources": [
-                        {"name": "Steel fixer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.025, "unit_rate": 32, "total": 0.80},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.015, "unit_rate": 22, "total": 0.33},
-                        {"name": "Reinforcement BSt 500", "type": "material", "unit": "kg",
-                         "quantity": 1.02, "unit_rate": 1.15, "total": 1.17},
+                        {
+                            "name": "Steel fixer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.025,
+                            "unit_rate": 32,
+                            "total": 0.80,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.015,
+                            "unit_rate": 22,
+                            "total": 0.33,
+                        },
+                        {
+                            "name": "Reinforcement BSt 500",
+                            "type": "material",
+                            "unit": "kg",
+                            "quantity": 1.02,
+                            "unit_rate": 1.15,
+                            "total": 1.17,
+                        },
                     ],
                 },
             },
@@ -168,14 +253,38 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 42.00,
                     "material_cost": 48.00,
                     "resources": [
-                        {"name": "Mason", "type": "labor", "unit": "hrs",
-                         "quantity": 0.8, "unit_rate": 35, "total": 28.00},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.4, "unit_rate": 22, "total": 8.80},
-                        {"name": "Blocks 24cm", "type": "material", "unit": "pcs",
-                         "quantity": 16, "unit_rate": 2.80, "total": 44.80},
-                        {"name": "Mortar M5", "type": "material", "unit": "kg",
-                         "quantity": 25, "unit_rate": 0.12, "total": 3.00},
+                        {
+                            "name": "Mason",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.8,
+                            "unit_rate": 35,
+                            "total": 28.00,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.4,
+                            "unit_rate": 22,
+                            "total": 8.80,
+                        },
+                        {
+                            "name": "Blocks 24cm",
+                            "type": "material",
+                            "unit": "pcs",
+                            "quantity": 16,
+                            "unit_rate": 2.80,
+                            "total": 44.80,
+                        },
+                        {
+                            "name": "Mortar M5",
+                            "type": "material",
+                            "unit": "kg",
+                            "quantity": 25,
+                            "unit_rate": 0.12,
+                            "total": 3.00,
+                        },
                     ],
                 },
             },
@@ -192,19 +301,54 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "equipment_cost": 25.00,
                     "material_cost": 65.00,
                     "resources": [
-                        {"name": "Concrete worker", "type": "labor", "unit": "hrs",
-                         "quantity": 1.2, "unit_rate": 28, "total": 33.60},
-                        {"name": "Steel fixer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.3, "unit_rate": 32, "total": 9.60},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.3, "unit_rate": 22, "total": 6.60},
-                        {"name": "Concrete C30/37", "type": "material", "unit": "m3",
-                         "quantity": 0.21, "unit_rate": 105, "total": 22.05},
-                        {"name": "Formwork panels", "type": "material", "unit": "m2",
-                         "quantity": 1.1, "unit_rate": 18, "total": 19.80},
-                        {"name": "Tower crane", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.15, "unit_rate": 95,
-                         "total": 14.25},
+                        {
+                            "name": "Concrete worker",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 1.2,
+                            "unit_rate": 28,
+                            "total": 33.60,
+                        },
+                        {
+                            "name": "Steel fixer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.3,
+                            "unit_rate": 32,
+                            "total": 9.60,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.3,
+                            "unit_rate": 22,
+                            "total": 6.60,
+                        },
+                        {
+                            "name": "Concrete C30/37",
+                            "type": "material",
+                            "unit": "m3",
+                            "quantity": 0.21,
+                            "unit_rate": 105,
+                            "total": 22.05,
+                        },
+                        {
+                            "name": "Formwork panels",
+                            "type": "material",
+                            "unit": "m2",
+                            "quantity": 1.1,
+                            "unit_rate": 18,
+                            "total": 19.80,
+                        },
+                        {
+                            "name": "Tower crane",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.15,
+                            "unit_rate": 95,
+                            "total": 14.25,
+                        },
                     ],
                 },
             },
@@ -227,15 +371,38 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "equipment_cost": 2.50,
                     "material_cost": 10.10,
                     "resources": [
-                        {"name": "Plasterer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.25, "unit_rate": 38, "total": 9.50},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.10, "unit_rate": 22, "total": 2.20},
-                        {"name": "Plaster mix", "type": "material", "unit": "kg",
-                         "quantity": 18, "unit_rate": 0.35, "total": 6.30},
-                        {"name": "Spray machine", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.1, "unit_rate": 25,
-                         "total": 2.50},
+                        {
+                            "name": "Plasterer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.25,
+                            "unit_rate": 38,
+                            "total": 9.50,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.10,
+                            "unit_rate": 22,
+                            "total": 2.20,
+                        },
+                        {
+                            "name": "Plaster mix",
+                            "type": "material",
+                            "unit": "kg",
+                            "quantity": 18,
+                            "unit_rate": 0.35,
+                            "total": 6.30,
+                        },
+                        {
+                            "name": "Spray machine",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.1,
+                            "unit_rate": 25,
+                            "total": 2.50,
+                        },
                     ],
                 },
             },
@@ -251,14 +418,38 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 25.00,
                     "material_cost": 38.00,
                     "resources": [
-                        {"name": "Tiler", "type": "labor", "unit": "hrs",
-                         "quantity": 0.45, "unit_rate": 36, "total": 16.20},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.15, "unit_rate": 22, "total": 3.30},
-                        {"name": "Floor tiles 60x60", "type": "material", "unit": "m2",
-                         "quantity": 1.08, "unit_rate": 28, "total": 30.24},
-                        {"name": "Tile adhesive", "type": "material", "unit": "kg",
-                         "quantity": 5, "unit_rate": 1.20, "total": 6.00},
+                        {
+                            "name": "Tiler",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.45,
+                            "unit_rate": 36,
+                            "total": 16.20,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.15,
+                            "unit_rate": 22,
+                            "total": 3.30,
+                        },
+                        {
+                            "name": "Floor tiles 60x60",
+                            "type": "material",
+                            "unit": "m2",
+                            "quantity": 1.08,
+                            "unit_rate": 28,
+                            "total": 30.24,
+                        },
+                        {
+                            "name": "Tile adhesive",
+                            "type": "material",
+                            "unit": "kg",
+                            "quantity": 5,
+                            "unit_rate": 1.20,
+                            "total": 6.00,
+                        },
                     ],
                 },
             },
@@ -274,14 +465,38 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 8.00,
                     "material_cost": 8.50,
                     "resources": [
-                        {"name": "Painter", "type": "labor", "unit": "hrs",
-                         "quantity": 0.15, "unit_rate": 32, "total": 4.80},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.05, "unit_rate": 22, "total": 1.10},
-                        {"name": "Paint (interior)", "type": "material", "unit": "liter",
-                         "quantity": 0.25, "unit_rate": 12, "total": 3.00},
-                        {"name": "Primer", "type": "material", "unit": "liter",
-                         "quantity": 0.1, "unit_rate": 8, "total": 0.80},
+                        {
+                            "name": "Painter",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.15,
+                            "unit_rate": 32,
+                            "total": 4.80,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.05,
+                            "unit_rate": 22,
+                            "total": 1.10,
+                        },
+                        {
+                            "name": "Paint (interior)",
+                            "type": "material",
+                            "unit": "liter",
+                            "quantity": 0.25,
+                            "unit_rate": 12,
+                            "total": 3.00,
+                        },
+                        {
+                            "name": "Primer",
+                            "type": "material",
+                            "unit": "liter",
+                            "quantity": 0.1,
+                            "unit_rate": 8,
+                            "total": 0.80,
+                        },
                     ],
                 },
             },
@@ -311,13 +526,30 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 8.00,
                     "equipment_cost": 5.00,
                     "resources": [
-                        {"name": "Demolition worker", "type": "labor", "unit": "hrs",
-                         "quantity": 0.2, "unit_rate": 28, "total": 5.60},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.1, "unit_rate": 22, "total": 2.20},
-                        {"name": "Jackhammer", "type": "equipment",
-                         "unit": "machine hours", "quantity": 0.08, "unit_rate": 35,
-                         "total": 2.80},
+                        {
+                            "name": "Demolition worker",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.2,
+                            "unit_rate": 28,
+                            "total": 5.60,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.1,
+                            "unit_rate": 22,
+                            "total": 2.20,
+                        },
+                        {
+                            "name": "Jackhammer",
+                            "type": "equipment",
+                            "unit": "machine hours",
+                            "quantity": 0.08,
+                            "unit_rate": 35,
+                            "total": 2.80,
+                        },
                     ],
                 },
             },
@@ -333,10 +565,22 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 7.00,
                     "equipment_cost": 3.50,
                     "resources": [
-                        {"name": "Floor worker", "type": "labor", "unit": "hrs",
-                         "quantity": 0.18, "unit_rate": 28, "total": 5.04},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.07, "unit_rate": 22, "total": 1.54},
+                        {
+                            "name": "Floor worker",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.18,
+                            "unit_rate": 28,
+                            "total": 5.04,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.07,
+                            "unit_rate": 22,
+                            "total": 1.54,
+                        },
                     ],
                 },
             },
@@ -358,12 +602,30 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 18.00,
                     "material_cost": 12.00,
                     "resources": [
-                        {"name": "Drywall installer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.35, "unit_rate": 34, "total": 11.90},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.15, "unit_rate": 22, "total": 3.30},
-                        {"name": "Metal studs CW75", "type": "material", "unit": "m",
-                         "quantity": 3.2, "unit_rate": 2.80, "total": 8.96},
+                        {
+                            "name": "Drywall installer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.35,
+                            "unit_rate": 34,
+                            "total": 11.90,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.15,
+                            "unit_rate": 22,
+                            "total": 3.30,
+                        },
+                        {
+                            "name": "Metal studs CW75",
+                            "type": "material",
+                            "unit": "m",
+                            "quantity": 3.2,
+                            "unit_rate": 2.80,
+                            "total": 8.96,
+                        },
                     ],
                 },
             },
@@ -379,12 +641,30 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 14.00,
                     "material_cost": 12.00,
                     "resources": [
-                        {"name": "Drywall installer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.3, "unit_rate": 34, "total": 10.20},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.1, "unit_rate": 22, "total": 2.20},
-                        {"name": "Gypsum board 12.5mm", "type": "material", "unit": "m2",
-                         "quantity": 2.1, "unit_rate": 4.50, "total": 9.45},
+                        {
+                            "name": "Drywall installer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.3,
+                            "unit_rate": 34,
+                            "total": 10.20,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.1,
+                            "unit_rate": 22,
+                            "total": 2.20,
+                        },
+                        {
+                            "name": "Gypsum board 12.5mm",
+                            "type": "material",
+                            "unit": "m2",
+                            "quantity": 2.1,
+                            "unit_rate": 4.50,
+                            "total": 9.45,
+                        },
                     ],
                 },
             },
@@ -406,14 +686,38 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 65.00,
                     "material_cost": 45.00,
                     "resources": [
-                        {"name": "Electrician", "type": "labor", "unit": "hrs",
-                         "quantity": 1.5, "unit_rate": 38, "total": 57.00},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.5, "unit_rate": 22, "total": 11.00},
-                        {"name": "Cable NYM 3x2.5", "type": "material", "unit": "m",
-                         "quantity": 12, "unit_rate": 1.80, "total": 21.60},
-                        {"name": "Socket/switch", "type": "material", "unit": "pcs",
-                         "quantity": 1, "unit_rate": 18, "total": 18.00},
+                        {
+                            "name": "Electrician",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 1.5,
+                            "unit_rate": 38,
+                            "total": 57.00,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.5,
+                            "unit_rate": 22,
+                            "total": 11.00,
+                        },
+                        {
+                            "name": "Cable NYM 3x2.5",
+                            "type": "material",
+                            "unit": "m",
+                            "quantity": 12,
+                            "unit_rate": 1.80,
+                            "total": 21.60,
+                        },
+                        {
+                            "name": "Socket/switch",
+                            "type": "material",
+                            "unit": "pcs",
+                            "quantity": 1,
+                            "unit_rate": 18,
+                            "total": 18.00,
+                        },
                     ],
                 },
             },
@@ -429,12 +733,30 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 28.00,
                     "material_cost": 52.00,
                     "resources": [
-                        {"name": "Electrician", "type": "labor", "unit": "hrs",
-                         "quantity": 0.6, "unit_rate": 38, "total": 22.80},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.2, "unit_rate": 22, "total": 4.40},
-                        {"name": "LED panel 60x60", "type": "material", "unit": "pcs",
-                         "quantity": 1, "unit_rate": 45, "total": 45.00},
+                        {
+                            "name": "Electrician",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.6,
+                            "unit_rate": 38,
+                            "total": 22.80,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.2,
+                            "unit_rate": 22,
+                            "total": 4.40,
+                        },
+                        {
+                            "name": "LED panel 60x60",
+                            "type": "material",
+                            "unit": "pcs",
+                            "quantity": 1,
+                            "unit_rate": 45,
+                            "total": 45.00,
+                        },
                     ],
                 },
             },
@@ -456,12 +778,30 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 8.00,
                     "material_cost": 35.00,
                     "resources": [
-                        {"name": "Floor installer", "type": "labor", "unit": "hrs",
-                         "quantity": 0.15, "unit_rate": 32, "total": 4.80},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.05, "unit_rate": 22, "total": 1.10},
-                        {"name": "Carpet tiles", "type": "material", "unit": "m2",
-                         "quantity": 1.05, "unit_rate": 28, "total": 29.40},
+                        {
+                            "name": "Floor installer",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.15,
+                            "unit_rate": 32,
+                            "total": 4.80,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.05,
+                            "unit_rate": 22,
+                            "total": 1.10,
+                        },
+                        {
+                            "name": "Carpet tiles",
+                            "type": "material",
+                            "unit": "m2",
+                            "quantity": 1.05,
+                            "unit_rate": 28,
+                            "total": 29.40,
+                        },
                     ],
                 },
             },
@@ -477,12 +817,30 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
                     "labor_cost": 6.50,
                     "material_cost": 8.00,
                     "resources": [
-                        {"name": "Painter", "type": "labor", "unit": "hrs",
-                         "quantity": 0.12, "unit_rate": 32, "total": 3.84},
-                        {"name": "Helper", "type": "labor", "unit": "hrs",
-                         "quantity": 0.06, "unit_rate": 22, "total": 1.32},
-                        {"name": "Paint (white matt)", "type": "material", "unit": "liter",
-                         "quantity": 0.22, "unit_rate": 14, "total": 3.08},
+                        {
+                            "name": "Painter",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.12,
+                            "unit_rate": 32,
+                            "total": 3.84,
+                        },
+                        {
+                            "name": "Helper",
+                            "type": "labor",
+                            "unit": "hrs",
+                            "quantity": 0.06,
+                            "unit_rate": 22,
+                            "total": 1.32,
+                        },
+                        {
+                            "name": "Paint (white matt)",
+                            "type": "material",
+                            "unit": "liter",
+                            "quantity": 0.22,
+                            "unit_rate": 14,
+                            "total": 3.08,
+                        },
                     ],
                 },
             },
@@ -494,6 +852,7 @@ _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
+
 
 def _build_boq_positions(
     boq_id: uuid.UUID,
@@ -557,6 +916,7 @@ def _build_boq_positions(
 # Main seed function
 # ---------------------------------------------------------------------------
 
+
 async def seed() -> None:
     """Create 2 demo BOQs with labor-hours metadata + schedules for each."""
     async with engine.begin() as conn:
@@ -574,16 +934,22 @@ async def seed() -> None:
 
         # Check idempotency
         existing = (
-            await session.execute(
-                select(BOQ).where(
-                    BOQ.project_id == project_id,
-                    BOQ.name.in_([
-                        "Residential House - 3 Bedroom",
-                        "Office Renovation - 500m²",
-                    ]),
+            (
+                await session.execute(
+                    select(BOQ).where(
+                        BOQ.project_id == project_id,
+                        BOQ.name.in_(
+                            [
+                                "Residential House - 3 Bedroom",
+                                "Office Renovation - 500m²",
+                            ]
+                        ),
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         existing_names = {b.name for b in existing}
 
@@ -621,8 +987,7 @@ async def seed() -> None:
 
             print(f"Created BOQ 1: 'Residential House - 3 Bedroom' (id={boq1_id})")
             print(f"  Schedule: '{sched1.name}' (id={sched1.id})")
-            print(f"  -> Generate: POST /api/v1/schedule/schedules/{sched1.id}"
-                  f"/generate-from-boq/{boq1_id}")
+            print(f"  -> Generate: POST /api/v1/schedule/schedules/{sched1.id}/generate-from-boq/{boq1_id}")
         else:
             print("Skipped BOQ 1: 'Residential House - 3 Bedroom' (already exists)")
 
@@ -660,8 +1025,7 @@ async def seed() -> None:
 
             print(f"Created BOQ 2: 'Office Renovation - 500m²' (id={boq2_id})")
             print(f"  Schedule: '{sched2.name}' (id={sched2.id})")
-            print(f"  -> Generate: POST /api/v1/schedule/schedules/{sched2.id}"
-                  f"/generate-from-boq/{boq2_id}")
+            print(f"  -> Generate: POST /api/v1/schedule/schedules/{sched2.id}/generate-from-boq/{boq2_id}")
         else:
             print("Skipped BOQ 2: 'Office Renovation - 500m²' (already exists)")
 

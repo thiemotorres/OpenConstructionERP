@@ -15,14 +15,13 @@ import os
 import time
 import uuid
 import uuid as _instance_uuid
-from pathlib import Path
 from typing import Any
 
 # Unique instance fingerprint — proves this specific deployment origin
 _INSTANCE_ID = str(_instance_uuid.uuid4())
-_BUILD_HASH = _hashlib.sha256(
-    f"DDC-CWICR-OE-{_INSTANCE_ID}".encode()
-).hexdigest()[:16]
+_BUILD_HASH = _hashlib.sha256(f"DDC-CWICR-OE-{_INSTANCE_ID}".encode()).hexdigest()[:16]
+
+from datetime import UTC
 
 import structlog
 from fastapi import FastAPI
@@ -45,9 +44,7 @@ def configure_logging(settings: Settings) -> None:
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
-            structlog.dev.ConsoleRenderer()
-            if settings.app_debug
-            else structlog.processors.JSONRenderer(),
+            structlog.dev.ConsoleRenderer() if settings.app_debug else structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
@@ -95,19 +92,18 @@ async def _seed_demo_account() -> None:
     if os.environ.get("SEED_DEMO", "true").lower() in ("false", "0", "no"):
         return
 
+    from sqlalchemy import func, select
+
     from app.database import async_session_factory
+    from app.modules.projects.models import Project
     from app.modules.users.models import User
     from app.modules.users.service import hash_password
-    from app.modules.projects.models import Project
-    from sqlalchemy import select, func
 
     try:
         async with async_session_factory() as session:
             # 1. Create demo user if missing
             demo = (
-                await session.execute(
-                    select(User).where(User.email == "demo@openestimator.io")
-                )
+                await session.execute(select(User).where(User.email == "demo@openestimator.io"))
             ).scalar_one_or_none()
 
             if demo is None:
@@ -141,11 +137,7 @@ async def _seed_demo_account() -> None:
                 },
             ]
             for acct in demo_accounts:
-                exists = (
-                    await session.execute(
-                        select(User).where(User.email == acct["email"])
-                    )
-                ).scalar_one_or_none()
+                exists = (await session.execute(select(User).where(User.email == acct["email"]))).scalar_one_or_none()
                 if exists is None:
                     session.add(
                         User(
@@ -163,11 +155,7 @@ async def _seed_demo_account() -> None:
 
             # 2. Install 5 demo projects if user has none
             count = (
-                await session.execute(
-                    select(func.count())
-                    .select_from(Project)
-                    .where(Project.owner_id == demo.id)
-                )
+                await session.execute(select(func.count()).select_from(Project).where(Project.owner_id == demo.id))
             ).scalar() or 0
 
             if count == 0:
@@ -225,8 +213,7 @@ def create_app() -> FastAPI:
     # Security: block wildcard origins in production
     if settings.is_production and "*" in cors_origins:
         logger.warning(
-            "CORS: wildcard '*' origin is not allowed in production. "
-            "Set ALLOWED_ORIGINS to your actual domain(s)."
+            "CORS: wildcard '*' origin is not allowed in production. Set ALLOWED_ORIGINS to your actual domain(s)."
         )
         cors_origins = [o for o in cors_origins if o != "*"]
         if not cors_origins:
@@ -316,24 +303,30 @@ def create_app() -> FastAPI:
         # Cache check
         try:
             from app.core.cache import cache as app_cache
+
             result["cache"] = app_cache.stats()
         except Exception:
             result["cache"] = {"status": "unavailable"}
 
         # Database check
         try:
-            from app.database import engine
             from sqlalchemy import text
+
+            from app.database import engine
 
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
-            result["database"] = {"status": "connected", "engine": "sqlite" if "sqlite" in settings.database_url else "postgresql"}
+            result["database"] = {
+                "status": "connected",
+                "engine": "sqlite" if "sqlite" in settings.database_url else "postgresql",
+            }
         except Exception as exc:
             result["database"] = {"status": "error", "error": str(exc)[:100]}
 
         # Vector DB check (LanceDB or Qdrant)
         try:
             from app.core.vector import vector_status as vs
+
             vstat = vs()
             if vstat.get("connected"):
                 col = vstat.get("cost_collection") or {}
@@ -360,14 +353,18 @@ def create_app() -> FastAPI:
         # Fallback: check user-configured keys in oe_ai_settings table
         if not providers:
             try:
-                from app.database import async_session_factory
                 from sqlalchemy import text as sa_text
 
+                from app.database import async_session_factory
+
                 async with async_session_factory() as ai_session:
-                    row = (await ai_session.execute(sa_text(
-                        "SELECT openai_api_key, anthropic_api_key, gemini_api_key "
-                        "FROM oe_ai_settings LIMIT 1"
-                    ))).first()
+                    row = (
+                        await ai_session.execute(
+                            sa_text(
+                                "SELECT openai_api_key, anthropic_api_key, gemini_api_key FROM oe_ai_settings LIMIT 1"
+                            )
+                        )
+                    ).first()
                     if row:
                         if row[0]:
                             providers.append({"name": "OpenAI", "configured": True})
@@ -459,9 +456,7 @@ def create_app() -> FastAPI:
 
                 repo = CatalogResourceRepository(session)
                 region_stats = await repo.stats_by_region()
-                loaded_catalog_regions = {
-                    r["region"] for r in region_stats if r.get("region")
-                }
+                loaded_catalog_regions = {r["region"] for r in region_stats if r.get("region")}
         except Exception:
             pass  # Graceful degradation: show all as uninstalled
 
@@ -499,13 +494,12 @@ def create_app() -> FastAPI:
     async def demo_status() -> dict[str, bool]:
         """Check which demo projects are currently installed."""
         from sqlalchemy import select
+
         from app.database import async_session_factory
         from app.modules.projects.models import Project
 
         async with async_session_factory() as session:
-            rows = (
-                await session.execute(select(Project.metadata_))
-            ).scalars().all()
+            rows = (await session.execute(select(Project.metadata_))).scalars().all()
 
         installed: dict[str, bool] = {}
         for meta in rows:
@@ -517,18 +511,19 @@ def create_app() -> FastAPI:
     async def uninstall_demo(demo_id: str) -> dict[str, Any]:
         """Remove a demo project and all its data."""
         from sqlalchemy import select
+
         from app.database import async_session_factory
         from app.modules.projects.models import Project
 
         async with async_session_factory() as session:
             all_projects = (await session.execute(select(Project))).scalars().all()
             targets = [
-                p for p in all_projects
-                if isinstance(p.metadata_, dict) and p.metadata_.get("demo_id") == demo_id
+                p for p in all_projects if isinstance(p.metadata_, dict) and p.metadata_.get("demo_id") == demo_id
             ]
 
             if not targets:
                 from fastapi import HTTPException
+
                 raise HTTPException(status_code=404, detail=f"Demo '{demo_id}' not installed")
 
             for proj in targets:
@@ -541,15 +536,13 @@ def create_app() -> FastAPI:
     async def clear_all_demos() -> dict[str, Any]:
         """Remove ALL demo projects and their data."""
         from sqlalchemy import select
+
         from app.database import async_session_factory
         from app.modules.projects.models import Project
 
         async with async_session_factory() as session:
             all_projects = (await session.execute(select(Project))).scalars().all()
-            targets = [
-                p for p in all_projects
-                if isinstance(p.metadata_, dict) and p.metadata_.get("is_demo")
-            ]
+            targets = [p for p in all_projects if isinstance(p.metadata_, dict) and p.metadata_.get("is_demo")]
 
             for proj in targets:
                 await session.delete(proj)
@@ -578,10 +571,11 @@ def create_app() -> FastAPI:
     @app.post("/api/v1/feedback", tags=["System"])
     async def submit_feedback(payload: dict[str, Any]) -> dict[str, Any]:
         """Store user feedback (bug reports, ideas, general comments)."""
-        from datetime import datetime, timezone
+        from datetime import datetime
+
+        from sqlalchemy import text
 
         from app.database import engine
-        from sqlalchemy import text
 
         category = str(payload.get("category", "general"))[:20]
         subject = str(payload.get("subject", ""))[:200]
@@ -591,7 +585,8 @@ def create_app() -> FastAPI:
 
         # Auto-create table if needed (SQLite dev mode)
         async with engine.begin() as conn:
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 CREATE TABLE IF NOT EXISTS oe_feedback (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     category TEXT NOT NULL DEFAULT 'general',
@@ -601,7 +596,8 @@ def create_app() -> FastAPI:
                     page_path TEXT,
                     created_at TEXT NOT NULL
                 )
-            """))
+            """)
+            )
             await conn.execute(
                 text("""
                     INSERT INTO oe_feedback (category, subject, description, email, page_path, created_at)
@@ -613,7 +609,7 @@ def create_app() -> FastAPI:
                     "description": description,
                     "email": email,
                     "page_path": page_path,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                 },
             )
 
@@ -622,9 +618,7 @@ def create_app() -> FastAPI:
     # ── Lifecycle ───────────────────────────────────────────────────────
     @app.on_event("startup")
     async def startup() -> None:
-        logger.info(
-            "Starting %s v%s (%s)", settings.app_name, settings.app_version, settings.app_env
-        )
+        logger.info("Starting %s v%s (%s)", settings.app_name, settings.app_version, settings.app_env)
 
         # Validate secrets and configuration for production
         _insecure_secrets = {"change-me-in-production", "openestimate-local-dev-key", ""}
@@ -633,11 +627,9 @@ def create_app() -> FastAPI:
                 raise RuntimeError(
                     "FATAL: JWT_SECRET is set to an insecure default value in production! "
                     "Set JWT_SECRET to a secure random string (min 32 chars). "
-                    "Example: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+                    'Example: python -c "import secrets; print(secrets.token_urlsafe(48))"'
                 )
-            logger.warning(
-                "JWT_SECRET is using default dev key — set JWT_SECRET env var for production."
-            )
+            logger.warning("JWT_SECRET is using default dev key — set JWT_SECRET env var for production.")
 
         if settings.is_production:
             if "minioadmin" in (settings.s3_access_key + settings.s3_secret_key):
@@ -657,28 +649,27 @@ def create_app() -> FastAPI:
 
         # Auto-create tables for SQLite dev mode (PostgreSQL uses Alembic)
         if "sqlite" in settings.database_url:
-            from app.database import Base, engine
-            from app.modules.users import models as _users_models  # noqa: F401
-            from app.modules.projects import models as _projects_models  # noqa: F401
-            from app.modules.boq import models as _boq_models  # noqa: F401
-            from app.modules.costs import models as _costs_models  # noqa: F401
-            from app.modules.assemblies import models as _asm_models  # noqa: F401
-            from app.modules.schedule import models as _sched_models  # noqa: F401
-            from app.modules.costmodel import models as _cm_models  # noqa: F401
-            from app.modules.ai import models as _ai_models  # noqa: F401
-            from app.modules.tendering import models as _tendering_models  # noqa: F401
-            from app.modules.catalog import models as _catalog_models  # noqa: F401
-            from app.modules.takeoff import models as _takeoff_models  # noqa: F401
-            from app.modules.changeorders import models as _changeorders_models  # noqa: F401
-            from app.modules.risk import models as _risk_models  # noqa: F401
-            from app.modules.documents import models as _documents_models  # noqa: F401
-            from app.modules.markups import models as _markups_models  # noqa: F401
-            from app.modules.punchlist import models as _punchlist_models  # noqa: F401
-            from app.modules.fieldreports import models as _fieldreports_models  # noqa: F401
-            from app.modules.requirements import models as _requirements_models  # noqa: F401
-
             # SQLite auto-migration: add missing columns before create_all
             from app.core.sqlite_migrator import sqlite_auto_migrate
+            from app.database import Base, engine
+            from app.modules.ai import models as _ai_models  # noqa: F401
+            from app.modules.assemblies import models as _asm_models  # noqa: F401
+            from app.modules.boq import models as _boq_models  # noqa: F401
+            from app.modules.catalog import models as _catalog_models  # noqa: F401
+            from app.modules.changeorders import models as _changeorders_models  # noqa: F401
+            from app.modules.costmodel import models as _cm_models  # noqa: F401
+            from app.modules.costs import models as _costs_models  # noqa: F401
+            from app.modules.documents import models as _documents_models  # noqa: F401
+            from app.modules.fieldreports import models as _fieldreports_models  # noqa: F401
+            from app.modules.markups import models as _markups_models  # noqa: F401
+            from app.modules.projects import models as _projects_models  # noqa: F401
+            from app.modules.punchlist import models as _punchlist_models  # noqa: F401
+            from app.modules.requirements import models as _requirements_models  # noqa: F401
+            from app.modules.risk import models as _risk_models  # noqa: F401
+            from app.modules.schedule import models as _sched_models  # noqa: F401
+            from app.modules.takeoff import models as _takeoff_models  # noqa: F401
+            from app.modules.tendering import models as _tendering_models  # noqa: F401
+            from app.modules.users import models as _users_models  # noqa: F401
 
             migrated = await sqlite_auto_migrate(engine, Base)
             if migrated:
@@ -709,6 +700,7 @@ def create_app() -> FastAPI:
         # catch-all intercepting /api/* GET requests.
         if os.environ.get("SERVE_FRONTEND", "").lower() in ("1", "true", "yes"):
             from app.cli_static import mount_frontend
+
             mount_frontend(app)
 
     @app.on_event("shutdown")
@@ -719,5 +711,3 @@ def create_app() -> FastAPI:
         await engine.dispose()
 
     return app
-
-

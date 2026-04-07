@@ -46,18 +46,18 @@ import logging
 import random
 import tempfile
 import uuid
-from pathlib import Path
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep
 from app.modules.boq.schemas import (
+    ActivityLogList,
     AIChatRequest,
     AIChatResponse,
-    ActivityLogList,
     AnomalyCheckResponse,
     BOQCreate,
     BOQFromTemplateRequest,
@@ -74,11 +74,13 @@ from app.modules.boq.schemas import (
     ClassifyElementsResponse,
     ClassifyRequest,
     ClassifyResponse,
+    CO2AssignRequest,
+    CO2EnrichResponse,
+    CO2MaterialBreakdown,
+    CostBreakdownResponse,
     CostItemSearchRequest,
     CostItemSearchResponse,
     CostItemSearchResult,
-    CO2MaterialBreakdown,
-    CostBreakdownResponse,
     CostRiskDriver,
     CostRiskHistogramBin,
     CostRiskPercentiles,
@@ -88,9 +90,11 @@ from app.modules.boq.schemas import (
     EscalateRateRequest,
     EscalateRateResponse,
     EscalationFactors,
+    EstimateClassificationResponse,
     MarkupCreate,
     MarkupResponse,
     MarkupUpdate,
+    PositionCO2Detail,
     PositionCreate,
     PositionResponse,
     PositionUpdate,
@@ -105,17 +109,12 @@ from app.modules.boq.schemas import (
     SensitivityItem,
     SensitivityResponse,
     SnapshotCreate,
-    SnapshotDetail,
     SnapshotResponse,
     SuggestPrerequisitesRequest,
     SuggestPrerequisitesResponse,
     SuggestRateRequest,
     SuggestRateResponse,
     SustainabilityResponse,
-    CO2EnrichResponse,
-    CO2AssignRequest,
-    PositionCO2Detail,
-    EstimateClassificationResponse,
     TemplateInfo,
 )
 from app.modules.boq.service import BOQService
@@ -314,16 +313,16 @@ async def list_boqs(
 ) -> list[BOQListItem]:
     """List all BOQs for a given project with computed grand totals."""
     await _verify_project_owner_for_boq(session, project_id, _user_id, payload)
-    boqs, _ = await service.list_boqs_for_project(
-        project_id, offset=offset, limit=limit
-    )
+    boqs, _ = await service.list_boqs_for_project(project_id, offset=offset, limit=limit)
     # Compute grand totals + position counts via aggregate queries
     boq_ids = [b.id for b in boqs]
     totals = await service.boq_repo.grand_totals_for_boqs(boq_ids)
 
     # Position counts per BOQ
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
+
     from app.modules.boq.models import Position
+
     pos_counts: dict[uuid.UUID, int] = {}
     if boq_ids:
         rows = (
@@ -779,10 +778,7 @@ async def suggest_prerequisites(
         _log.exception("suggest_prerequisites failed")
         result = {"suggestions": [], "model_used": "", "tokens_used": 0}
 
-    suggestions = [
-        PrerequisiteItem(**s)
-        for s in result.get("suggestions", [])
-    ]
+    suggestions = [PrerequisiteItem(**s) for s in result.get("suggestions", [])]
     return SuggestPrerequisitesResponse(
         suggestions=suggestions,
         model_used=result.get("model_used", ""),
@@ -967,9 +963,7 @@ async def get_project_activity(
 
     Returns all BOQ-related activity across all BOQs in the project.
     """
-    return await service.get_activity_for_project(
-        project_id, offset=offset, limit=limit
-    )
+    return await service.get_activity_for_project(project_id, offset=offset, limit=limit)
 
 
 @router.patch(
@@ -1629,9 +1623,7 @@ async def ai_chat_boq(
     try:
         provider, api_key = resolve_provider_and_key(settings)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     # Build prompt
     ctx = data.context
@@ -1749,38 +1741,44 @@ async def export_boq_csv(
     writer = csv.writer(output)
 
     # Header row
-    writer.writerow([
-        "Pos.",
-        "Description",
-        "Unit",
-        "Quantity",
-        "Unit Rate",
-        "Total",
-        "Classification",
-    ])
+    writer.writerow(
+        [
+            "Pos.",
+            "Description",
+            "Unit",
+            "Quantity",
+            "Unit Rate",
+            "Total",
+            "Classification",
+        ]
+    )
 
     # Position rows
     for pos in boq_data.positions:
-        writer.writerow([
-            pos.ordinal,
-            pos.description,
-            pos.unit,
-            f"{pos.quantity:.2f}",
-            f"{pos.unit_rate:.2f}",
-            f"{pos.total:.2f}",
-            _get_classification_code(pos.classification),
-        ])
+        writer.writerow(
+            [
+                pos.ordinal,
+                pos.description,
+                pos.unit,
+                f"{pos.quantity:.2f}",
+                f"{pos.unit_rate:.2f}",
+                f"{pos.total:.2f}",
+                _get_classification_code(pos.classification),
+            ]
+        )
 
     # Grand total row
-    writer.writerow([
-        "",
-        "Grand Total",
-        "",
-        "",
-        "",
-        f"{boq_data.grand_total:.2f}",
-        "",
-    ])
+    writer.writerow(
+        [
+            "",
+            "Grand Total",
+            "",
+            "",
+            "",
+            f"{boq_data.grand_total:.2f}",
+            "",
+        ]
+    )
 
     content = output.getvalue()
     output.close()
@@ -1879,11 +1877,7 @@ async def export_boq_excel(
         # custom column. Missing values render as empty cells.
         if custom_columns:
             pos_meta_raw = getattr(pos, "metadata", None) or getattr(pos, "metadata_", None) or {}
-            custom_fields = (
-                pos_meta_raw.get("custom_fields", {})
-                if isinstance(pos_meta_raw, dict)
-                else {}
-            )
+            custom_fields = pos_meta_raw.get("custom_fields", {}) if isinstance(pos_meta_raw, dict) else {}
             for offset, col_def in enumerate(custom_columns):
                 col_name = col_def.get("name", "")
                 col_type = col_def.get("column_type", "text")
@@ -2020,11 +2014,7 @@ async def export_boq_pdf(
             "invalid data. Please try exporting as Excel or CSV instead.",
         )
 
-    safe_name = (
-        boq_data.name.encode("ascii", errors="replace")
-        .decode("ascii")
-        .replace('"', "'")
-    )
+    safe_name = boq_data.name.encode("ascii", errors="replace").decode("ascii").replace('"', "'")
     filename = f"{safe_name}.pdf"
 
     def _iter_pdf_chunks() -> Iterator[bytes]:
@@ -2201,11 +2191,7 @@ async def export_boq_gaeb(
     xml_body = ET.tostring(gaeb, encoding="unicode", xml_declaration=False)
     xml_content = xml_declaration + xml_body
 
-    safe_name = (
-        boq_data.name.encode("ascii", errors="replace")
-        .decode("ascii")
-        .replace('"', "'")
-    )
+    safe_name = boq_data.name.encode("ascii", errors="replace").decode("ascii").replace('"', "'")
     filename = f"{safe_name}.X83"
 
     return StreamingResponse(
@@ -2225,19 +2211,38 @@ logger = logging.getLogger(__name__)
 _COLUMN_ALIASES: dict[str, list[str]] = {
     "ordinal": ["pos", "pos.", "position", "ordinal", "nr.", "nr", "no.", "no", "#"],
     "description": [
-        "description", "beschreibung", "desc", "text", "bezeichnung",
-        "item", "item description",
+        "description",
+        "beschreibung",
+        "desc",
+        "text",
+        "bezeichnung",
+        "item",
+        "item description",
     ],
     "unit": ["unit", "einheit", "me", "uom", "unit of measure"],
     "quantity": ["quantity", "qty", "menge", "amount", "qty.", "quantity (qty)"],
     "unit_rate": [
-        "unit rate", "rate", "ep", "einheitspreis", "unit price",
-        "unit cost", "price", "rate (ep)",
+        "unit rate",
+        "rate",
+        "ep",
+        "einheitspreis",
+        "unit price",
+        "unit cost",
+        "price",
+        "rate (ep)",
     ],
     "total": ["total", "amount", "gesamtpreis", "gp", "sum", "total price"],
     "classification": [
-        "classification", "din 276", "din276", "kg", "nrm", "code",
-        "masterformat", "cost code", "cost group", "class",
+        "classification",
+        "din 276",
+        "din276",
+        "kg",
+        "nrm",
+        "code",
+        "masterformat",
+        "cost code",
+        "cost group",
+        "class",
     ],
 }
 
@@ -2488,8 +2493,13 @@ async def import_boq_excel(
             # Skip rows that look like summary/total rows
             desc_lower = description.lower()
             if desc_lower in (
-                "grand total", "total", "summe", "gesamt", "gesamtsumme",
-                "subtotal", "zwischensumme",
+                "grand total",
+                "total",
+                "summe",
+                "gesamt",
+                "gesamtsumme",
+                "subtotal",
+                "zwischensumme",
             ):
                 skipped += 1
                 continue
@@ -2537,14 +2547,14 @@ async def import_boq_excel(
             imported += 1
 
         except Exception as exc:
-            errors.append({
-                "row": row_idx,
-                "error": str(exc),
-                "data": {k: str(v)[:100] for k, v in row.items()},
-            })
-            logger.warning(
-                "Import error at row %d for BOQ %s: %s", row_idx, boq_id, exc
+            errors.append(
+                {
+                    "row": row_idx,
+                    "error": str(exc),
+                    "data": {k: str(v)[:100] for k, v in row.items()},
+                }
             )
+            logger.warning("Import error at row %d for BOQ %s: %s", row_idx, boq_id, exc)
 
     # Save import metadata at BOQ level for round-trip export
     if imported > 0 and import_meta:
@@ -2567,7 +2577,10 @@ async def import_boq_excel(
 
     logger.info(
         "BOQ import complete for %s: imported=%d, skipped=%d, errors=%d",
-        boq_id, imported, skipped, len(errors),
+        boq_id,
+        imported,
+        skipped,
+        len(errors),
     )
 
     return {
@@ -2838,10 +2851,7 @@ async def smart_import(
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Unsupported file type: .{ext}. "
-                "Supported: xlsx, csv, pdf, jpg, png, tiff, rvt, ifc, dwg, dgn."
-            ),
+            detail=(f"Unsupported file type: .{ext}. Supported: xlsx, csv, pdf, jpg, png, tiff, rvt, ifc, dwg, dgn."),
         )
 
     # ── 1b. Handle missing CAD converter (return early) ────────────────
@@ -2868,8 +2878,13 @@ async def smart_import(
 
                 desc_lower = description.lower()
                 if desc_lower in (
-                    "grand total", "total", "summe", "gesamt", "gesamtsumme",
-                    "subtotal", "zwischensumme",
+                    "grand total",
+                    "total",
+                    "summe",
+                    "gesamt",
+                    "gesamtsumme",
+                    "subtotal",
+                    "zwischensumme",
                 ):
                     skipped += 1
                     continue
@@ -2902,15 +2917,20 @@ async def smart_import(
                 imported += 1
 
             except Exception as exc:
-                errors.append({
-                    "row": row_idx,
-                    "error": str(exc),
-                    "data": {k: str(v)[:100] for k, v in row.items()},
-                })
+                errors.append(
+                    {
+                        "row": row_idx,
+                        "error": str(exc),
+                        "data": {k: str(v)[:100] for k, v in row.items()},
+                    }
+                )
 
         logger.info(
             "Smart import (direct) for BOQ %s: imported=%d, skipped=%d, errors=%d",
-            boq_id, imported, skipped, len(errors),
+            boq_id,
+            imported,
+            skipped,
+            len(errors),
         )
 
         return {
@@ -3049,19 +3069,27 @@ async def smart_import(
             await service.add_position(position_data)
             imported += 1
         except Exception as exc:
-            errors.append({
-                "item": str(item.get("description", "?"))[:100],
-                "error": str(exc),
-            })
+            errors.append(
+                {
+                    "item": str(item.get("description", "?"))[:100],
+                    "error": str(exc),
+                }
+            )
             logger.warning(
                 "Smart import AI item error at index %d for BOQ %s: %s",
-                idx, boq_id, exc,
+                idx,
+                boq_id,
+                exc,
             )
 
     method = "cad_ai" if is_cad_import else "ai"
     logger.info(
         "Smart import (%s) for BOQ %s: imported=%d, errors=%d, provider=%s",
-        method, boq_id, imported, len(errors), provider,
+        method,
+        boq_id,
+        imported,
+        len(errors),
+        provider,
     )
 
     result: dict[str, Any] = {
@@ -3082,7 +3110,6 @@ async def smart_import(
 from app.modules.boq.epd_materials import (
     EPD_CATEGORIES,
     EPD_INDEX,
-    EPD_MATERIALS,
     EU_CPR_BENCHMARKS,
     detect_epd_material,
     search_epd_materials,
@@ -3151,9 +3178,7 @@ async def get_resource_summary(
     # Aggregation key: (name_lower, type_lower) → accumulator
     agg: dict[tuple[str, str], dict[str, Any]] = {}
 
-    def _add_resource(
-        raw: dict[str, Any], pos_id: str, pos_qty: float = 1.0
-    ) -> None:
+    def _add_resource(raw: dict[str, Any], pos_id: str, pos_qty: float = 1.0) -> None:
         """Add a single resource dict to the aggregation map."""
         name = str(raw.get("name", raw.get("code", ""))).strip()
         rtype = str(raw.get("type", "other")).strip().lower()
@@ -3207,13 +3232,16 @@ async def get_resource_summary(
             if total <= 0:
                 continue
             cat = BOQService._classify_position_category(desc)
-            _add_resource({
-                "name": desc[:80],
-                "type": cat,
-                "unit": str(getattr(pos, "unit", "") or ""),
-                "quantity": pos_qty,
-                "unit_rate": rate,
-            }, str(pos.id))
+            _add_resource(
+                {
+                    "name": desc[:80],
+                    "type": cat,
+                    "unit": str(getattr(pos, "unit", "") or ""),
+                    "quantity": pos_qty,
+                    "unit_rate": rate,
+                },
+                str(pos.id),
+            )
 
     # Build flat resource list sorted by total_cost descending
     resource_items: list[ResourceSummaryItem] = []
@@ -3240,9 +3268,7 @@ async def get_resource_summary(
         if item.type not in by_type:
             by_type[item.type] = ResourceTypeSummary(count=0, total_cost=0.0)
         by_type[item.type].count += 1
-        by_type[item.type].total_cost = round(
-            by_type[item.type].total_cost + item.total_cost, 2
-        )
+        by_type[item.type].total_cost = round(by_type[item.type].total_cost + item.total_cost, 2)
 
     return ResourceSummaryResponse(
         total_resources=len(resource_items),
@@ -3294,6 +3320,7 @@ async def enrich_resources(
                     raw = items[0].components
                     if isinstance(raw, str):
                         import json as _json
+
                         raw = _json.loads(raw)
                     if isinstance(raw, list):
                         components = raw
@@ -3302,9 +3329,7 @@ async def enrich_resources(
 
         # Fallback: lookup by description
         if not components:
-            components = await BOQService._lookup_cost_item_components(
-                cost_repo, pos.description or ""
-            )
+            components = await BOQService._lookup_cost_item_components(cost_repo, pos.description or "")
 
         if components:
             resources = []
@@ -3316,8 +3341,7 @@ async def enrich_resources(
                     "unit": c.get("unit", ""),
                     "quantity": float(c.get("quantity", 0)),
                     "unit_rate": float(c.get("unit_rate", 0)),
-                    "total": float(c.get("cost", 0))
-                    or float(c.get("quantity", 0)) * float(c.get("unit_rate", 0)),
+                    "total": float(c.get("cost", 0)) or float(c.get("quantity", 0)) * float(c.get("unit_rate", 0)),
                 }
                 resources.append(res)
 
@@ -3430,8 +3454,7 @@ async def assign_position_co2(
     if not epd:
         raise HTTPException(
             status_code=404,
-            detail=f"EPD material '{payload.epd_id}' not found. "
-            f"Use GET /epd-materials to list available materials.",
+            detail=f"EPD material '{payload.epd_id}' not found. Use GET /epd-materials to list available materials.",
         )
 
     pos = await service.repo.get(position_id)
@@ -3540,9 +3563,7 @@ async def get_sustainability(
         # Accumulate by category
         if category and gwp_total != 0:
             if category not in category_totals:
-                cat_info = next(
-                    (c for c in EPD_CATEGORIES if c["id"] == category), {}
-                )
+                cat_info = next((c for c in EPD_CATEGORIES if c["id"] == category), {})
                 category_totals[category] = {
                     "label": cat_info.get("label", category),
                     "co2": 0.0,
@@ -3560,9 +3581,7 @@ async def get_sustainability(
 
     # Build breakdown sorted by absolute CO2 descending
     breakdown: list[CO2MaterialBreakdown] = []
-    for cat, info in sorted(
-        category_totals.items(), key=lambda x: abs(x[1]["co2"]), reverse=True
-    ):
+    for cat, info in sorted(category_totals.items(), key=lambda x: abs(x[1]["co2"]), reverse=True):
         breakdown.append(
             CO2MaterialBreakdown(
                 material=info["label"],
@@ -3651,12 +3670,8 @@ async def get_cost_breakdown(
 )
 async def get_sensitivity(
     boq_id: uuid.UUID,
-    variation_pct: float = Query(
-        default=10.0, gt=0.0, le=100.0, description="Cost variation percentage"
-    ),
-    top_n: int = Query(
-        default=15, ge=1, le=50, description="Number of top positions to return"
-    ),
+    variation_pct: float = Query(default=10.0, gt=0.0, le=100.0, description="Cost variation percentage"),
+    top_n: int = Query(default=15, ge=1, le=50, description="Number of top positions to return"),
     service: BOQService = Depends(_get_service),
 ) -> SensitivityResponse:
     """Compute sensitivity analysis (tornado chart data) for a BOQ.
@@ -3772,15 +3787,9 @@ def _pert_sample(low: float, mode: float, high: float) -> float:
 )
 async def get_cost_risk(
     boq_id: uuid.UUID,
-    iterations: int = Query(
-        default=1000, ge=100, le=10000, description="Number of Monte Carlo iterations"
-    ),
-    optimistic_pct: float = Query(
-        default=15.0, ge=0.0, le=50.0, description="Optimistic cost reduction %"
-    ),
-    pessimistic_pct: float = Query(
-        default=25.0, ge=0.0, le=100.0, description="Pessimistic cost increase %"
-    ),
+    iterations: int = Query(default=1000, ge=100, le=10000, description="Number of Monte Carlo iterations"),
+    optimistic_pct: float = Query(default=15.0, ge=0.0, le=50.0, description="Optimistic cost reduction %"),
+    pessimistic_pct: float = Query(default=25.0, ge=0.0, le=100.0, description="Pessimistic cost increase %"),
     service: BOQService = Depends(_get_service),
 ) -> CostRiskResponse:
     """Run a Monte Carlo cost risk simulation for a BOQ.
@@ -3816,9 +3825,7 @@ async def get_cost_risk(
         return CostRiskResponse(
             iterations=iterations,
             base_total=0.0,
-            percentiles=CostRiskPercentiles(
-                p10=0.0, p25=0.0, p50=0.0, p75=0.0, p80=0.0, p90=0.0
-            ),
+            percentiles=CostRiskPercentiles(p10=0.0, p25=0.0, p50=0.0, p75=0.0, p80=0.0, p90=0.0),
             contingency_p80=0.0,
             contingency_pct=0.0,
             recommended_budget=0.0,
@@ -3927,9 +3934,7 @@ async def get_cost_risk(
     return CostRiskResponse(
         iterations=iterations,
         base_total=round(base_total, 2),
-        percentiles=CostRiskPercentiles(
-            p10=p10, p25=p25, p50=p50, p75=p75, p80=p80, p90=p90
-        ),
+        percentiles=CostRiskPercentiles(p10=p10, p25=p25, p50=p50, p75=p75, p80=p80, p90=p90),
         contingency_p80=contingency_p80,
         contingency_pct=contingency_pct,
         recommended_budget=p80,

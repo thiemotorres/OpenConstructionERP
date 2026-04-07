@@ -6,7 +6,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -26,15 +26,11 @@ class RiskItem(Base):
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    category: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="technical"
-    )
+    category: Mapped[str] = mapped_column(String(50), nullable=False, default="technical")
     probability: Mapped[str] = mapped_column(String(10), nullable=False, default="0.5")
     impact_cost: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     impact_schedule_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    impact_severity: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="medium"
-    )
+    impact_severity: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
     risk_score: Mapped[str] = mapped_column(String(10), nullable=False, default="0")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="identified")
     mitigation_strategy: Mapped[str] = mapped_column(Text, nullable=False, default="")

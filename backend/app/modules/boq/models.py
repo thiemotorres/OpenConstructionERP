@@ -11,7 +11,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import GUID, Base
@@ -94,9 +94,7 @@ class Position(Base):
         default=list,
         server_default="[]",
     )
-    validation_status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="pending"
-    )
+    validation_status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -152,17 +150,11 @@ class BOQMarkup(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    markup_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="percentage"
-    )
-    category: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="overhead"
-    )
+    markup_type: Mapped[str] = mapped_column(String(50), nullable=False, default="percentage")
+    category: Mapped[str] = mapped_column(String(100), nullable=False, default="overhead")
     percentage: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     fixed_amount: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
-    apply_to: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="direct_cost"
-    )
+    apply_to: Mapped[str] = mapped_column(String(50), nullable=False, default="direct_cost")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]

@@ -38,7 +38,12 @@ MAX_PHOTO_SIZE = 50 * 1024 * 1024  # 50MB
 VALID_CATEGORIES = {"drawing", "contract", "specification", "photo", "correspondence", "other"}
 VALID_PHOTO_CATEGORIES = {"site", "progress", "defect", "delivery", "safety", "other"}
 ALLOWED_IMAGE_TYPES = {
-    "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/tiff",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "image/tiff",
 }
 
 
@@ -361,22 +366,14 @@ class PhotoService:
 
         return photos, total
 
-    async def get_gallery(
-        self, project_id: uuid.UUID
-    ) -> list[ProjectPhoto]:
+    async def get_gallery(self, project_id: uuid.UUID) -> list[ProjectPhoto]:
         """Get all photos for the gallery view."""
-        photos, _ = await self.repo.list_for_project(
-            project_id, offset=0, limit=500
-        )
+        photos, _ = await self.repo.list_for_project(project_id, offset=0, limit=500)
         return photos
 
-    async def get_timeline(
-        self, project_id: uuid.UUID
-    ) -> list[dict[str, Any]]:
+    async def get_timeline(self, project_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get photos grouped by date for timeline view."""
-        photos, _ = await self.repo.list_for_project(
-            project_id, offset=0, limit=500
-        )
+        photos, _ = await self.repo.list_for_project(project_id, offset=0, limit=500)
 
         groups: dict[str, list[ProjectPhoto]] = defaultdict(list)
         for photo in photos:

@@ -9,7 +9,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Package schemas ──────────────────────────────────────────────────────────
 
 
@@ -105,9 +104,7 @@ class BidUpdate(BaseModel):
     total_amount: str | None = None
     currency: str | None = None
     submitted_at: str | None = None
-    status: str | None = Field(
-        default=None, pattern=r"^(pending|submitted|accepted|rejected)$"
-    )
+    status: str | None = Field(default=None, pattern=r"^(pending|submitted|accepted|rejected)$")
     notes: str | None = None
     line_items: list[BidLineItem] | None = None
     metadata: dict[str, Any] | None = None

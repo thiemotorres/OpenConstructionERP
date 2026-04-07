@@ -8,7 +8,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -25,9 +25,7 @@ class Markup(Base):
         nullable=False,
         index=True,
     )
-    document_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    document_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     page: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     geometry: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -47,9 +45,7 @@ class Markup(Base):
         ForeignKey("oe_markups_stamp_template.id", ondelete="SET NULL"),
         nullable=True,
     )
-    linked_boq_position_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
+    linked_boq_position_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -68,9 +64,7 @@ class ScaleConfig(Base):
 
     __tablename__ = "oe_markups_scale_config"
 
-    document_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, index=True
-    )
+    document_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     page: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     pixels_per_unit: Mapped[float] = mapped_column(Float, nullable=False)
     unit_label: Mapped[str] = mapped_column(String(20), nullable=False, default="m")
@@ -81,10 +75,7 @@ class ScaleConfig(Base):
     created_by: Mapped[str] = mapped_column(String(255), nullable=False, default="")
 
     def __repr__(self) -> str:
-        return (
-            f"<ScaleConfig doc={self.document_id} page={self.page} "
-            f"{self.pixels_per_unit} px/{self.unit_label}>"
-        )
+        return f"<ScaleConfig doc={self.document_id} page={self.page} {self.pixels_per_unit} px/{self.unit_label}>"
 
 
 class StampTemplate(Base):

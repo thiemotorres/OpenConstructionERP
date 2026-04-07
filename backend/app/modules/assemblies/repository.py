@@ -21,21 +21,13 @@ class AssemblyRepository:
 
     async def get_by_id(self, assembly_id: uuid.UUID) -> Assembly | None:
         """Get assembly by ID without loading components (avoids MissingGreenlet)."""
-        stmt = (
-            select(Assembly)
-            .where(Assembly.id == assembly_id)
-            .options(noload(Assembly.components))
-        )
+        stmt = select(Assembly).where(Assembly.id == assembly_id).options(noload(Assembly.components))
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_by_id_with_components(self, assembly_id: uuid.UUID) -> Assembly | None:
         """Get assembly by ID with components eagerly loaded."""
-        stmt = (
-            select(Assembly)
-            .where(Assembly.id == assembly_id)
-            .options(selectinload(Assembly.components))
-        )
+        stmt = select(Assembly).where(Assembly.id == assembly_id).options(selectinload(Assembly.components))
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -75,9 +67,7 @@ class AssemblyRepository:
         if q:
             pattern = f"%{q}%"
             base = base.where(
-                Assembly.code.ilike(pattern)
-                | Assembly.name.ilike(pattern)
-                | Assembly.description.ilike(pattern)
+                Assembly.code.ilike(pattern) | Assembly.name.ilike(pattern) | Assembly.description.ilike(pattern)
             )
 
         if category:
@@ -123,9 +113,7 @@ class AssemblyRepository:
 
     async def count(self) -> int:
         """Total number of active assemblies."""
-        stmt = select(func.count()).select_from(
-            select(Assembly).where(Assembly.is_active.is_(True)).subquery()
-        )
+        stmt = select(func.count()).select_from(select(Assembly).where(Assembly.is_active.is_(True)).subquery())
         return (await self.session.execute(stmt)).scalar_one()
 
 
@@ -153,11 +141,7 @@ class ComponentRepository:
         Returns:
             List of components ordered by sort_order.
         """
-        stmt = (
-            select(Component)
-            .where(Component.assembly_id == assembly_id)
-            .order_by(Component.sort_order)
-        )
+        stmt = select(Component).where(Component.assembly_id == assembly_id).order_by(Component.sort_order)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -189,8 +173,6 @@ class ComponentRepository:
 
     async def get_max_sort_order(self, assembly_id: uuid.UUID) -> int:
         """Get the highest sort_order for components in an assembly."""
-        stmt = select(func.coalesce(func.max(Component.sort_order), -1)).where(
-            Component.assembly_id == assembly_id
-        )
+        stmt = select(func.coalesce(func.max(Component.sort_order), -1)).where(Component.assembly_id == assembly_id)
         result = (await self.session.execute(stmt)).scalar_one()
         return int(result)

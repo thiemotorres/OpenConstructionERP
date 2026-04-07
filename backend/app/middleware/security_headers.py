@@ -56,7 +56,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # IMPORTANT: don't apply to /api/docs or /api/redoc — they need
         # inline scripts from CDN-hosted Swagger UI.
         path = request.url.path
-        if not (path.startswith("/docs") or path.startswith("/redoc") or path.startswith("/api/docs") or path.startswith("/api/redoc")):
+        if not (
+            path.startswith("/docs")
+            or path.startswith("/redoc")
+            or path.startswith("/api/docs")
+            or path.startswith("/api/redoc")
+        ):
             response.headers.setdefault("Content-Security-Policy", self._csp)
 
         # HSTS — only over HTTPS, to avoid pinning insecure local dev.

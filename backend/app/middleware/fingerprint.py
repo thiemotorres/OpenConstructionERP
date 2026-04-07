@@ -10,7 +10,6 @@ for intellectual property verification. CWICR-OE-2026.
 
 import hashlib
 import uuid
-import os
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

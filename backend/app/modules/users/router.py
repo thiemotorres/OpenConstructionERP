@@ -26,7 +26,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
 from app.core.rate_limiter import login_limiter
-
 from app.dependencies import (
     CurrentUserId,
     RequirePermission,
@@ -58,6 +57,7 @@ class ModulePreferencesPayload(BaseModel):
     """Request/response body for module preferences."""
 
     modules: dict[str, bool]
+
 
 router = APIRouter()
 

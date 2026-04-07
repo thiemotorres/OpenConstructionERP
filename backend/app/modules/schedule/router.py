@@ -210,9 +210,7 @@ async def list_schedules(
 ) -> list[ScheduleResponse]:
     """List all schedules for a given project."""
     await _verify_schedule_project_owner(session, project_id, _user_id, payload)
-    schedules, _ = await service.list_schedules_for_project(
-        project_id, offset=offset, limit=limit
-    )
+    schedules, _ = await service.list_schedules_for_project(project_id, offset=offset, limit=limit)
     return [ScheduleResponse.model_validate(s) for s in schedules]
 
 
@@ -306,9 +304,7 @@ async def list_activities(
     service: ScheduleService = Depends(_get_service),
 ) -> list[ActivityResponse]:
     """List all activities for a schedule, ordered by sort_order."""
-    activities, _ = await service.list_activities_for_schedule(
-        schedule_id, offset=offset, limit=limit
-    )
+    activities, _ = await service.list_activities_for_schedule(schedule_id, offset=offset, limit=limit)
     return [_activity_to_response(a) for a in activities]
 
 
@@ -345,10 +341,9 @@ async def generate_from_boq(
     and sequential finish-to-start dependencies.
     """
     import traceback as _tb
+
     try:
-        await service.generate_from_boq(
-            schedule_id, body.boq_id, body.total_project_days
-        )
+        await service.generate_from_boq(schedule_id, body.boq_id, body.total_project_days)
         # Re-fetch activities to avoid greenlet/lazy-loading issues
         activities, _ = await service.list_activities_for_schedule(schedule_id, limit=5000)
         return [_activity_to_response(a) for a in activities]
@@ -487,9 +482,7 @@ async def list_work_orders(
     service: ScheduleService = Depends(_get_service),
 ) -> list[WorkOrderResponse]:
     """List all work orders for a schedule."""
-    work_orders, _ = await service.list_work_orders_for_schedule(
-        schedule_id, offset=offset, limit=limit
-    )
+    work_orders, _ = await service.list_work_orders_for_schedule(schedule_id, offset=offset, limit=limit)
     return [_work_order_to_response(wo) for wo in work_orders]
 
 

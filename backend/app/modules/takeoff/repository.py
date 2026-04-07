@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.takeoff.models import TakeoffDocument, TakeoffMeasurement
@@ -73,9 +73,7 @@ class MeasurementRepository:
         limit: int = 200,
     ) -> list[TakeoffMeasurement]:
         """List measurements for a project with optional filters."""
-        stmt = select(TakeoffMeasurement).where(
-            TakeoffMeasurement.project_id == project_id
-        )
+        stmt = select(TakeoffMeasurement).where(TakeoffMeasurement.project_id == project_id)
         if document_id is not None:
             stmt = stmt.where(TakeoffMeasurement.document_id == document_id)
         if page is not None:
@@ -85,11 +83,7 @@ class MeasurementRepository:
         if measurement_type is not None:
             stmt = stmt.where(TakeoffMeasurement.type == measurement_type)
 
-        stmt = (
-            stmt.order_by(TakeoffMeasurement.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = stmt.order_by(TakeoffMeasurement.created_at.desc()).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -99,23 +93,15 @@ class MeasurementRepository:
         await self.session.flush()
         return measurement
 
-    async def create_bulk(
-        self, measurements: list[TakeoffMeasurement]
-    ) -> list[TakeoffMeasurement]:
+    async def create_bulk(self, measurements: list[TakeoffMeasurement]) -> list[TakeoffMeasurement]:
         """Insert multiple measurements at once."""
         self.session.add_all(measurements)
         await self.session.flush()
         return measurements
 
-    async def update_fields(
-        self, measurement_id: uuid.UUID, **fields: object
-    ) -> None:
+    async def update_fields(self, measurement_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on a measurement."""
-        stmt = (
-            update(TakeoffMeasurement)
-            .where(TakeoffMeasurement.id == measurement_id)
-            .values(**fields)
-        )
+        stmt = update(TakeoffMeasurement).where(TakeoffMeasurement.id == measurement_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         self.session.expire_all()
@@ -127,12 +113,8 @@ class MeasurementRepository:
             await self.session.delete(item)
             await self.session.flush()
 
-    async def all_for_project(
-        self, project_id: uuid.UUID
-    ) -> list[TakeoffMeasurement]:
+    async def all_for_project(self, project_id: uuid.UUID) -> list[TakeoffMeasurement]:
         """Return all measurements for a project (used for summary/export)."""
-        stmt = select(TakeoffMeasurement).where(
-            TakeoffMeasurement.project_id == project_id
-        )
+        stmt = select(TakeoffMeasurement).where(TakeoffMeasurement.project_id == project_id)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,6 +63,7 @@ async def autocomplete_cost_items(
     if semantic:
         try:
             from app.core.vector import encode_texts, vector_search, vector_status
+
             status = vector_status()
             if status.get("connected") and status.get("cost_collection"):
                 query_vec = encode_texts([q])[0]
@@ -222,7 +223,8 @@ async def list_loaded_regions(
     if _region_cache["regions"] is not None and now - _region_cache["ts"] < _CACHE_TTL:
         return _region_cache["regions"]
 
-    from sqlalchemy import select, distinct
+    from sqlalchemy import distinct, select
+
     from app.modules.costs.models import CostItem
 
     result = await session.execute(
@@ -246,7 +248,8 @@ async def region_stats(
     if _region_cache["stats"] is not None and now - _region_cache["ts"] < _CACHE_TTL:
         return _region_cache["stats"]
 
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
+
     from app.modules.costs.models import CostItem
 
     result = await session.execute(
@@ -277,6 +280,7 @@ async def clear_region_database(
     E.g. ``DELETE /actions/clear-region/DE_BERLIN`` removes all DE_BERLIN items.
     """
     from sqlalchemy import delete as sql_delete
+
     from app.modules.costs.models import CostItem
 
     stmt = sql_delete(CostItem).where(CostItem.region == region)
@@ -314,7 +318,8 @@ async def vector_region_stats() -> list[dict]:
 
     # LanceDB: query the table directly for per-region counts
     try:
-        from app.core.vector import _get_lancedb, COST_TABLE, _backend
+        from app.core.vector import COST_TABLE, _backend, _get_lancedb
+
         if _backend() != "qdrant":
             db = _get_lancedb()
             if db is None:
@@ -323,12 +328,13 @@ async def vector_region_stats() -> list[dict]:
                 tbl = db.open_table(COST_TABLE)
             except Exception:
                 return []
-            import pandas as pd
             df = tbl.to_pandas()
             if "region" not in df.columns:
                 return []
             counts = df.groupby("region").size().reset_index(name="count")
-            return [{"region": r, "count": int(c)} for r, c in zip(counts["region"], counts["count"]) if r]
+            return [
+                {"region": r, "count": int(c)} for r, c in zip(counts["region"], counts["count"], strict=False) if r
+            ]
         else:
             # For Qdrant, return total count only (per-region requires scroll)
             col = status.get("cost_collection")
@@ -355,9 +361,11 @@ async def vectorize_cost_items(
     Default backend: LanceDB (embedded, no Docker required).
     """
     import time
+
     from sqlalchemy import select
-    from app.modules.costs.models import CostItem
+
     from app.core.vector import encode_texts, vector_index
+    from app.modules.costs.models import CostItem
 
     start = time.monotonic()
 
@@ -378,34 +386,42 @@ async def vectorize_cost_items(
     items_data = []
     for item in items:
         cls = item.classification or {}
-        items_data.append({
-            "id": str(item.id),
-            "code": item.code,
-            "description": (item.description or "")[:200],
-            "unit": item.unit or "",
-            "rate": float(item.rate) if item.rate else 0.0,
-            "region": item.region or "",
-            "text": " ".join(p for p in [
-                item.description or "",
-                item.unit or "",
-                cls.get("collection", ""),
-                cls.get("department", ""),
-                cls.get("section", ""),
-            ] if p),
-        })
+        items_data.append(
+            {
+                "id": str(item.id),
+                "code": item.code,
+                "description": (item.description or "")[:200],
+                "unit": item.unit or "",
+                "rate": float(item.rate) if item.rate else 0.0,
+                "region": item.region or "",
+                "text": " ".join(
+                    p
+                    for p in [
+                        item.description or "",
+                        item.unit or "",
+                        cls.get("collection", ""),
+                        cls.get("department", ""),
+                        cls.get("section", ""),
+                    ]
+                    if p
+                ),
+            }
+        )
 
     # Run CPU-heavy embedding in a separate process to not block event loop
     import asyncio
     import concurrent.futures
 
     def _vectorize_batch(data: list[dict], bs: int) -> int:
-        from app.core.vector import encode_texts, vector_index
         total = 0
         for i in range(0, len(data), bs):
-            batch = data[i:i + bs]
+            batch = data[i : i + bs]
             texts = [d["text"] for d in batch]
             vectors = encode_texts(texts)
-            records = [{**{k: d[k] for k in ("id", "code", "description", "unit", "rate", "region")}, "vector": vectors[j]} for j, d in enumerate(batch)]
+            records = [
+                {**{k: d[k] for k in ("id", "code", "description", "unit", "rate", "region")}, "vector": vectors[j]}
+                for j, d in enumerate(batch)
+            ]
             total += vector_index(records)
         return total
 
@@ -438,7 +454,6 @@ async def load_vector_from_github(
     for the given region, so users don't need to run the embedding model locally.
     """
     import time
-    import traceback
     import urllib.request
 
     from app.core.vector import vector_index
@@ -479,7 +494,9 @@ async def load_vector_from_github(
         try:
             import asyncio
             from concurrent.futures import ThreadPoolExecutor
-            from app.core.vector import encode_texts, vector_index as vi
+
+            from app.core.vector import encode_texts
+            from app.core.vector import vector_index as vi
             from app.modules.costs.repository import CostItemRepository
 
             repo = CostItemRepository(session)
@@ -495,7 +512,7 @@ async def load_vector_from_github(
                 batch_size = 128
                 indexed = 0
                 for i in range(0, len(items_data), batch_size):
-                    batch = items_data[i:i + batch_size]
+                    batch = items_data[i : i + batch_size]
                     texts = [f"{it['code']} {it['desc']}" for it in batch]
                     vectors = encode_texts(texts)
                     records = [
@@ -508,7 +525,7 @@ async def load_vector_from_github(
                             "rate": it["rate"],
                             "region": it["region"],
                         }
-                        for it, vec in zip(batch, vectors)
+                        for it, vec in zip(batch, vectors, strict=False)
                     ]
                     if records:
                         indexed += vi(records)
@@ -575,17 +592,20 @@ async def load_vector_from_github(
                 vec = vec.tolist()
             elif isinstance(vec, str):
                 import json
+
                 vec = json.loads(vec)
 
-            records.append({
-                "id": str(row.get("id", "")),
-                "vector": vec,
-                "code": str(row.get("code", "")),
-                "description": str(row.get("description", ""))[:200],
-                "unit": str(row.get("unit", "")),
-                "rate": float(row.get("rate", 0)),
-                "region": str(row.get("region", db_id)),
-            })
+            records.append(
+                {
+                    "id": str(row.get("id", "")),
+                    "vector": vec,
+                    "code": str(row.get("code", "")),
+                    "description": str(row.get("description", ""))[:200],
+                    "unit": str(row.get("unit", "")),
+                    "rate": float(row.get("rate", 0)),
+                    "region": str(row.get("region", db_id)),
+                }
+            )
 
         if records:
             indexed += vector_index(records)
@@ -687,8 +707,7 @@ async def restore_qdrant_snapshot(
             local_path.unlink(missing_ok=True)
             raise HTTPException(
                 status.HTTP_502_BAD_GATEWAY,
-                "Downloaded snapshot file is too small or missing. "
-                "The file may not exist on GitHub yet.",
+                "Downloaded snapshot file is too small or missing. The file may not exist on GitHub yet.",
             )
         logger.info(
             "Snapshot downloaded for %s: %.1f MB",
@@ -791,7 +810,8 @@ async def list_categories(
     if _region_cache.get(cache_key) is not None and now - _region_cache["ts"] < _CACHE_TTL:
         return _region_cache[cache_key]
 
-    from sqlalchemy import select, distinct, func
+    from sqlalchemy import distinct, func, select
+
     from app.modules.costs.models import CostItem
 
     collection_expr = func.json_extract(CostItem.classification, "$.collection")
@@ -903,26 +923,68 @@ async def bulk_import_cost_items(
 # Column name aliases for flexible matching (all lowercased)
 _COST_COLUMN_ALIASES: dict[str, list[str]] = {
     "code": [
-        "code", "item code", "cost code", "artikelnummer", "art.nr.",
-        "item", "nr", "nr.", "no", "no.", "#", "id", "position",
+        "code",
+        "item code",
+        "cost code",
+        "artikelnummer",
+        "art.nr.",
+        "item",
+        "nr",
+        "nr.",
+        "no",
+        "no.",
+        "#",
+        "id",
+        "position",
     ],
     "description": [
-        "description", "beschreibung", "desc", "text", "bezeichnung",
-        "item description", "name", "title",
+        "description",
+        "beschreibung",
+        "desc",
+        "text",
+        "bezeichnung",
+        "item description",
+        "name",
+        "title",
     ],
     "unit": [
-        "unit", "einheit", "me", "uom", "unit of measure", "measure",
+        "unit",
+        "einheit",
+        "me",
+        "uom",
+        "unit of measure",
+        "measure",
     ],
     "rate": [
-        "rate", "price", "cost", "unit rate", "unit price", "unit cost",
-        "ep", "einheitspreis", "preis", "amount", "value",
+        "rate",
+        "price",
+        "cost",
+        "unit rate",
+        "unit price",
+        "unit cost",
+        "ep",
+        "einheitspreis",
+        "preis",
+        "amount",
+        "value",
     ],
     "currency": [
-        "currency", "währung", "curr", "cur",
+        "currency",
+        "währung",
+        "curr",
+        "cur",
     ],
     "classification": [
-        "classification", "din 276", "din276", "kg", "cost group",
-        "nrm", "masterformat", "class", "category", "group",
+        "classification",
+        "din 276",
+        "din276",
+        "kg",
+        "cost group",
+        "nrm",
+        "masterformat",
+        "class",
+        "category",
+        "group",
     ],
 }
 
@@ -1145,8 +1207,13 @@ async def import_cost_file(
             # Skip obvious summary rows
             desc_lower = description.lower()
             if desc_lower in (
-                "total", "grand total", "summe", "gesamt", "gesamtsumme",
-                "subtotal", "zwischensumme",
+                "total",
+                "grand total",
+                "summe",
+                "gesamt",
+                "gesamtsumme",
+                "subtotal",
+                "zwischensumme",
             ):
                 skipped += 1
                 continue
@@ -1183,11 +1250,13 @@ async def import_cost_file(
             )
 
         except Exception as exc:
-            errors.append({
-                "row": row_idx,
-                "error": str(exc),
-                "data": {k: str(v)[:100] for k, v in row.items()},
-            })
+            errors.append(
+                {
+                    "row": row_idx,
+                    "error": str(exc),
+                    "data": {k: str(v)[:100] for k, v in row.items()},
+                }
+            )
             logger.warning("Cost import error at row %d: %s", row_idx, exc)
 
     # Bulk import via service (handles duplicate detection)
@@ -1214,10 +1283,7 @@ async def import_cost_file(
 # ── Load CWICR database from local DDC Toolkit ──────────────────────────────
 
 # GitHub repository info for downloading CWICR parquet files
-_GITHUB_CWICR_BASE_URL = (
-    "https://github.com/datadrivenconstruction/"
-    "OpenConstructionEstimate-DDC-CWICR/raw/main"
-)
+_GITHUB_CWICR_BASE_URL = "https://github.com/datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR/raw/main"
 
 # Mapping from db_id to the GitHub folder/filename structure
 _GITHUB_CWICR_FILES: dict[str, str] = {
@@ -1286,6 +1352,7 @@ def _download_cwicr_from_github_sync(db_id: str) -> Path | None:
 async def _download_cwicr_from_github(db_id: str) -> Path | None:
     """Async wrapper: runs the sync download in a thread pool to avoid blocking."""
     import asyncio
+
     return await asyncio.to_thread(_download_cwicr_from_github_sync, db_id)
 
 
@@ -1362,9 +1429,7 @@ async def load_cwicr_database(
     from app.modules.costs.models import CostItem
 
     existing_count_stmt = (
-        select(func.count())
-        .select_from(CostItem)
-        .where(CostItem.region == db_id, CostItem.is_active.is_(True))
+        select(func.count()).select_from(CostItem).where(CostItem.region == db_id, CostItem.is_active.is_(True))
     )
     existing_count = (await session.execute(existing_count_stmt)).scalar_one()
     if existing_count > 10:
@@ -1377,7 +1442,7 @@ async def load_cwicr_database(
             "total_items": existing_count,
             "status": "already_loaded",
             "message": f"Database '{db_id}' is already loaded with {existing_count:,} items. "
-                       f"To reload, delete the region first.",
+            f"To reload, delete the region first.",
             "duration_seconds": duration,
         }
 
@@ -1409,15 +1474,14 @@ async def load_cwicr_database(
     logger.info("Raw data: %d rows", total_rows)
 
     from app.config import get_settings
+
     settings = get_settings()
     sqlite_url = settings.database_url
     db_file = sqlite_url.split("///")[-1] if "///" in sqlite_url else "openestimate.db"
 
     # Run in thread to avoid blocking the event loop during heavy pandas + sqlite work.
     try:
-        result_data = await asyncio.to_thread(
-            _process_and_insert_cwicr, str(cwicr_path), db_id, db_file
-        )
+        result_data = await asyncio.to_thread(_process_and_insert_cwicr, str(cwicr_path), db_id, db_file)
     except Exception:
         logger.exception("CWICR import failed for %s", db_id)
         raise HTTPException(
@@ -1428,8 +1492,13 @@ async def load_cwicr_database(
     duration = round(time.monotonic() - start, 1)
     result_data["duration_seconds"] = duration
     result_data["source_file"] = cwicr_path.name
-    logger.info("CWICR %s: %d imported, %d skipped in %.1fs",
-                db_id, result_data.get("imported", 0), result_data.get("skipped", 0), duration)
+    logger.info(
+        "CWICR %s: %d imported, %d skipped in %.1fs",
+        db_id,
+        result_data.get("imported", 0),
+        result_data.get("skipped", 0),
+        duration,
+    )
     _invalidate_cost_cache()
     return result_data
 
@@ -1461,8 +1530,9 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
 
     # 2. Vectorized processing — use groupby.first() instead of iterrows
     if "rate_original_name" in df.columns and "rate_final_name" in df.columns:
-        df["_desc"] = (df["rate_original_name"].fillna("").astype(str) + " " +
-                       df["rate_final_name"].fillna("").astype(str)).str.strip()
+        df["_desc"] = (
+            df["rate_original_name"].fillna("").astype(str) + " " + df["rate_final_name"].fillna("").astype(str)
+        ).str.strip()
     elif "rate_original_name" in df.columns:
         df["_desc"] = df["rate_original_name"].fillna("").astype(str)
     else:
@@ -1470,17 +1540,26 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
 
     # Aggregate: take first row's values per rate_code (vectorized, no iteration)
     agg_cols = {}
-    for col in ["_desc", "rate_unit", "total_cost_per_position",
-                 "collection_name", "department_name", "section_name", "subsection_name",
-                 "category_type", "cost_of_working_hours",
-                 "total_value_machinery_equipment", "total_material_cost_per_position",
-                 "total_labor_hours_all_personnel", "count_total_people_per_unit"]:
+    for col in [
+        "_desc",
+        "rate_unit",
+        "total_cost_per_position",
+        "collection_name",
+        "department_name",
+        "section_name",
+        "subsection_name",
+        "category_type",
+        "cost_of_working_hours",
+        "total_value_machinery_equipment",
+        "total_material_cost_per_position",
+        "total_labor_hours_all_personnel",
+        "count_total_people_per_unit",
+    ]:
         if col in df.columns:
             agg_cols[col] = "first"
 
     grouped = df.groupby("rate_code", sort=False).agg(agg_cols)
-    _log.info("Grouped %d unique items from %d rows in %.1fs",
-              len(grouped), total_rows, time.monotonic() - start)
+    _log.info("Grouped %d unique items from %d rows in %.1fs", len(grouped), total_rows, time.monotonic() - start)
 
     # 3. Build insert tuples (vectorized — no Python loop over rows)
     def _safe_float(v: object) -> float:
@@ -1505,11 +1584,24 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     # Most databases use: resource_cost, resource_price_per_unit_current
     # ENG_TORONTO uses:   resource_cost_eur, resource_price_per_unit_eur_current
     _cost_col = "resource_cost" if "resource_cost" in df.columns else "resource_cost_eur"
-    _price_col = "resource_price_per_unit_current" if "resource_price_per_unit_current" in df.columns else "resource_price_per_unit_eur_current"
+    _price_col = (
+        "resource_price_per_unit_current"
+        if "resource_price_per_unit_current" in df.columns
+        else "resource_price_per_unit_eur_current"
+    )
 
-    res_cols = ["rate_code", "resource_name", "resource_code", "resource_unit",
-                "resource_quantity", _price_col,
-                _cost_col, "row_type", "is_machine", "is_material"]
+    res_cols = [
+        "rate_code",
+        "resource_name",
+        "resource_code",
+        "resource_unit",
+        "resource_quantity",
+        _price_col,
+        _cost_col,
+        "row_type",
+        "is_machine",
+        "is_material",
+    ]
     available_res_cols = [c for c in res_cols if c in df.columns]
 
     resources_by_code: dict[str, list[dict]] = {}
@@ -1531,7 +1623,9 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
                 rtype = _safe_str(r.get("row_type", ""))
 
                 if is_mach:
-                    ctype = "operator" if rtype == "Machinist" else "electricity" if rtype == "Electricity" else "equipment"
+                    ctype = (
+                        "operator" if rtype == "Machinist" else "electricity" if rtype == "Electricity" else "equipment"
+                    )
                 elif is_mat:
                     ctype = "labor" if res_unit.lower() in _LABOR_UNITS else "material"
                 elif rtype == "Abstract resource":
@@ -1539,15 +1633,17 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
                 else:
                     ctype = "other"
 
-                comps.append({
-                    "name": _safe_str(r.get("resource_name", ""))[:200],
-                    "code": _safe_str(r.get("resource_code", ""))[:50],
-                    "unit": res_unit[:20],
-                    "quantity": round(_safe_float(r.get("resource_quantity", 0)), 4),
-                    "unit_rate": round(_safe_float(r.get(_price_col, 0)), 2),
-                    "cost": round(_safe_float(r.get(_cost_col, 0)), 2),
-                    "type": ctype,
-                })
+                comps.append(
+                    {
+                        "name": _safe_str(r.get("resource_name", ""))[:200],
+                        "code": _safe_str(r.get("resource_code", ""))[:50],
+                        "unit": res_unit[:20],
+                        "quantity": round(_safe_float(r.get("resource_quantity", 0)), 4),
+                        "unit_rate": round(_safe_float(r.get(_price_col, 0)), 2),
+                        "cost": round(_safe_float(r.get(_cost_col, 0)), 2),
+                        "type": ctype,
+                    }
+                )
             resources_by_code[str(rc)] = comps
 
         _log.info("Built resources for %d rate_codes in %.1fs", len(resources_by_code), time.monotonic() - start)
@@ -1594,11 +1690,13 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
             classification["category"] = cat
 
         metadata: dict[str, float] = {}
-        for mkey, col in [("labor_cost", "cost_of_working_hours"),
-                          ("equipment_cost", "total_value_machinery_equipment"),
-                          ("material_cost", "total_material_cost_per_position"),
-                          ("labor_hours", "total_labor_hours_all_personnel"),
-                          ("workers_per_unit", "count_total_people_per_unit")]:
+        for mkey, col in [
+            ("labor_cost", "cost_of_working_hours"),
+            ("equipment_cost", "total_value_machinery_equipment"),
+            ("material_cost", "total_material_cost_per_position"),
+            ("labor_hours", "total_labor_hours_all_personnel"),
+            ("workers_per_unit", "count_total_people_per_unit"),
+        ]:
             v = _safe_float(row.get(col, 0))
             if v > 0:
                 metadata[mkey] = round(v, 2)
@@ -1606,11 +1704,24 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
         # Get full resource components for this rate_code
         components = resources_by_code.get(code, [])
 
-        batch.append((
-            str(uuid.uuid4()), code, desc[:500], unit, str(rate), "", "cwicr",
-            _json.dumps(classification), "[]", _json.dumps(components), "{}",
-            1, db_id, _json.dumps(metadata),
-        ))
+        batch.append(
+            (
+                str(uuid.uuid4()),
+                code,
+                desc[:500],
+                unit,
+                str(rate),
+                "",
+                "cwicr",
+                _json.dumps(classification),
+                "[]",
+                _json.dumps(components),
+                "{}",
+                1,
+                db_id,
+                _json.dumps(metadata),
+            )
+        )
 
         if len(batch) >= micro_batch_size:
             try:
@@ -1657,7 +1768,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     }
 
 
-def _build_cwicr_items(df: "pd.DataFrame", db_id: str) -> list[dict[str, Any]]:
+def _build_cwicr_items(df: "pd.DataFrame", db_id: str) -> list[dict[str, Any]]:  # noqa: F821
     """Legacy — kept for reference but no longer called."""
     import math
 
@@ -1684,8 +1795,7 @@ def _build_cwicr_items(df: "pd.DataFrame", db_id: str) -> list[dict[str, Any]]:
     # Build description column
     if "rate_original_name" in df.columns and "rate_final_name" in df.columns:
         df.loc[:, "_full_desc"] = (
-            df["rate_original_name"].fillna("").astype(str) + " " +
-            df["rate_final_name"].fillna("").astype(str)
+            df["rate_original_name"].fillna("").astype(str) + " " + df["rate_final_name"].fillna("").astype(str)
         ).str.strip()
 
     if "rate_code" not in df.columns:
@@ -1741,21 +1851,23 @@ def _build_cwicr_items(df: "pd.DataFrame", db_id: str) -> list[dict[str, Any]]:
         if workers > 0:
             metadata["workers_per_unit"] = round(workers, 1)
 
-        result_items.append({
-            "code": code,
-            "description": desc[:500],
-            "unit": unit,
-            "rate": str(round(rate, 2)),
-            "currency": "",
-            "source": "cwicr",
-            "classification": classification,
-            "tags": [],
-            "components": [],
-            "descriptions": {},
-            "is_active": True,
-            "region": db_id,
-            "metadata": metadata,
-        })
+        result_items.append(
+            {
+                "code": code,
+                "description": desc[:500],
+                "unit": unit,
+                "rate": str(round(rate, 2)),
+                "currency": "",
+                "source": "cwicr",
+                "classification": classification,
+                "tags": [],
+                "components": [],
+                "descriptions": {},
+                "is_active": True,
+                "region": db_id,
+                "metadata": metadata,
+            }
+        )
         item_count += 1
 
     return result_items
@@ -1797,31 +1909,34 @@ def _bulk_insert_costs_sync(db_path: str, items: list[dict]) -> int:
     for item in items:
         region = item.get("region", "")
 
-        rows.append((
-            str(uuid.uuid4()),
-            item["code"],
-            item["description"][:500],
-            item["unit"][:20],
-            item["rate"],
-            item.get("currency", ""),
-            item.get("source", "cwicr"),
-            _json.dumps(item.get("classification", {})),
-            "[]",
-            "[]",
-            "{}",
-            1,
-            region,
-            _json.dumps(item.get("metadata", {})),
-        ))
+        rows.append(
+            (
+                str(uuid.uuid4()),
+                item["code"],
+                item["description"][:500],
+                item["unit"][:20],
+                item["rate"],
+                item.get("currency", ""),
+                item.get("source", "cwicr"),
+                _json.dumps(item.get("classification", {})),
+                "[]",
+                "[]",
+                "{}",
+                1,
+                region,
+                _json.dumps(item.get("metadata", {})),
+            )
+        )
 
     # Insert in micro-batches of 200 with commit after each.
     # This releases the SQLite write lock between batches so other
     # connections (login, search) are never blocked for more than ~1 second.
     import time
+
     micro_batch = 200
     inserted = 0
     for i in range(0, len(rows), micro_batch):
-        chunk = rows[i:i + micro_batch]
+        chunk = rows[i : i + micro_batch]
         try:
             conn.executemany(sql, chunk)
             conn.commit()
@@ -1847,6 +1962,7 @@ def _bulk_insert_costs_sync(db_path: str, items: list[dict]) -> int:
 async def _bulk_insert_costs(session: AsyncSession, items: list[dict]) -> int:
     """Async wrapper: runs bulk insert in a thread with its own SQLite connection."""
     import asyncio
+
     from app.config import get_settings
 
     settings = get_settings()
@@ -1871,11 +1987,13 @@ async def clear_cost_database(
     session: SessionDep,
     _user_id: CurrentUserId,
     source: str = Query(
-        default="", description="Filter by source (e.g. 'cwicr'). Empty = delete ALL.",
+        default="",
+        description="Filter by source (e.g. 'cwicr'). Empty = delete ALL.",
     ),
 ) -> dict:
     """Delete cost items. Optionally filter by source."""
     from sqlalchemy import delete as sql_delete
+
     from app.modules.costs.models import CostItem
 
     if source:
@@ -1904,13 +2022,11 @@ async def export_cost_database(
     """Export all cost items as Excel file."""
     from openpyxl import Workbook
     from openpyxl.styles import Font
-
-    from app.modules.costs.models import CostItem
     from sqlalchemy import select
 
-    result = await session.execute(
-        select(CostItem).where(CostItem.is_active.is_(True)).limit(50000)
-    )
+    from app.modules.costs.models import CostItem
+
+    result = await session.execute(select(CostItem).where(CostItem.is_active.is_(True)).limit(50000))
     items = result.scalars().all()
 
     wb = Workbook()
@@ -1943,7 +2059,3 @@ async def export_cost_database(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="cost_database.xlsx"'},
     )
-
-
-
-

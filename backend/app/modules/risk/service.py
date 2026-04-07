@@ -203,12 +203,14 @@ class RiskService:
         cells: list[dict[str, Any]] = []
         for prob in prob_levels:
             for impact in impact_levels:
-                cells.append({
-                    "probability_level": prob,
-                    "impact_level": impact,
-                    "count": 0,
-                    "risk_ids": [],
-                })
+                cells.append(
+                    {
+                        "probability_level": prob,
+                        "impact_level": impact,
+                        "count": 0,
+                        "risk_ids": [],
+                    }
+                )
 
         # Map each risk to the nearest probability bucket
         def _nearest_prob(val: float) -> str:

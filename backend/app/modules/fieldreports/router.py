@@ -17,7 +17,7 @@ import logging
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep
@@ -295,7 +295,5 @@ async def export_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename=field_report_{report_id}.pdf"
-        },
+        headers={"Content-Disposition": f"attachment; filename=field_report_{report_id}.pdf"},
     )

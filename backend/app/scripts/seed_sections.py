@@ -14,10 +14,13 @@ BASE = "http://localhost:8000"
 async def main() -> None:
     async with httpx.AsyncClient(base_url=BASE, timeout=30.0) as c:
         # Login
-        r = await c.post("/api/v1/users/auth/login", json={
-            "email": "admin@openestimate.io",
-            "password": "OpenEstimate2026",
-        })
+        r = await c.post(
+            "/api/v1/users/auth/login",
+            json={
+                "email": "admin@openestimate.io",
+                "password": "OpenEstimate2026",
+            },
+        )
         token = r.json()["access_token"]
         h = {"Authorization": f"Bearer {token}"}
 
@@ -60,7 +63,7 @@ async def main() -> None:
             r = await c.get(f"/api/v1/boq/boqs/{boq_id}/structured", headers=h)
             if r.status_code == 200:
                 data = r.json()
-                print(f"\nStructured BOQ:")
+                print("\nStructured BOQ:")
                 print(f"  Sections: {len(data.get('sections', []))}")
                 print(f"  Direct cost: {data.get('direct_cost', 0):,.2f}")
                 print(f"  Net total: {data.get('net_total', 0):,.2f}")

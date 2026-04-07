@@ -39,8 +39,7 @@ def get_frontend_dir() -> Path:
         return dev_dist
 
     raise FileNotFoundError(
-        "Frontend dist not found. "
-        "Run 'npm run build' in frontend/ or install the openestimate wheel."
+        "Frontend dist not found. Run 'npm run build' in frontend/ or install the openestimate wheel."
     )
 
 
@@ -79,11 +78,10 @@ def mount_frontend(app: FastAPI) -> None:
             def _make_static_handler(fpath: Path):  # noqa: ANN202
                 async def _handler():  # noqa: ANN202
                     return FileResponse(str(fpath))
+
                 return _handler
 
-            app.get(f"/{static_name}", include_in_schema=False)(
-                _make_static_handler(static_path)
-            )
+            app.get(f"/{static_name}", include_in_schema=False)(_make_static_handler(static_path))
 
     # SPA catch-all: any route not matched by /api/* or /assets/* → index.html
     @app.get("/{path:path}", include_in_schema=False)
@@ -95,5 +93,6 @@ def mount_frontend(app: FastAPI) -> None:
         """
         if path.startswith("api/") or path.startswith("api"):
             from fastapi import HTTPException
+
             raise HTTPException(status_code=404, detail="Not Found")
         return FileResponse(str(index_path))

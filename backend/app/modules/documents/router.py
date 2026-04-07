@@ -344,10 +344,14 @@ async def serve_photo_file(
     # Determine media type from extension
     ext = file_path.suffix.lower()
     media_types = {
-        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-        ".png": "image/png", ".webp": "image/webp",
-        ".heic": "image/heic", ".heif": "image/heif",
-        ".tiff": "image/tiff", ".tif": "image/tiff",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".heic": "image/heic",
+        ".heif": "image/heif",
+        ".tiff": "image/tiff",
+        ".tif": "image/tiff",
     }
     media_type = media_types.get(ext, "image/jpeg")
 

@@ -19,13 +19,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
+
+
 from app.modules.ai.ai_client import call_ai, extract_json, resolve_provider_and_key
 from app.modules.ai.models import AIEstimateJob, AISettings
 from app.modules.ai.prompts import (
@@ -106,16 +109,18 @@ def _validate_items(raw_items: Any) -> list[dict[str, Any]]:
 
         total = round(quantity * unit_rate, 2)
 
-        valid.append({
-            "ordinal": ordinal,
-            "description": description,
-            "unit": unit,
-            "quantity": round(quantity, 2),
-            "unit_rate": round(unit_rate, 2),
-            "total": total,
-            "classification": classification,
-            "category": category,
-        })
+        valid.append(
+            {
+                "ordinal": ordinal,
+                "description": description,
+                "unit": unit,
+                "quantity": round(quantity, 2),
+                "unit_rate": round(unit_rate, 2),
+                "total": total,
+                "classification": classification,
+                "category": category,
+            }
+        )
 
     return valid
 
@@ -216,9 +221,7 @@ class AIService:
 
         return _build_settings_response(settings)
 
-    async def update_ai_settings(
-        self, user_id: str, data: AISettingsUpdate
-    ) -> AISettingsResponse:
+    async def update_ai_settings(self, user_id: str, data: AISettingsUpdate) -> AISettingsResponse:
         """Update per-user AI settings (API keys, preferred model).
 
         Only updates fields that are explicitly provided (not None).
@@ -285,9 +288,7 @@ class AIService:
 
     # ── Quick estimate (text -> AI -> BOQ items) ─────────────────────────
 
-    async def quick_estimate(
-        self, user_id: str, request: QuickEstimateRequest
-    ) -> EstimateJobResponse:
+    async def quick_estimate(self, user_id: str, request: QuickEstimateRequest) -> EstimateJobResponse:
         """Generate a BOQ estimate from a text description using AI.
 
         Args:
@@ -304,9 +305,7 @@ class AIService:
         try:
             provider, api_key = resolve_provider_and_key(settings)
         except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         # Create the job record
         job = AIEstimateJob(
@@ -423,9 +422,7 @@ class AIService:
         job = await self.job_repo.get_by_id(job_id)
         if job is None:
             msg = "Job not found after completion"
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
 
         await _safe_publish(
             "ai.estimate.completed",
@@ -482,9 +479,7 @@ class AIService:
         try:
             provider, api_key = resolve_provider_and_key(settings)
         except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         # Create job record
         job = AIEstimateJob(
@@ -594,9 +589,7 @@ class AIService:
         job = await self.job_repo.get_by_id(job_id)
         if job is None:
             msg = "Job not found after completion"
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
 
         await _safe_publish(
             "ai.estimate.completed",
@@ -658,9 +651,7 @@ class AIService:
         try:
             provider, api_key = resolve_provider_and_key(settings)
         except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         # Create job record
         job = AIEstimateJob(
@@ -687,11 +678,13 @@ class AIService:
         try:
             if category == "pdf":
                 from app.modules.boq.router import _extract_from_pdf
+
                 result = _extract_from_pdf(content)
                 extracted_text = result.get("text", "")
 
             elif category == "excel":
                 from app.modules.boq.router import _extract_from_excel_for_smart
+
                 result = _extract_from_excel_for_smart(content)
                 if result.get("structured") and result.get("rows"):
                     # Format structured rows as text for AI
@@ -712,6 +705,7 @@ class AIService:
 
             elif category == "csv":
                 from app.modules.boq.router import _extract_from_csv_for_smart
+
                 result = _extract_from_csv_for_smart(content)
                 if result.get("structured") and result.get("rows"):
                     rows = result["rows"]
@@ -731,6 +725,7 @@ class AIService:
 
             elif category == "cad":
                 from app.modules.boq.router import _extract_from_cad
+
                 result = await _extract_from_cad(content, ext, filename)
                 extracted_text = result.get("text", "")
                 cad_elements = result.get("cad_elements")
@@ -756,6 +751,7 @@ class AIService:
 
             elif category == "image":
                 from app.modules.boq.router import _extract_from_image
+
                 result = _extract_from_image(content, ext)
                 image_b64 = result.get("image_base64")
                 image_mime = result.get("mime", "image/jpeg")
@@ -856,7 +852,8 @@ class AIService:
                 duration_ms=duration_ms,
             )
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_msg,
             ) from exc
         except Exception as exc:
             duration_ms = int((time.monotonic() - start_time) * 1000)
@@ -871,7 +868,8 @@ class AIService:
                 duration_ms=duration_ms,
             )
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail=error_msg,
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=error_msg,
             ) from exc
 
         self.session.expunge(job)
@@ -892,7 +890,11 @@ class AIService:
 
         logger.info(
             "File estimate completed: job=%s, category=%s, items=%d, tokens=%d, duration=%dms",
-            job.id, category, len(items), tokens, duration_ms,
+            job.id,
+            category,
+            len(items),
+            tokens,
+            duration_ms,
         )
 
         return _build_job_response(job)

@@ -80,7 +80,5 @@ class ProjectRepository:
 
     async def count_for_user(self, owner_id: uuid.UUID) -> int:
         """Total number of projects for a user."""
-        stmt = select(func.count()).select_from(
-            select(Project).where(Project.owner_id == owner_id).subquery()
-        )
+        stmt = select(func.count()).select_from(select(Project).where(Project.owner_id == owner_id).subquery())
         return (await self.session.execute(stmt)).scalar_one()

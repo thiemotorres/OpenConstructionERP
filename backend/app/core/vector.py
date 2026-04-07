@@ -15,7 +15,6 @@ Usage:
 """
 
 import logging
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -126,15 +125,17 @@ def _lancedb_ensure_table(db: Any) -> bool:
         if COST_TABLE not in tables:
             import pyarrow as pa
 
-            schema = pa.schema([
-                pa.field("id", pa.string()),
-                pa.field("vector", pa.list_(pa.float32(), EMBEDDING_DIM)),
-                pa.field("code", pa.string()),
-                pa.field("description", pa.string()),
-                pa.field("unit", pa.string()),
-                pa.field("rate", pa.float64()),
-                pa.field("region", pa.string()),
-            ])
+            schema = pa.schema(
+                [
+                    pa.field("id", pa.string()),
+                    pa.field("vector", pa.list_(pa.float32(), EMBEDDING_DIM)),
+                    pa.field("code", pa.string()),
+                    pa.field("description", pa.string()),
+                    pa.field("unit", pa.string()),
+                    pa.field("rate", pa.float64()),
+                    pa.field("region", pa.string()),
+                ]
+            )
             db.create_table(COST_TABLE, schema=schema)
             logger.info("Created LanceDB table: %s", COST_TABLE)
         return True
@@ -250,6 +251,7 @@ def _get_qdrant():
     _qdrant_tried = True
     try:
         from qdrant_client import QdrantClient
+
         from app.config import get_settings
 
         url = get_settings().qdrant_url or "http://localhost:6333"
@@ -268,6 +270,7 @@ def _get_qdrant():
 
 def _backend() -> str:
     from app.config import get_settings
+
     return get_settings().vector_backend
 
 
@@ -279,6 +282,7 @@ def vector_status() -> dict[str, Any]:
             return {"connected": False, "engine": "qdrant", "error": "Qdrant not reachable"}
         try:
             from app.core.vector import COST_TABLE as CT
+
             collections = [c.name for c in client.get_collections().collections]
             info: dict[str, Any] = {"connected": True, "engine": "qdrant", "collections": len(collections)}
             if CT in collections:
@@ -307,15 +311,19 @@ def vector_index(items: list[dict]) -> int:
         client = _get_qdrant()
         if client is None:
             raise RuntimeError("Qdrant not available")
-        from qdrant_client.models import PointStruct, Distance, VectorParams
+        from qdrant_client.models import Distance, PointStruct, VectorParams
 
         # Ensure collection
         collections = [c.name for c in client.get_collections().collections]
         if COST_TABLE not in collections:
-            client.create_collection(COST_TABLE, vectors_config=VectorParams(size=QDRANT_SNAPSHOT_DIM, distance=Distance.COSINE))
+            client.create_collection(
+                COST_TABLE, vectors_config=VectorParams(size=QDRANT_SNAPSHOT_DIM, distance=Distance.COSINE)
+            )
 
         points = [
-            PointStruct(id=it["id"], vector=it["vector"], payload={k: v for k, v in it.items() if k not in ("id", "vector")})
+            PointStruct(
+                id=it["id"], vector=it["vector"], payload={k: v for k, v in it.items() if k not in ("id", "vector")}
+            )
             for it in items
         ]
         client.upsert(COST_TABLE, points=points)
@@ -334,7 +342,7 @@ def vector_search(
         client = _get_qdrant()
         if client is None:
             return []
-        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.models import FieldCondition, Filter, MatchValue
 
         search_filter = None
         if region:

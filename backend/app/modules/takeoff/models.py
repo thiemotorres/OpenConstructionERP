@@ -9,7 +9,7 @@ Tables:
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -105,13 +105,9 @@ class TakeoffMeasurement(Base):
         nullable=False,
         index=True,
     )
-    document_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    document_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     page: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    type: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )  # distance, area, count, polyline, volume
+    type: Mapped[str] = mapped_column(String(50), nullable=False)  # distance, area, count, polyline, volume
     group_name: Mapped[str] = mapped_column(String(100), nullable=False, default="General")
     group_color: Mapped[str] = mapped_column(String(20), nullable=False, default="#3B82F6")
     annotation: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -132,7 +128,4 @@ class TakeoffMeasurement(Base):
     created_by: Mapped[str] = mapped_column(String(255), nullable=False, default="")
 
     def __repr__(self) -> str:
-        return (
-            f"<TakeoffMeasurement {self.type} "
-            f"group={self.group_name} page={self.page}>"
-        )
+        return f"<TakeoffMeasurement {self.type} group={self.group_name} page={self.page}>"

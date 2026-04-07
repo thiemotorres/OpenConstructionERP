@@ -23,9 +23,7 @@ class RateLimiter:
         now = time.time()
         with self._lock:
             # Clean old entries
-            self._requests[key] = [
-                t for t in self._requests[key] if t > now - self.window_seconds
-            ]
+            self._requests[key] = [t for t in self._requests[key] if t > now - self.window_seconds]
 
             if len(self._requests[key]) >= self.max_requests:
                 return False, 0

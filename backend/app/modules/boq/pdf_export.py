@@ -420,9 +420,7 @@ def _build_cover_page(
     ]
     # Add top border on the Gross Total row (last row)
     last_row = len(summary_rows) - 1
-    summary_style_commands.append(
-        ("LINEABOVE", (0, last_row), (-1, last_row), 1, colors.HexColor("#1a1a2e"))
-    )
+    summary_style_commands.append(("LINEABOVE", (0, last_row), (-1, last_row), 1, colors.HexColor("#1a1a2e")))
     summary_table.setStyle(TableStyle(summary_style_commands))
     elements.append(summary_table)
 
@@ -913,8 +911,7 @@ def generate_boq_pdf_simple(
     total_positions = count_boq_positions(boq_data)
     flowables.append(
         Paragraph(
-            f"<b>Summary Report</b> &mdash; {total_positions} positions "
-            f"(full detail omitted for performance)",
+            f"<b>Summary Report</b> &mdash; {total_positions} positions (full detail omitted for performance)",
             styles["section_header"],
         )
     )
@@ -931,21 +928,25 @@ def generate_boq_pdf_simple(
     table_data: list[list[Any]] = [header_row]
 
     for section in boq_data.sections:
-        table_data.append([
-            Paragraph(section.ordinal, styles["cell"]),
-            Paragraph(section.description, styles["cell"]),
-            Paragraph(str(len(section.positions)), styles["cell_right"]),
-            Paragraph(_fmt(section.subtotal), styles["cell_right"]),
-        ])
+        table_data.append(
+            [
+                Paragraph(section.ordinal, styles["cell"]),
+                Paragraph(section.description, styles["cell"]),
+                Paragraph(str(len(section.positions)), styles["cell_right"]),
+                Paragraph(_fmt(section.subtotal), styles["cell_right"]),
+            ]
+        )
 
     if boq_data.positions:
         ungrouped_total = sum(p.total for p in boq_data.positions)
-        table_data.append([
-            Paragraph("", styles["cell"]),
-            Paragraph("Other Positions", styles["cell"]),
-            Paragraph(str(len(boq_data.positions)), styles["cell_right"]),
-            Paragraph(_fmt(ungrouped_total), styles["cell_right"]),
-        ])
+        table_data.append(
+            [
+                Paragraph("", styles["cell"]),
+                Paragraph("Other Positions", styles["cell"]),
+                Paragraph(str(len(boq_data.positions)), styles["cell_right"]),
+                Paragraph(_fmt(ungrouped_total), styles["cell_right"]),
+            ]
+        )
 
     summary_table = Table(table_data, colWidths=summary_col_widths, repeatRows=1)
     summary_style_commands: list[Any] = [
@@ -970,10 +971,12 @@ def generate_boq_pdf_simple(
     flowables.append(Spacer(1, 3 * mm))
 
     cost_rows: list[list[Any]] = []
-    cost_rows.append([
-        Paragraph("<b>Direct Cost:</b>", styles["cell_bold_right"]),
-        Paragraph(f"<b>{_fmt(boq_data.direct_cost)} {currency}</b>", styles["cell_bold_right"]),
-    ])
+    cost_rows.append(
+        [
+            Paragraph("<b>Direct Cost:</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{_fmt(boq_data.direct_cost)} {currency}</b>", styles["cell_bold_right"]),
+        ]
+    )
 
     for markup in boq_data.markups:
         if not markup.is_active:
@@ -981,15 +984,19 @@ def generate_boq_pdf_simple(
         label = markup.name
         if markup.markup_type == "percentage":
             label = f"{markup.name} ({_fmt(markup.percentage, 1)}%)"
-        cost_rows.append([
-            Paragraph(label, styles["cell_right"]),
-            Paragraph(f"{_fmt(markup.amount)} {currency}", styles["cell_right"]),
-        ])
+        cost_rows.append(
+            [
+                Paragraph(label, styles["cell_right"]),
+                Paragraph(f"{_fmt(markup.amount)} {currency}", styles["cell_right"]),
+            ]
+        )
 
-    cost_rows.append([
-        Paragraph("<b>Net Total:</b>", styles["cell_bold_right"]),
-        Paragraph(f"<b>{_fmt(boq_data.net_total)} {currency}</b>", styles["cell_bold_right"]),
-    ])
+    cost_rows.append(
+        [
+            Paragraph("<b>Net Total:</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{_fmt(boq_data.net_total)} {currency}</b>", styles["cell_bold_right"]),
+        ]
+    )
 
     vat_rate = 0.0
     for m in boq_data.markups:
@@ -1000,14 +1007,18 @@ def generate_boq_pdf_simple(
     vat_amount = boq_data.net_total * vat_rate / 100.0 if vat_rate > 0 else 0.0
     gross_total = boq_data.net_total + vat_amount
 
-    cost_rows.append([
-        Paragraph(f"VAT {_fmt(vat_rate, 0)}%:", styles["cell_right"]),
-        Paragraph(f"{_fmt(vat_amount)} {currency}", styles["cell_right"]),
-    ])
-    cost_rows.append([
-        Paragraph(f"<b>Gross Total ({currency}):</b>", styles["cell_bold_right"]),
-        Paragraph(f"<b>{_fmt(gross_total)} {currency}</b>", styles["cell_bold_right"]),
-    ])
+    cost_rows.append(
+        [
+            Paragraph(f"VAT {_fmt(vat_rate, 0)}%:", styles["cell_right"]),
+            Paragraph(f"{_fmt(vat_amount)} {currency}", styles["cell_right"]),
+        ]
+    )
+    cost_rows.append(
+        [
+            Paragraph(f"<b>Gross Total ({currency}):</b>", styles["cell_bold_right"]),
+            Paragraph(f"<b>{_fmt(gross_total)} {currency}</b>", styles["cell_bold_right"]),
+        ]
+    )
 
     cost_table = Table(
         cost_rows,

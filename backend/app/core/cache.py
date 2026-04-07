@@ -16,7 +16,6 @@ Usage:
         ...
 """
 
-import asyncio
 import json
 import logging
 import time
@@ -94,9 +93,7 @@ class RedisCache:
                 return None
             import redis.asyncio as aioredis
 
-            self._redis = aioredis.from_url(
-                settings.redis_url, decode_responses=True
-            )
+            self._redis = aioredis.from_url(settings.redis_url, decode_responses=True)
             await self._redis.ping()
             logger.info("Redis cache connected: %s", settings.redis_url)
             return self._redis

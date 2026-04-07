@@ -61,6 +61,7 @@ def categorize(name: str, typ: str) -> str:
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     db_path = os.path.join(os.path.dirname(__file__), "..", "..", "openestimate.db")
     conn = sqlite3.connect(db_path)
@@ -151,26 +152,28 @@ def main() -> None:
 
         category = categorize(r["resource_name"], r["resource_type"])
 
-        output.append({
-            "resource_code": r["resource_code"],
-            "resource_name": r["resource_name"],
-            "resource_type": r["resource_type"],
-            "category": category,
-            "unit": r["unit"],
-            "unit_rate_avg": avg_rate,
-            "unit_rate_min": min_rate,
-            "unit_rate_max": max_rate,
-            "avg_cost_per_use": avg_cost,
-            "avg_quantity_per_use": avg_qty,
-            "currency": "EUR",
-            "usage_count": r["usage_count"],
-            "price_variants": len(set(round(x, 2) for x in rates)),
-            "regions": ";".join(sorted(r["regions"])),
-            "parent_work_category": ";".join(sorted(list(r["parent_categories"])[:3])),
-            "parent_collection": ";".join(sorted(list(r["parent_collections"])[:3])),
-            "parent_department": ";".join(sorted(list(r["parent_departments"])[:2])),
-            "used_in_items_count": len(r["parent_codes"]),
-        })
+        output.append(
+            {
+                "resource_code": r["resource_code"],
+                "resource_name": r["resource_name"],
+                "resource_type": r["resource_type"],
+                "category": category,
+                "unit": r["unit"],
+                "unit_rate_avg": avg_rate,
+                "unit_rate_min": min_rate,
+                "unit_rate_max": max_rate,
+                "avg_cost_per_use": avg_cost,
+                "avg_quantity_per_use": avg_qty,
+                "currency": "EUR",
+                "usage_count": r["usage_count"],
+                "price_variants": len(set(round(x, 2) for x in rates)),
+                "regions": ";".join(sorted(r["regions"])),
+                "parent_work_category": ";".join(sorted(list(r["parent_categories"])[:3])),
+                "parent_collection": ";".join(sorted(list(r["parent_collections"])[:3])),
+                "parent_department": ";".join(sorted(list(r["parent_departments"])[:2])),
+                "used_in_items_count": len(r["parent_codes"]),
+            }
+        )
 
     output.sort(key=lambda x: -x["usage_count"])
 
@@ -212,7 +215,7 @@ def main() -> None:
     for col in fields:
         print(f"  {col}")
 
-    print(f"\nBy type:")
+    print("\nBy type:")
     by_type: dict[str, int] = {}
     for r in output:
         t = r["resource_type"]
@@ -220,7 +223,7 @@ def main() -> None:
     for t, cnt in sorted(by_type.items(), key=lambda x: -x[1]):
         print(f"  {t}: {cnt}")
 
-    print(f"\nBy category (top 20):")
+    print("\nBy category (top 20):")
     by_cat: dict[str, int] = {}
     for r in output:
         c = r["category"]
@@ -228,7 +231,7 @@ def main() -> None:
     for c, cnt in sorted(by_cat.items(), key=lambda x: -x[1])[:20]:
         print(f"  {c}: {cnt}")
 
-    print(f"\nTop 10 most-used resources:")
+    print("\nTop 10 most-used resources:")
     for r in output[:10]:
         print(
             f"  {r['resource_type']:<12s} "

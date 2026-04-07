@@ -8,14 +8,11 @@ Note: Tables are auto-created by SQLAlchemy Base.metadata.create_all() at startu
 This migration exists as a baseline marker for Alembic version tracking.
 On fresh databases, all tables already exist before this migration runs.
 """
+
 from typing import Sequence, Union
 
-from alembic import op
-import sqlalchemy as sa
-
-
 # revision identifiers, used by Alembic.
-revision: str = '129188e46db8'
+revision: str = "129188e46db8"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

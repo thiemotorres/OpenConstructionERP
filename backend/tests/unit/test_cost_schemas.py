@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from app.modules.costs.schemas import CostItemCreate, CostItemUpdate, CostSearchQuery
 
-
 # ── CostItemCreate ───────────────────────────────────────────────────────────
 
 

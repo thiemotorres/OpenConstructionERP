@@ -16,7 +16,6 @@ from app.modules.ai.ai_client import (
     resolve_provider_and_key,
 )
 
-
 # ── extract_json ─────────────────────────────────────────────────────────────
 
 

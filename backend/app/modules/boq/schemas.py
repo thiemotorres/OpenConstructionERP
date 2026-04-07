@@ -13,7 +13,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── BOQ schemas ───────────────────────────────────────────────────────────────
 
 
@@ -154,18 +153,14 @@ class MarkupCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(..., min_length=1, max_length=255)
-    markup_type: str = Field(
-        default="percentage", pattern=r"^(percentage|fixed|per_unit)$"
-    )
+    markup_type: str = Field(default="percentage", pattern=r"^(percentage|fixed|per_unit)$")
     category: str = Field(
         default="overhead",
         pattern=r"^(overhead|profit|tax|contingency|insurance|bond|other)$",
     )
     percentage: float = Field(default=0.0, ge=0.0, le=100.0)
     fixed_amount: float = Field(default=0.0, ge=0.0)
-    apply_to: str = Field(
-        default="direct_cost", pattern=r"^(direct_cost|subtotal|cumulative)$"
-    )
+    apply_to: str = Field(default="direct_cost", pattern=r"^(direct_cost|subtotal|cumulative)$")
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -177,18 +172,14 @@ class MarkupUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    markup_type: str | None = Field(
-        default=None, pattern=r"^(percentage|fixed|per_unit)$"
-    )
+    markup_type: str | None = Field(default=None, pattern=r"^(percentage|fixed|per_unit)$")
     category: str | None = Field(
         default=None,
         pattern=r"^(overhead|profit|tax|contingency|insurance|bond|other)$",
     )
     percentage: float | None = Field(default=None, ge=0.0, le=100.0)
     fixed_amount: float | None = Field(default=None, ge=0.0)
-    apply_to: str | None = Field(
-        default=None, pattern=r"^(direct_cost|subtotal|cumulative)$"
-    )
+    apply_to: str | None = Field(default=None, pattern=r"^(direct_cost|subtotal|cumulative)$")
     sort_order: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
     metadata: dict[str, Any] | None = None
@@ -561,27 +552,13 @@ class EstimateClassificationResponse(BaseModel):
     """
 
     estimate_class: int = Field(..., ge=1, le=5, description="AACE class 1-5")
-    class_label: str = Field(
-        default="", description="Human-readable label (e.g. 'Screening')"
-    )
-    accuracy_low: str = Field(
-        default="", description="Lower accuracy bound (e.g. '-50%')"
-    )
-    accuracy_high: str = Field(
-        default="", description="Upper accuracy bound (e.g. '+100%')"
-    )
-    definition_level_low: int = Field(
-        default=0, ge=0, le=100, description="Lower definition level %"
-    )
-    definition_level_high: int = Field(
-        default=0, ge=0, le=100, description="Upper definition level %"
-    )
-    methodology: str = Field(
-        default="", description="Typical estimation methodology for this class"
-    )
-    metrics: EstimateClassificationMetrics = Field(
-        default_factory=EstimateClassificationMetrics
-    )
+    class_label: str = Field(default="", description="Human-readable label (e.g. 'Screening')")
+    accuracy_low: str = Field(default="", description="Lower accuracy bound (e.g. '-50%')")
+    accuracy_high: str = Field(default="", description="Upper accuracy bound (e.g. '+100%')")
+    definition_level_low: int = Field(default=0, ge=0, le=100, description="Lower definition level %")
+    definition_level_high: int = Field(default=0, ge=0, le=100, description="Upper definition level %")
+    methodology: str = Field(default="", description="Typical estimation methodology for this class")
+    metrics: EstimateClassificationMetrics = Field(default_factory=EstimateClassificationMetrics)
 
 
 # ── Sensitivity Analysis schemas ────────────────────────────────────────────
@@ -668,9 +645,7 @@ class ClassifyRequest(BaseModel):
 
     description: str = Field(..., min_length=1, max_length=1000)
     unit: str = ""
-    project_standard: str = Field(
-        default="din276", pattern=r"^(din276|nrm|masterformat)$"
-    )
+    project_standard: str = Field(default="din276", pattern=r"^(din276|nrm|masterformat)$")
 
 
 class ClassificationSuggestion(BaseModel):
@@ -709,9 +684,7 @@ class ClassifyElementsRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     elements: list[CADElementInput] = Field(..., min_length=1, max_length=10000)
-    standard: str = Field(
-        default="din276", pattern=r"^(din276|nrm|masterformat)$"
-    )
+    standard: str = Field(default="din276", pattern=r"^(din276|nrm|masterformat)$")
 
 
 class ClassifiedElement(BaseModel):

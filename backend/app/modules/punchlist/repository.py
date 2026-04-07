@@ -5,7 +5,7 @@ No business logic — pure data access.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,7 +82,7 @@ class PunchListRepository:
 
     async def count_overdue(self, project_id: uuid.UUID) -> int:
         """Count punch items that are past due and not closed/verified."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stmt = select(func.count()).select_from(
             select(PunchItem)
             .where(

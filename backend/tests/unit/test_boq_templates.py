@@ -76,26 +76,19 @@ class TestPositionData:
         for section in TEMPLATES[template_id]["sections"]:
             for pos in section["positions"]:
                 missing = required - set(pos.keys())
-                assert not missing, (
-                    f"Position '{pos.get('ordinal', '?')}' in '{template_id}' "
-                    f"missing fields: {missing}"
-                )
+                assert not missing, f"Position '{pos.get('ordinal', '?')}' in '{template_id}' missing fields: {missing}"
 
     @pytest.mark.parametrize("template_id", EXPECTED_TEMPLATE_IDS)
     def test_qty_factor_is_positive(self, template_id: str):
         for section in TEMPLATES[template_id]["sections"]:
             for pos in section["positions"]:
-                assert pos["qty_factor"] > 0, (
-                    f"qty_factor <= 0 for '{pos['ordinal']}' in '{template_id}'"
-                )
+                assert pos["qty_factor"] > 0, f"qty_factor <= 0 for '{pos['ordinal']}' in '{template_id}'"
 
     @pytest.mark.parametrize("template_id", EXPECTED_TEMPLATE_IDS)
     def test_rate_is_positive(self, template_id: str):
         for section in TEMPLATES[template_id]["sections"]:
             for pos in section["positions"]:
-                assert pos["rate"] > 0, (
-                    f"rate <= 0 for '{pos['ordinal']}' in '{template_id}'"
-                )
+                assert pos["rate"] > 0, f"rate <= 0 for '{pos['ordinal']}' in '{template_id}'"
 
     @pytest.mark.parametrize("template_id", EXPECTED_TEMPLATE_IDS)
     def test_no_duplicate_ordinals(self, template_id: str):
@@ -104,8 +97,7 @@ class TestPositionData:
             for pos in section["positions"]:
                 ordinals.append(pos["ordinal"])
         assert len(ordinals) == len(set(ordinals)), (
-            f"Duplicate ordinals found in '{template_id}': "
-            f"{[o for o in ordinals if ordinals.count(o) > 1]}"
+            f"Duplicate ordinals found in '{template_id}': {[o for o in ordinals if ordinals.count(o) > 1]}"
         )
 
     @pytest.mark.parametrize("template_id", EXPECTED_TEMPLATE_IDS)

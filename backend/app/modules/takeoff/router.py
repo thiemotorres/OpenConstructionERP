@@ -32,16 +32,15 @@ Routes:
 """
 
 import logging
-import shutil
 import time as _time
 import uuid as _uuid
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from statistics import mean as _mean
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
@@ -50,7 +49,6 @@ from app.dependencies import CurrentUserId, RequirePermission, SessionDep
 from app.modules.takeoff.models import CadExtractionSession
 from app.modules.takeoff.schemas import (
     LinkToBoqRequest,
-    TakeoffDocumentResponse,
     TakeoffMeasurementBulkCreate,
     TakeoffMeasurementCreate,
     TakeoffMeasurementResponse,
@@ -124,11 +122,13 @@ async def list_converters() -> dict[str, Any]:
     for meta in _CONVERTER_META:
         ext = meta["id"]
         path = find_converter(ext)
-        converters.append({
-            **meta,
-            "installed": path is not None,
-            "path": str(path) if path else None,
-        })
+        converters.append(
+            {
+                **meta,
+                "installed": path is not None,
+                "path": str(path) if path else None,
+            }
+        )
 
     installed_count = sum(1 for c in converters if c["installed"])
     return {
@@ -137,13 +137,11 @@ async def list_converters() -> dict[str, Any]:
         "total_count": len(converters),
     }
 
+
 # ── Converter install / uninstall ────────────────────────────────────────
 
 
-_GITHUB_CONVERTER_BASE_URL = (
-    "https://github.com/datadrivenconstruction/"
-    "ddc-community-toolkit/releases/download/v1.0.0"
-)
+_GITHUB_CONVERTER_BASE_URL = "https://github.com/datadrivenconstruction/ddc-community-toolkit/releases/download/v1.0.0"
 
 _GITHUB_CONVERTER_FILES: dict[str, str] = {
     "dwg": "DwgExporter-v1.0.0.zip",
@@ -227,10 +225,7 @@ def _install_converter_from_zip(zip_path: Path, converter_id: str) -> Path:
             if nested.exists():
                 return nested
 
-    raise ValueError(
-        f"Converter executable '{exe_name}' not found after extraction "
-        f"in {_CONVERTER_INSTALL_DIR}"
-    )
+    raise ValueError(f"Converter executable '{exe_name}' not found after extraction in {_CONVERTER_INSTALL_DIR}")
 
 
 @router.post(
@@ -253,8 +248,7 @@ async def install_converter(
     if not meta:
         raise HTTPException(
             status_code=404,
-            detail=f"Unknown converter: '{converter_id}'. "
-            f"Available: {list(_META_BY_ID.keys())}",
+            detail=f"Unknown converter: '{converter_id}'. Available: {list(_META_BY_ID.keys())}",
         )
 
     # Already installed?
@@ -391,8 +385,7 @@ async def cad_extract(
         raise HTTPException(
             status_code=400,
             detail=(
-                f"Unsupported file type: .{ext}. "
-                f"Accepted: {', '.join(f'.{e}' for e in sorted(_SUPPORTED_CAD_EXTS))}"
+                f"Unsupported file type: .{ext}. Accepted: {', '.join(f'.{e}' for e in sorted(_SUPPORTED_CAD_EXTS))}"
             ),
         )
 
@@ -473,7 +466,7 @@ def _cleanup_memory_sessions() -> None:
 
 async def _cleanup_db_sessions(session: Any) -> None:
     """Remove expired CAD extraction sessions from the database (skip permanent)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await session.execute(
         delete(CadExtractionSession).where(
             CadExtractionSession.expires_at < now,
@@ -493,7 +486,7 @@ async def _save_session_to_db(
     extraction_time: float = 0,
 ) -> None:
     """Persist a CAD extraction session to the database."""
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=_CAD_SESSION_TTL)
+    expires_at = datetime.now(UTC) + timedelta(seconds=_CAD_SESSION_TTL)
     db_session = CadExtractionSession(
         session_id=session_id,
         user_id=user_id,
@@ -515,7 +508,7 @@ async def _get_session_from_db(session: Any, session_id: str) -> dict | None:
 
     Returns a dict matching the old in-memory format, or None if not found / expired.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await session.execute(
         select(CadExtractionSession).where(
             CadExtractionSession.session_id == session_id,
@@ -588,8 +581,7 @@ async def cad_columns(
         raise HTTPException(
             status_code=400,
             detail=(
-                f"Unsupported file type: .{ext}. "
-                f"Accepted: {', '.join(f'.{e}' for e in sorted(_SUPPORTED_CAD_EXTS))}"
+                f"Unsupported file type: .{ext}. Accepted: {', '.join(f'.{e}' for e in sorted(_SUPPORTED_CAD_EXTS))}"
             ),
         )
 
@@ -610,10 +602,7 @@ async def cad_columns(
     if len(content) > MAX_CAD_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"File too large ({len(content) / 1024 / 1024:.1f} MB). "
-                f"Max: {MAX_CAD_SIZE // 1024 // 1024} MB."
-            ),
+            detail=(f"File too large ({len(content) / 1024 / 1024:.1f} MB). Max: {MAX_CAD_SIZE // 1024 // 1024} MB."),
         )
 
     start_time = time.monotonic()
@@ -645,14 +634,19 @@ async def cad_columns(
 
     # Filter out empty/system elements (Phases, Patterns, Views, etc.)
     _SKIP_CATEGORIES = {
-        "none", "", "ost_phases", "ost_materials", "ost_viewports",
-        "ost_colorfilllegends", "ost_views", "ost_grids", "ost_levels",
-        "ost_sheets", "ost_titleblocks",
+        "none",
+        "",
+        "ost_phases",
+        "ost_materials",
+        "ost_viewports",
+        "ost_colorfilllegends",
+        "ost_views",
+        "ost_grids",
+        "ost_levels",
+        "ost_sheets",
+        "ost_titleblocks",
     }
-    real_elements = [
-        el for el in elements
-        if str(el.get("category", "")).strip().lower() not in _SKIP_CATEGORIES
-    ]
+    real_elements = [el for el in elements if str(el.get("category", "")).strip().lower() not in _SKIP_CATEGORIES]
     # If filtering removed everything, keep originals
     if not real_elements:
         real_elements = elements
@@ -700,9 +694,7 @@ async def cad_columns(
     preview_candidates = [el for el in real_elements if _has_quantity(el)][:10]
     if not preview_candidates:
         # Fallback: elements with type name
-        preview_candidates = [
-            el for el in real_elements if el.get("type name")
-        ][:10]
+        preview_candidates = [el for el in real_elements if el.get("type name")][:10]
     if not preview_candidates:
         preview_candidates = real_elements[:10]
 
@@ -750,10 +742,7 @@ async def cad_group(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Session not found or expired. "
-                "Please re-upload the CAD file via POST /cad-columns."
-            ),
+            detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -818,10 +807,7 @@ async def get_group_elements(
     if not session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Session not found or expired. "
-                "Please re-upload the CAD file via POST /cad-columns."
-            ),
+            detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
     elements: list[dict] = session["elements"]
@@ -912,10 +898,7 @@ async def create_boq_from_cad_qto(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "CAD session not found or expired. "
-                "Please re-upload the CAD file."
-            ),
+            detail=("CAD session not found or expired. Please re-upload the CAD file."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -1049,10 +1032,7 @@ async def export_cad_group(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "CAD session not found or expired. "
-                "Please re-upload the CAD file."
-            ),
+            detail=("CAD session not found or expired. Please re-upload the CAD file."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -1082,7 +1062,7 @@ async def export_cad_group(
     # Build Excel workbook
     try:
         import openpyxl
-        from openpyxl.styles import Alignment, Font
+        from openpyxl.styles import Font
     except ImportError:
         raise HTTPException(
             status_code=500,
@@ -1185,10 +1165,7 @@ class CadDataAggregateRequest(BaseModel):
     group_by: list[str] = Field(..., min_length=1, description="Columns to group by")
     aggregations: dict[str, str] = Field(
         ...,
-        description=(
-            "Mapping of column -> aggregation function. "
-            "Supported: sum, avg, mean, min, max, count."
-        ),
+        description=("Mapping of column -> aggregation function. Supported: sum, avg, mean, min, max, count."),
     )
 
 
@@ -1239,10 +1216,7 @@ async def cad_data_describe(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Session not found or expired. "
-                "Please re-upload the CAD file via POST /cad-columns."
-            ),
+            detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -1314,10 +1288,7 @@ async def cad_data_value_counts(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Session not found or expired. "
-                "Please re-upload the CAD file via POST /cad-columns."
-            ),
+            detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -1377,10 +1348,7 @@ async def cad_data_elements(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Session not found or expired. "
-                "Please re-upload the CAD file via POST /cad-columns."
-            ),
+            detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -1393,10 +1361,7 @@ async def cad_data_elements(
                 status_code=400,
                 detail=f"Unknown filter column: '{filter_column}'. Available: {sorted(all_columns)}",
             )
-        elements = [
-            el for el in elements
-            if str(el.get(filter_column, "")) == filter_value
-        ]
+        elements = [el for el in elements if str(el.get(filter_column, "")) == filter_value]
 
     # --- Sort ---
     if sort_by is not None:
@@ -1452,10 +1417,7 @@ async def cad_data_aggregate(
     if not cad_session:
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Session not found or expired. "
-                "Please re-upload the CAD file via POST /cad-columns."
-            ),
+            detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
     elements: list[dict] = cad_session["elements"]
@@ -1517,7 +1479,7 @@ async def cad_data_aggregate(
 
     result_groups: list[dict[str, Any]] = []
     for key_tuple, group_elements in groups_map.items():
-        key_dict = {c: v for c, v in zip(body.group_by, key_tuple)}
+        key_dict = {c: v for c, v in zip(body.group_by, key_tuple, strict=False)}
         results: dict[str, float] = {}
         for col, func in body.aggregations.items():
             results[col] = _aggregate(group_elements, col, func)
@@ -1543,6 +1505,7 @@ async def cad_data_aggregate(
 
 class CadDataSaveRequest(BaseModel):
     """Save a CAD session permanently to a project."""
+
     session_id: str
     project_id: str
     display_name: str
@@ -1565,6 +1528,7 @@ async def cad_data_save(
 
     # Update the database record
     from sqlalchemy import update as sa_update
+
     stmt = (
         sa_update(CadExtractionSession)
         .where(CadExtractionSession.session_id == body.session_id)
@@ -1572,7 +1536,7 @@ async def cad_data_save(
             project_id=body.project_id,
             display_name=body.display_name,
             is_permanent=True,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=365 * 10),
+            expires_at=datetime.now(UTC) + timedelta(days=365 * 10),
         )
     )
     await db_session.execute(stmt)
@@ -1598,15 +1562,15 @@ async def cad_data_list_sessions(
     """List CAD sessions. By default shows all non-expired. Use saved_only=true for permanent only."""
     from sqlalchemy import select
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = select(CadExtractionSession)
     if saved_only:
         stmt = stmt.where(CadExtractionSession.is_permanent == True)  # noqa: E712
     else:
         # Show permanent + non-expired temporary
         stmt = stmt.where(
-            (CadExtractionSession.is_permanent == True) |  # noqa: E712
-            (CadExtractionSession.expires_at > now)
+            (CadExtractionSession.is_permanent == True)  # noqa: E712
+            | (CadExtractionSession.expires_at > now)
         )
     if project_id:
         stmt = stmt.where(CadExtractionSession.project_id == project_id)
@@ -1643,9 +1607,7 @@ async def cad_data_delete_session(
     """Delete a saved CAD session."""
     from sqlalchemy import delete as sa_delete
 
-    stmt = sa_delete(CadExtractionSession).where(
-        CadExtractionSession.session_id == session_id
-    )
+    stmt = sa_delete(CadExtractionSession).where(CadExtractionSession.session_id == session_id)
     result = await db_session.execute(stmt)
     await db_session.commit()
 
@@ -2093,9 +2055,7 @@ async def bulk_create_measurements(
 ) -> list[TakeoffMeasurementResponse]:
     """Bulk create measurements (e.g. importing from localStorage)."""
     try:
-        items = await service.bulk_create_measurements(
-            data.measurements, created_by=user_id
-        )
+        items = await service.bulk_create_measurements(data.measurements, created_by=user_id)
         return [_measurement_to_response(i) for i in items]
     except HTTPException:
         raise
@@ -2236,7 +2196,5 @@ async def link_measurement_to_boq(
     service: TakeoffService = Depends(_get_service),
 ) -> TakeoffMeasurementResponse:
     """Link a measurement to a BOQ position."""
-    item = await service.link_measurement_to_boq(
-        measurement_id, data.boq_position_id
-    )
+    item = await service.link_measurement_to_boq(measurement_id, data.boq_position_id)
     return _measurement_to_response(item)

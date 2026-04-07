@@ -204,9 +204,7 @@ class RequirementsService:
                 unit=data.unit,
                 category=data.category,
                 priority=data.priority,
-                confidence=(
-                    str(data.confidence) if data.confidence is not None else None
-                ),
+                confidence=(str(data.confidence) if data.confidence is not None else None),
                 source_ref=data.source_ref,
                 notes=data.notes,
                 created_by=user_id,
@@ -285,13 +283,9 @@ class RequirementsService:
         elif gate_number == 2:
             gate_status, score, findings = self._run_gate_consistency(requirements)
         elif gate_number == 3:
-            gate_status, score, findings = await self._run_gate_coverage(
-                req_set, requirements
-            )
+            gate_status, score, findings = await self._run_gate_coverage(req_set, requirements)
         elif gate_number == 4:
-            gate_status, score, findings = self._run_gate_compliance(
-                req_set, requirements
-            )
+            gate_status, score, findings = self._run_gate_compliance(req_set, requirements)
         else:
             gate_status, score, findings = "skipped", 0.0, []
 
@@ -350,15 +344,16 @@ class RequirementsService:
 
             if issues:
                 incomplete_count += 1
-                findings.append({
-                    "type": "incomplete",
-                    "requirement_id": str(req.id),
-                    "entity": req.entity,
-                    "attribute": req.attribute,
-                    "issues": issues,
-                    "message": f"Requirement '{req.entity}.{req.attribute}' is incomplete: "
-                    + ", ".join(issues),
-                })
+                findings.append(
+                    {
+                        "type": "incomplete",
+                        "requirement_id": str(req.id),
+                        "entity": req.entity,
+                        "attribute": req.attribute,
+                        "issues": issues,
+                        "message": f"Requirement '{req.entity}.{req.attribute}' is incomplete: " + ", ".join(issues),
+                    }
+                )
 
         total = len(requirements)
         complete_count = total - incomplete_count
@@ -405,18 +400,17 @@ class RequirementsService:
                 values = {r.constraint_value for r in reqs}
                 if len(values) > 1:
                     conflict_count += 1
-                    findings.append({
-                        "type": "conflict",
-                        "entity": entity,
-                        "attribute": attribute,
-                        "constraint_type": ctype,
-                        "conflicting_values": list(values),
-                        "requirement_ids": [str(r.id) for r in reqs],
-                        "message": (
-                            f"Conflict on {entity}.{attribute} ({ctype}): "
-                            f"values {values}"
-                        ),
-                    })
+                    findings.append(
+                        {
+                            "type": "conflict",
+                            "entity": entity,
+                            "attribute": attribute,
+                            "constraint_type": ctype,
+                            "conflicting_values": list(values),
+                            "requirement_ids": [str(r.id) for r in reqs],
+                            "message": (f"Conflict on {entity}.{attribute} ({ctype}): values {values}"),
+                        }
+                    )
 
         total_groups = len(groups)
         consistent_groups = total_groups - conflict_count
@@ -440,9 +434,7 @@ class RequirementsService:
         findings: list[dict[str, Any]] = []
 
         if not requirements:
-            return "warning", 0.0, [
-                {"type": "empty", "message": "No requirements to check coverage"}
-            ]
+            return "warning", 0.0, [{"type": "empty", "message": "No requirements to check coverage"}]
 
         linked = [r for r in requirements if r.linked_position_id is not None]
         unlinked = [r for r in requirements if r.linked_position_id is None]
@@ -452,21 +444,19 @@ class RequirementsService:
         score = round((linked_count / total) * 100, 1) if total > 0 else 0.0
 
         if unlinked:
-            findings.append({
-                "type": "unlinked_requirements",
-                "count": len(unlinked),
-                "requirement_ids": [str(r.id) for r in unlinked],
-                "message": f"{len(unlinked)} of {total} requirements are not linked to BOQ positions",
-            })
+            findings.append(
+                {
+                    "type": "unlinked_requirements",
+                    "count": len(unlinked),
+                    "requirement_ids": [str(r.id) for r in unlinked],
+                    "message": f"{len(unlinked)} of {total} requirements are not linked to BOQ positions",
+                }
+            )
 
         # Check for BOQ positions without any requirements
         from app.modules.boq.models import BOQ, Position
 
-        boq_stmt = (
-            select(Position.id)
-            .join(BOQ)
-            .where(BOQ.project_id == req_set.project_id)
-        )
+        boq_stmt = select(Position.id).join(BOQ).where(BOQ.project_id == req_set.project_id)
         result = await self.session.execute(boq_stmt)
         all_position_ids = {row[0] for row in result.all()}
 
@@ -474,14 +464,14 @@ class RequirementsService:
         uncovered = all_position_ids - covered_position_ids
 
         if uncovered:
-            findings.append({
-                "type": "uncovered_positions",
-                "count": len(uncovered),
-                "position_ids": [str(pid) for pid in list(uncovered)[:50]],
-                "message": (
-                    f"{len(uncovered)} BOQ positions have no linked requirements"
-                ),
-            })
+            findings.append(
+                {
+                    "type": "uncovered_positions",
+                    "count": len(uncovered),
+                    "position_ids": [str(pid) for pid in list(uncovered)[:50]],
+                    "message": (f"{len(uncovered)} BOQ positions have no linked requirements"),
+                }
+            )
 
         if linked_count == 0:
             gate_status = "fail"
@@ -507,9 +497,7 @@ class RequirementsService:
         findings: list[dict[str, Any]] = []
 
         if not requirements:
-            return "warning", 0.0, [
-                {"type": "empty", "message": "No requirements to check compliance"}
-            ]
+            return "warning", 0.0, [{"type": "empty", "message": "No requirements to check compliance"}]
 
         issues_count = 0
         total = len(requirements)
@@ -518,32 +506,35 @@ class RequirementsService:
             # Check: must-priority requirements should have a unit
             if req.priority == "must" and not req.unit.strip():
                 issues_count += 1
-                findings.append({
-                    "type": "missing_unit",
-                    "requirement_id": str(req.id),
-                    "entity": req.entity,
-                    "attribute": req.attribute,
-                    "message": (
-                        f"Must-priority requirement '{req.entity}.{req.attribute}' "
-                        "lacks a unit of measurement"
-                    ),
-                })
+                findings.append(
+                    {
+                        "type": "missing_unit",
+                        "requirement_id": str(req.id),
+                        "entity": req.entity,
+                        "attribute": req.attribute,
+                        "message": (
+                            f"Must-priority requirement '{req.entity}.{req.attribute}' lacks a unit of measurement"
+                        ),
+                    }
+                )
 
             # Check: constraint_type 'range' should have a parseable range value
             if req.constraint_type == "range":
                 if not re.match(r"^[\d.]+\s*[-–]\s*[\d.]+$", req.constraint_value):
                     issues_count += 1
-                    findings.append({
-                        "type": "invalid_range",
-                        "requirement_id": str(req.id),
-                        "entity": req.entity,
-                        "attribute": req.attribute,
-                        "constraint_value": req.constraint_value,
-                        "message": (
-                            f"Range constraint '{req.constraint_value}' for "
-                            f"'{req.entity}.{req.attribute}' is not in 'min-max' format"
-                        ),
-                    })
+                    findings.append(
+                        {
+                            "type": "invalid_range",
+                            "requirement_id": str(req.id),
+                            "entity": req.entity,
+                            "attribute": req.attribute,
+                            "constraint_value": req.constraint_value,
+                            "message": (
+                                f"Range constraint '{req.constraint_value}' for "
+                                f"'{req.entity}.{req.attribute}' is not in 'min-max' format"
+                            ),
+                        }
+                    )
 
             # Check: numeric constraints (min/max) should have numeric values
             if req.constraint_type in ("min", "max"):
@@ -551,18 +542,20 @@ class RequirementsService:
                     float(req.constraint_value)
                 except ValueError:
                     issues_count += 1
-                    findings.append({
-                        "type": "non_numeric_constraint",
-                        "requirement_id": str(req.id),
-                        "entity": req.entity,
-                        "attribute": req.attribute,
-                        "constraint_value": req.constraint_value,
-                        "message": (
-                            f"Constraint type '{req.constraint_type}' for "
-                            f"'{req.entity}.{req.attribute}' has non-numeric "
-                            f"value '{req.constraint_value}'"
-                        ),
-                    })
+                    findings.append(
+                        {
+                            "type": "non_numeric_constraint",
+                            "requirement_id": str(req.id),
+                            "entity": req.entity,
+                            "attribute": req.attribute,
+                            "constraint_value": req.constraint_value,
+                            "message": (
+                                f"Constraint type '{req.constraint_type}' for "
+                                f"'{req.entity}.{req.attribute}' has non-numeric "
+                                f"value '{req.constraint_value}'"
+                            ),
+                        }
+                    )
 
         compliant_count = total - issues_count
         score = round((compliant_count / total) * 100, 1) if total > 0 else 0.0

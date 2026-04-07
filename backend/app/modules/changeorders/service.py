@@ -9,7 +9,7 @@ Stateless service layer. Handles:
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -145,7 +145,7 @@ class ChangeOrderService:
         order = await self.get_order(order_id)
         self._validate_transition(order.status, "submitted")
 
-        now = datetime.now(timezone.utc).isoformat()[:19]
+        now = datetime.now(UTC).isoformat()[:19]
         await self.repo.update_fields(
             order_id,
             status="submitted",
@@ -162,7 +162,7 @@ class ChangeOrderService:
         order = await self.get_order(order_id)
         self._validate_transition(order.status, "approved")
 
-        now = datetime.now(timezone.utc).isoformat()[:19]
+        now = datetime.now(UTC).isoformat()[:19]
         await self.repo.update_fields(
             order_id,
             status="approved",
@@ -179,7 +179,7 @@ class ChangeOrderService:
         order = await self.get_order(order_id)
         self._validate_transition(order.status, "rejected")
 
-        now = datetime.now(timezone.utc).isoformat()[:19]
+        now = datetime.now(UTC).isoformat()[:19]
         await self.repo.update_fields(
             order_id,
             status="rejected",
@@ -221,9 +221,7 @@ class ChangeOrderService:
         # trigger a lazy load and crash with MissingGreenlet in async context.
         order_code = order.code
 
-        cost_delta = (data.new_quantity * data.new_rate) - (
-            data.original_quantity * data.original_rate
-        )
+        cost_delta = (data.new_quantity * data.new_rate) - (data.original_quantity * data.original_rate)
 
         item = ChangeOrderItem(
             change_order_id=order_id,

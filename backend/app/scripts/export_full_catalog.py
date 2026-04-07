@@ -101,7 +101,13 @@ def _real_type(row) -> str:
 
 def main() -> None:
     parquet_path = os.path.join(
-        os.getcwd(), "..", "..", "DDC_Toolkit", "pricing", "data", "parquet",
+        os.getcwd(),
+        "..",
+        "..",
+        "DDC_Toolkit",
+        "pricing",
+        "data",
+        "parquet",
         "ENG_TORONTO_workitems_costs_resources_DDC_CWICR.parquet",
     )
     print(f"Reading: {os.path.basename(parquet_path)}")
@@ -110,9 +116,7 @@ def main() -> None:
 
     # Filter to real resources
     res = df[
-        (df["row_type"] != "Scope of work")
-        & (df["resource_name"].notna())
-        & (df["resource_name"].str.strip() != "")
+        (df["row_type"] != "Scope of work") & (df["resource_name"].notna()) & (df["resource_name"].str.strip() != "")
     ].copy()
     res["real_type"] = res.apply(_real_type, axis=1)
 
@@ -201,23 +205,25 @@ def main() -> None:
             specs["mass_unit"] = _s(first.get("mass_unit", ""))
 
         # ── Row matching DB schema exactly ──
-        rows.append({
-            # DB columns
-            "resource_code": code,
-            "name": name,
-            "resource_type": rtype,
-            "category": category,
-            "unit": unit,
-            "base_price": str(avg_rate),
-            "min_price": str(min_rate),
-            "max_price": str(max_rate),
-            "currency": "EUR",
-            "usage_count": len(group),
-            "source": "cwicr_extraction",
-            "region": "ENG_TORONTO",
-            "specifications": json.dumps(specs, ensure_ascii=False),
-            "is_active": True,
-        })
+        rows.append(
+            {
+                # DB columns
+                "resource_code": code,
+                "name": name,
+                "resource_type": rtype,
+                "category": category,
+                "unit": unit,
+                "base_price": str(avg_rate),
+                "min_price": str(min_rate),
+                "max_price": str(max_rate),
+                "currency": "EUR",
+                "usage_count": len(group),
+                "source": "cwicr_extraction",
+                "region": "ENG_TORONTO",
+                "specifications": json.dumps(specs, ensure_ascii=False),
+                "is_active": True,
+            }
+        )
 
     out_df = pd.DataFrame(rows)
     out_df = out_df.sort_values("usage_count", ascending=False)
@@ -268,18 +274,18 @@ def main() -> None:
     xlsx_mb = os.path.getsize(xlsx_path) / (1024 * 1024)
 
     print(f"\n{'=' * 60}")
-    print(f"  EXPORTED (DB-compatible format)")
+    print("  EXPORTED (DB-compatible format)")
     print(f"{'=' * 60}")
     print(f"  CSV:   {os.path.basename(csv_path)} ({csv_kb} KB) — for import")
     print(f"  Excel: {os.path.basename(xlsx_path)} ({xlsx_mb:.1f} MB) — for review")
     print(f"  Total: {len(out_df):,} resources")
     print()
-    print(f"  DB columns (14): resource_code, name, resource_type, category,")
-    print(f"    unit, base_price, min_price, max_price, currency,")
-    print(f"    usage_count, source, region, specifications, is_active")
+    print("  DB columns (14): resource_code, name, resource_type, category,")
+    print("    unit, base_price, min_price, max_price, currency,")
+    print("    usage_count, source, region, specifications, is_active")
     print()
     print(f"  Extra specs in JSON: {len(spec_cols)} fields")
-    print(f"  By type:")
+    print("  By type:")
     for t, cnt in out_df["resource_type"].value_counts().items():
         print(f"    {t}: {cnt}")
 

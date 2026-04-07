@@ -6,21 +6,34 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-
 # A small set of common/leaked passwords to reject outright. Cheap defence
 # against the most embarrassing weak passwords without bringing in a 100k+
 # entry breach corpus. Stored lowercase for case-insensitive matching.
 _COMMON_PASSWORDS: frozenset[str] = frozenset(
     {
-        "password", "password1", "password123",
-        "12345678", "123456789", "1234567890", "1234567",
-        "qwerty123", "qwertyuiop", "qwerty12",
-        "letmein", "letmein123",
-        "admin123", "admin1234",
-        "welcome1", "welcome123",
-        "iloveyou", "monkey123",
-        "abc12345", "abcd1234",
-        "p@ssw0rd", "p@ssword", "passw0rd",
+        "password",
+        "password1",
+        "password123",
+        "12345678",
+        "123456789",
+        "1234567890",
+        "1234567",
+        "qwerty123",
+        "qwertyuiop",
+        "qwerty12",
+        "letmein",
+        "letmein123",
+        "admin123",
+        "admin1234",
+        "welcome1",
+        "welcome123",
+        "iloveyou",
+        "monkey123",
+        "abc12345",
+        "abcd1234",
+        "p@ssw0rd",
+        "p@ssword",
+        "passw0rd",
     }
 )
 
@@ -44,6 +57,7 @@ def _validate_strong_password(value: str) -> str:
     if value.lower() in _COMMON_PASSWORDS:
         raise ValueError("Password is too common — please choose a stronger one")
     return value
+
 
 # ── Auth ───────────────────────────────────────────────────────────────────
 

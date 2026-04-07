@@ -715,8 +715,7 @@ def test_16_requirements(api: API, s: TestSuite, project_id: str, boq_id: str = 
             r = api.post(f"/api/v1/requirements/{set_id}/requirements/{req_id}/link/{real_pos_id}")
             check(s, "POST /requirements link to BOQ position", r, 200)
         else:
-            s.add("POST /requirements link to BOQ position", True,
-                  detail="skipped - no positions found in BOQ")
+            s.add("POST /requirements link to BOQ position", True, detail="skipped - no positions found in BOQ")
 
     # Get set detail
     r = api.get(f"/api/v1/requirements/{set_id}")
@@ -763,8 +762,7 @@ def test_17_markups(api: API, s: TestSuite, project_id: str) -> None:
     r = api.get("/api/v1/markups/", params={"project_id": project_id})
     d = check(s, "GET /markups/ (list all)", r, 200)
     if isinstance(d, list):
-        s.add(f"Markups count >= {len(markup_types)}", len(d) >= len(markup_types),
-              detail=f"got {len(d)}")
+        s.add(f"Markups count >= {len(markup_types)}", len(d) >= len(markup_types), detail=f"got {len(d)}")
 
     # Filter by document_id
     r = api.get("/api/v1/markups/", params={"project_id": project_id, "document_id": doc_id})
@@ -935,7 +933,7 @@ def test_18_punchlist(api: API, s: TestSuite, project_id: str) -> None:
     r = api.get("/api/v1/punchlist/items", params={"project_id": project_id})
     d = check(s, "GET /punchlist/items (list all)", r, 200)
     if isinstance(d, list):
-        s.add(f"Punch items count >= 4", len(d) >= 4, detail=f"got {len(d)}")
+        s.add("Punch items count >= 4", len(d) >= 4, detail=f"got {len(d)}")
 
     # Filter by priority
     r = api.get("/api/v1/punchlist/items", params={"project_id": project_id, "priority": "critical"})
@@ -1025,7 +1023,7 @@ def main() -> int:
         print(f"\nERROR: Cannot connect to {BASE_URL}: {exc}")
         return 1
 
-    print(f"\nServer is healthy. Starting tests...\n")
+    print("\nServer is healthy. Starting tests...\n")
 
     try:
         # 1. System
@@ -1096,6 +1094,7 @@ def main() -> int:
     except Exception as exc:
         suite.add(f"UNEXPECTED ERROR: {exc}", False, detail=str(exc))
         import traceback
+
         traceback.print_exc()
 
     finally:

@@ -19,7 +19,6 @@ from app.core.i18n import (
     t,
 )
 
-
 # ── Supported locales ────────────────────────────────────────────────────────
 
 
@@ -82,10 +81,12 @@ class TestFlattenDict:
         assert result == {"a.b.c": "deep"}
 
     def test_mixed_nesting(self):
-        result = _flatten_dict({
-            "flat": "value",
-            "nested": {"inner": "data"},
-        })
+        result = _flatten_dict(
+            {
+                "flat": "value",
+                "nested": {"inner": "data"},
+            }
+        )
         assert result == {"flat": "value", "nested.inner": "data"}
 
     def test_empty_dict(self):
@@ -97,12 +98,14 @@ class TestFlattenDict:
         assert result == {"count": "42"}
 
     def test_multiple_siblings(self):
-        result = _flatten_dict({
-            "validation": {
-                "error": "Error occurred",
-                "warning": "Warning issued",
+        result = _flatten_dict(
+            {
+                "validation": {
+                    "error": "Error occurred",
+                    "warning": "Warning issued",
+                }
             }
-        })
+        )
         assert result == {
             "validation.error": "Error occurred",
             "validation.warning": "Warning issued",

@@ -29,9 +29,7 @@ async def sqlite_auto_migrate(engine: AsyncEngine, base) -> int:
 
     async with engine.begin() as conn:
         # Get existing table names
-        existing_tables = await conn.run_sync(
-            lambda sync_conn: inspect(sync_conn).get_table_names()
-        )
+        existing_tables = await conn.run_sync(lambda sync_conn: inspect(sync_conn).get_table_names())
 
         for table in base.metadata.sorted_tables:
             if table.name not in existing_tables:
@@ -39,9 +37,7 @@ async def sqlite_auto_migrate(engine: AsyncEngine, base) -> int:
 
             # Get existing columns for this table
             existing_cols = await conn.run_sync(
-                lambda sync_conn, tn=table.name: {
-                    col["name"] for col in inspect(sync_conn).get_columns(tn)
-                }
+                lambda sync_conn, tn=table.name: {col["name"] for col in inspect(sync_conn).get_columns(tn)}
             )
 
             # Check each model column
@@ -58,10 +54,7 @@ async def sqlite_auto_migrate(engine: AsyncEngine, base) -> int:
                 elif col.nullable:
                     default = " DEFAULT NULL"
 
-                sql = (
-                    f'ALTER TABLE "{table.name}" ADD COLUMN '
-                    f'"{col.name}" {col_type} {nullable}{default}'
-                )
+                sql = f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {col_type} {nullable}{default}'
 
                 try:
                     await conn.execute(text(sql))

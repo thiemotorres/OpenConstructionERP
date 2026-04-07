@@ -1,7 +1,9 @@
 """Build resource catalogs for ALL 11 CWICR regions."""
+
 import glob
 import math
 import os
+
 import pandas as pd
 
 GITHUB_DIR = os.path.expanduser("~/Documents/GitHub/OpenConstructionEstimate-DDC-CWICR")
@@ -91,14 +93,24 @@ def real_type(row):
         u = ss(row.get("resource_unit", "")).lower()
         # Labor unit detection (all languages)
         LABOR_UNITS = [
-            "hrs", "h", "person-hour", "person-hours",
-            "std.", "stunden",  # German
-            "heures", "heure",  # French
+            "hrs",
+            "h",
+            "person-hour",
+            "person-hours",
+            "std.",
+            "stunden",  # German
+            "heures",
+            "heure",  # French
             "ساعات",  # Arabic
-            "手表", "小时",  # Chinese
-            "horas", "hora",  # Spanish/Portuguese
-            "часы", "ч", "чел.-ч",  # Russian
-            "घंटे", "च",  # Hindi
+            "手表",
+            "小时",  # Chinese
+            "horas",
+            "hora",  # Spanish/Portuguese
+            "часы",
+            "ч",
+            "чел.-ч",  # Russian
+            "घंटे",
+            "च",  # Hindi
         ]
         if any(u == lu or u.startswith(lu) for lu in LABOR_UNITS):
             return "Labor"
@@ -121,9 +133,7 @@ def process_region(region_code, parquet_path, region_info):
     df.columns = [str(c).strip().lower() for c in df.columns]
 
     res = df[
-        (df["row_type"] != "Scope of work")
-        & (df["resource_name"].notna())
-        & (df["resource_name"].str.strip() != "")
+        (df["row_type"] != "Scope of work") & (df["resource_name"].notna()) & (df["resource_name"].str.strip() != "")
     ].copy()
     res["_t"] = res.apply(real_type, axis=1)
 
@@ -133,7 +143,11 @@ def process_region(region_code, parquet_path, region_info):
     for (code, tp), gr in grouped:
         f = gr.iloc[0]
         # Column names differ: EN has _eur suffix, others don't
-        price_col = "resource_price_per_unit_eur_current" if "resource_price_per_unit_eur_current" in gr.columns else "resource_price_per_unit_current"
+        price_col = (
+            "resource_price_per_unit_eur_current"
+            if "resource_price_per_unit_eur_current" in gr.columns
+            else "resource_price_per_unit_current"
+        )
         cost_col = "resource_cost_eur" if "resource_cost_eur" in gr.columns else "resource_cost"
         ra = gr[price_col].dropna()
         ra = ra[ra > 0]
@@ -225,7 +239,9 @@ def main():
         try:
             result = process_region(region_code, parquet_path, info)
             results.append(result)
-            print(f"    {result['total']:,} resources | Mat:{result['materials']} Equ:{result['equipment']} Abs:{result['abstract']} Lab:{result['labor']}")
+            print(
+                f"    {result['total']:,} resources | Mat:{result['materials']} Equ:{result['equipment']} Abs:{result['abstract']} Lab:{result['labor']}"
+            )
             print(f"    CSV: {result['csv_kb']} KB | Excel: {result['xlsx_kb']} KB")
         except Exception as e:
             print(f"    ERROR: {e}")
@@ -233,10 +249,14 @@ def main():
     print(f"\n{'=' * 70}")
     print(f"  COMPLETE — {len(results)} regions processed")
     print(f"{'=' * 70}")
-    print(f"\n  {'Region':<6s} {'Name':<30s} {'Curr':<5s} {'Total':>6s} {'Mat':>5s} {'Equ':>5s} {'Abs':>5s} {'Lab':>4s}")
-    print(f"  {'-'*6} {'-'*30} {'-'*5} {'-'*6} {'-'*5} {'-'*5} {'-'*5} {'-'*4}")
+    print(
+        f"\n  {'Region':<6s} {'Name':<30s} {'Curr':<5s} {'Total':>6s} {'Mat':>5s} {'Equ':>5s} {'Abs':>5s} {'Lab':>4s}"
+    )
+    print(f"  {'-' * 6} {'-' * 30} {'-' * 5} {'-' * 6} {'-' * 5} {'-' * 5} {'-' * 5} {'-' * 4}")
     for r in results:
-        print(f"  {r['region']:<6s} {r['name']:<30s} {r['currency']:<5s} {r['total']:>6,} {r['materials']:>5,} {r['equipment']:>5,} {r['abstract']:>5,} {r['labor']:>4}")
+        print(
+            f"  {r['region']:<6s} {r['name']:<30s} {r['currency']:<5s} {r['total']:>6,} {r['materials']:>5,} {r['equipment']:>5,} {r['abstract']:>5,} {r['labor']:>4}"
+        )
 
     total_all = sum(r["total"] for r in results)
     print(f"\n  Total across all regions: {total_all:,} resources")

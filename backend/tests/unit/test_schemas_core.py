@@ -4,10 +4,6 @@ Validates enums, Classification model, PaginatedResponse, and
 the canonical data structures. No database required.
 """
 
-import uuid
-from datetime import datetime, timezone
-from decimal import Decimal
-
 import pytest
 from pydantic import ValidationError
 
@@ -17,16 +13,12 @@ from app.schemas import (
     CostSearchQuery,
     MeasurementUnit,
     ModuleInfoSchema,
-    OEBase,
-    OEResponse,
     PaginatedResponse,
-    PositionCreate,
     ProjectCreate,
     SourceType,
     ValidationResultSchema,
     ValidationStatusEnum,
 )
-
 
 # ── MeasurementUnit enum ────────────────────────────────────────────────────
 

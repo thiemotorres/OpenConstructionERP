@@ -37,7 +37,8 @@ async def _safe_publish(name: str, data: dict[str, Any], source_module: str = "o
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
         logger_events.debug("Event publish skipped (SQLite async): %s", name)
-from app.modules.costs.repository import CostItemRepository
+
+
 from app.modules.boq.models import BOQ, BOQActivityLog, BOQMarkup, BOQSnapshot, Position
 from app.modules.boq.repository import (
     ActivityLogRepository,
@@ -71,6 +72,7 @@ from app.modules.boq.schemas import (
     TemplateInfo,
 )
 from app.modules.boq.templates import TEMPLATES
+from app.modules.costs.repository import CostItemRepository
 
 logger = logging.getLogger(__name__)
 
@@ -725,9 +727,7 @@ def _build_position_response(pos: Position) -> PositionResponse:
         total=_str_to_float(pos.total),
         classification=pos.classification,
         source=pos.source,
-        confidence=(
-            _str_to_float(pos.confidence) if pos.confidence is not None else None
-        ),
+        confidence=(_str_to_float(pos.confidence) if pos.confidence is not None else None),
         cad_element_ids=pos.cad_element_ids,
         validation_status=pos.validation_status,
         metadata_=pos.metadata_,
@@ -766,8 +766,7 @@ _AACE_CLASSES: dict[int, dict[str, str | int]] = {
         "definition_low": 0,
         "definition_high": 2,
         "methodology": (
-            "Capacity-factored, parametric models, judgment, or analogy. "
-            "Based on very limited project information."
+            "Capacity-factored, parametric models, judgment, or analogy. Based on very limited project information."
         ),
     },
     4: {
@@ -777,8 +776,7 @@ _AACE_CLASSES: dict[int, dict[str, str | int]] = {
         "definition_low": 1,
         "definition_high": 15,
         "methodology": (
-            "Equipment-factored or parametric models. "
-            "Based on schematic or conceptual design information."
+            "Equipment-factored or parametric models. Based on schematic or conceptual design information."
         ),
     },
     3: {
@@ -788,8 +786,7 @@ _AACE_CLASSES: dict[int, dict[str, str | int]] = {
         "definition_low": 10,
         "definition_high": 40,
         "methodology": (
-            "Semi-detailed unit costs with assembly-level line items. "
-            "Based on preliminary design or developed design."
+            "Semi-detailed unit costs with assembly-level line items. Based on preliminary design or developed design."
         ),
     },
     2: {
@@ -799,8 +796,7 @@ _AACE_CLASSES: dict[int, dict[str, str | int]] = {
         "definition_low": 30,
         "definition_high": 75,
         "methodology": (
-            "Detailed unit costs with forced detailed takeoff. "
-            "Based on detailed design or tender documentation."
+            "Detailed unit costs with forced detailed takeoff. Based on detailed design or tender documentation."
         ),
     },
     1: {
@@ -850,12 +846,8 @@ def _build_classification(
 ) -> EstimateClassificationResponse:
     """Build an EstimateClassificationResponse from raw metric counts."""
     rate_pct = (positions_with_rates / total_positions * 100) if total_positions > 0 else 0.0
-    resource_pct = (
-        (positions_with_resources / total_positions * 100) if total_positions > 0 else 0.0
-    )
-    classification_pct = (
-        (positions_with_classification / total_positions * 100) if total_positions > 0 else 0.0
-    )
+    resource_pct = (positions_with_resources / total_positions * 100) if total_positions > 0 else 0.0
+    classification_pct = (positions_with_classification / total_positions * 100) if total_positions > 0 else 0.0
 
     est_class = _determine_aace_class(total_positions, rate_pct, resource_pct)
     class_info = _AACE_CLASSES[est_class]
@@ -953,9 +945,7 @@ class BOQService:
         # Validate project exists
         from app.modules.projects.models import Project
 
-        result = await self.session.execute(
-            select(Project.id).where(Project.id == data.project_id)
-        )
+        result = await self.session.execute(select(Project.id).where(Project.id == data.project_id))
         if result.scalar_one_or_none() is None:
             raise HTTPException(status_code=404, detail="Project not found")
 
@@ -973,9 +963,7 @@ class BOQService:
         try:
             from app.modules.projects.models import Project
 
-            result = await self.session.execute(
-                select(Project.region).where(Project.id == data.project_id)
-            )
+            result = await self.session.execute(select(Project.region).where(Project.id == data.project_id))
             region = result.scalar_one_or_none() or "DEFAULT"
             await self.apply_default_markups(boq.id, region)
             logger.info("Auto-applied %s markups to new BOQ %s", region, boq.id)
@@ -1009,9 +997,7 @@ class BOQService:
         limit: int = 50,
     ) -> tuple[list[BOQ], int]:
         """List BOQs for a given project with pagination."""
-        return await self.boq_repo.list_for_project(
-            project_id, offset=offset, limit=limit
-        )
+        return await self.boq_repo.list_for_project(project_id, offset=offset, limit=limit)
 
     async def update_boq(self, boq_id: uuid.UUID, data: BOQUpdate) -> BOQ:
         """Update BOQ metadata fields.
@@ -1116,9 +1102,7 @@ class BOQService:
         logger.info("Position added: %s to BOQ %s", data.ordinal, data.boq_id)
         return position
 
-    async def create_section(
-        self, boq_id: uuid.UUID, data: SectionCreate
-    ) -> Position:
+    async def create_section(self, boq_id: uuid.UUID, data: SectionCreate) -> Position:
         """Create a section header row in a BOQ.
 
         A section is stored as a Position with unit="section", quantity=0,
@@ -1170,9 +1154,7 @@ class BOQService:
         logger.info("Section created: %s in BOQ %s", data.ordinal, boq_id)
         return section
 
-    async def update_position(
-        self, position_id: uuid.UUID, data: PositionUpdate
-    ) -> Position:
+    async def update_position(self, position_id: uuid.UUID, data: PositionUpdate) -> Position:
         """Update a position and recalculate total if quantity or unit_rate changed.
 
         Args:
@@ -1235,15 +1217,14 @@ class BOQService:
 
         if (
             (triggered_by_qty or triggered_by_resources)
-            and meta and isinstance(meta, dict)
+            and meta
+            and isinstance(meta, dict)
             and isinstance(meta.get("resources"), list)
             and meta["resources"]
         ):
             resources = meta["resources"]
             resource_total = sum(
-                float(r.get("quantity", 0)) * float(r.get("unit_rate", 0))
-                for r in resources
-                if isinstance(r, dict)
+                float(r.get("quantity", 0)) * float(r.get("unit_rate", 0)) for r in resources if isinstance(r, dict)
             )
             qty_float = _str_to_float(new_quantity)
             if qty_float > 0:
@@ -1254,9 +1235,7 @@ class BOQService:
         # A pure metadata patch (e.g. setting a custom column value) leaves the
         # existing total intact.
         if "quantity" in fields or "unit_rate" in fields or triggered_by_resources:
-            fields["total"] = _compute_total(
-                _str_to_float(new_quantity), _str_to_float(new_unit_rate)
-            )
+            fields["total"] = _compute_total(_str_to_float(new_quantity), _str_to_float(new_unit_rate))
 
         if fields:
             await self.position_repo.update_fields(position_id, **fields)
@@ -1289,9 +1268,7 @@ class BOQService:
 
         logger.info("Position deleted: %s from BOQ %s", position_id, boq_id)
 
-    async def reorder_positions(
-        self, boq_id: uuid.UUID, position_ids: list[uuid.UUID]
-    ) -> None:
+    async def reorder_positions(self, boq_id: uuid.UUID, position_ids: list[uuid.UUID]) -> None:
         """Reorder positions within a BOQ.
 
         Assigns sequential sort_order values based on the order of
@@ -1311,9 +1288,7 @@ class BOQService:
                 detail="BOQ not found",
             )
         await self.position_repo.reorder(position_ids)
-        logger.info(
-            "Reordered %d positions in BOQ %s", len(position_ids), boq_id
-        )
+        logger.info("Reordered %d positions in BOQ %s", len(position_ids), boq_id)
 
     # ── Markup operations ─────────────────────────────────────────────────
 
@@ -1365,9 +1340,7 @@ class BOQService:
         logger.info("Markup added: %s to BOQ %s", data.name, boq_id)
         return markup
 
-    async def update_markup(
-        self, markup_id: uuid.UUID, data: MarkupUpdate
-    ) -> BOQMarkup:
+    async def update_markup(self, markup_id: uuid.UUID, data: MarkupUpdate) -> BOQMarkup:
         """Update a markup line.
 
         Args:
@@ -1447,9 +1420,7 @@ class BOQService:
 
         logger.info("Markup deleted: %s from BOQ %s", markup_id, boq_id)
 
-    async def calculate_markups(
-        self, boq_id: uuid.UUID
-    ) -> tuple[Decimal, list[tuple[BOQMarkup, Decimal]]]:
+    async def calculate_markups(self, boq_id: uuid.UUID) -> tuple[Decimal, list[tuple[BOQMarkup, Decimal]]]:
         """Compute markup amounts for a BOQ based on its direct cost.
 
         Args:
@@ -1470,9 +1441,7 @@ class BOQService:
         calculated = _calculate_markup_amounts(direct_cost, markups)
         return direct_cost, calculated
 
-    async def apply_default_markups(
-        self, boq_id: uuid.UUID, region: str
-    ) -> list[BOQMarkup]:
+    async def apply_default_markups(self, boq_id: uuid.UUID, region: str) -> list[BOQMarkup]:
         """Replace all markups on a BOQ with the default template for a region.
 
         Deletes existing markups and creates the standard set.
@@ -1491,9 +1460,7 @@ class BOQService:
 
         # Look up template; fall back to DEFAULT
         region_key = region.upper()
-        template = DEFAULT_MARKUP_TEMPLATES.get(
-            region_key, DEFAULT_MARKUP_TEMPLATES["DEFAULT"]
-        )
+        template = DEFAULT_MARKUP_TEMPLATES.get(region_key, DEFAULT_MARKUP_TEMPLATES["DEFAULT"])
 
         # Remove existing markups
         await self.markup_repo.delete_all_for_boq(boq_id)
@@ -1557,10 +1524,7 @@ class BOQService:
             meta = pos.metadata_ or {}
             resources = meta.get("resources", [])
             if resources:
-                total_resource_cost = sum(
-                    float(r.get("quantity", 0)) * float(r.get("unit_rate", 0))
-                    for r in resources
-                )
+                total_resource_cost = sum(float(r.get("quantity", 0)) * float(r.get("unit_rate", 0)) for r in resources)
                 if total_resource_cost > 0:
                     pos_qty = max(float(pos.quantity or 0), 1.0)
                     new_total = str(total_resource_cost * pos_qty)
@@ -1641,15 +1605,13 @@ class BOQService:
         created_positions = await self.position_repo.bulk_create(new_positions)
 
         # Build old→new ID mapping
-        for old_pos, new_pos in zip(positions, created_positions):
+        for old_pos, new_pos in zip(positions, created_positions, strict=False):
             old_to_new[old_pos.id] = new_pos.id
 
         # Second pass: remap parent_id references
-        for old_pos, new_pos in zip(positions, created_positions):
+        for old_pos, new_pos in zip(positions, created_positions, strict=False):
             if old_pos.parent_id is not None and old_pos.parent_id in old_to_new:
-                await self.position_repo.update_fields(
-                    new_pos.id, parent_id=old_to_new[old_pos.parent_id]
-                )
+                await self.position_repo.update_fields(new_pos.id, parent_id=old_to_new[old_pos.parent_id])
 
         # Copy markups
         markups = await self.markup_repo.list_for_boq(boq_id)
@@ -1968,9 +1930,7 @@ class BOQService:
                     category_amounts[cat] = category_amounts.get(cat, 0.0) + scaled_cost
                     category_counts[cat] = category_counts.get(cat, 0) + 1
 
-                    resource_totals[res_name] = (
-                        resource_totals.get(res_name, 0.0) + scaled_cost
-                    )
+                    resource_totals[res_name] = resource_totals.get(res_name, 0.0) + scaled_cost
                     resource_types[res_name] = cat
                     resource_positions.setdefault(res_name, set()).add(pos.id)
             else:
@@ -1979,12 +1939,8 @@ class BOQService:
                 category_amounts[cat] = category_amounts.get(cat, 0.0) + pos_total
                 category_counts[cat] = category_counts.get(cat, 0) + 1
 
-                short_name = (
-                    pos.description[:60] if pos.description else "Position"
-                )
-                resource_totals[short_name] = (
-                    resource_totals.get(short_name, 0.0) + pos_total
-                )
+                short_name = pos.description[:60] if pos.description else "Position"
+                resource_totals[short_name] = resource_totals.get(short_name, 0.0) + pos_total
                 resource_types[short_name] = cat
                 resource_positions.setdefault(short_name, set()).add(pos.id)
 
@@ -1992,9 +1948,7 @@ class BOQService:
 
         # Build categories sorted by amount descending
         categories: list[CostBreakdownCategory] = []
-        for cat, amount in sorted(
-            category_amounts.items(), key=lambda x: x[1], reverse=True
-        ):
+        for cat, amount in sorted(category_amounts.items(), key=lambda x: x[1], reverse=True):
             pct = (amount / direct_cost_val * 100.0) if direct_cost_val > 0 else 0.0
             categories.append(
                 CostBreakdownCategory(
@@ -2011,9 +1965,7 @@ class BOQService:
         markup_total = Decimal("0")
 
         if markups_orm:
-            markup_results = _calculate_markup_amounts(
-                Decimal(str(direct_cost_val)), markups_orm
-            )
+            markup_results = _calculate_markup_amounts(Decimal(str(direct_cost_val)), markups_orm)
             for markup_obj, amount in markup_results:
                 if markup_obj.is_active:
                     markup_lines.append(
@@ -2045,9 +1997,7 @@ class BOQService:
 
         # Top 10 resources by cost
         top_resources: list[CostBreakdownResource] = []
-        for name, total_cost in sorted(
-            resource_totals.items(), key=lambda x: x[1], reverse=True
-        )[:10]:
+        for name, total_cost in sorted(resource_totals.items(), key=lambda x: x[1], reverse=True)[:10]:
             top_resources.append(
                 CostBreakdownResource(
                     name=name,
@@ -2085,15 +2035,26 @@ class BOQService:
         if res_type in ("labor", "labour", "work", "lohn", "arbeit"):
             return "labor"
         if res_type in (
-            "material", "materials", "mat", "baustoff", "baustoffe",
+            "material",
+            "materials",
+            "mat",
+            "baustoff",
+            "baustoffe",
         ):
             return "material"
         if res_type in (
-            "equipment", "plant", "machinery", "geraet", "maschine",
+            "equipment",
+            "plant",
+            "machinery",
+            "geraet",
+            "maschine",
         ):
             return "equipment"
         if res_type in (
-            "subcontractor", "sub", "nachunternehmer", "fremdleistung",
+            "subcontractor",
+            "sub",
+            "nachunternehmer",
+            "fremdleistung",
         ):
             return "subcontractor"
         return "other"
@@ -2113,25 +2074,88 @@ class BOQService:
         desc_lower = (description or "").lower()
 
         material_keywords = (
-            "beton", "concrete", "stahl", "steel", "holz", "timber", "wood",
-            "ziegel", "brick", "glas", "glass", "daemmung", "insulation",
-            "fliesen", "tile", "putz", "plaster", "farbe", "paint",
-            "rohr", "pipe", "kabel", "cable", "mortar",
-            "kies", "gravel", "sand", "zement", "cement", "bitumen",
-            "asphalt", "kupfer", "copper", "aluminium", "aluminum",
-            "lieferung", "delivery", "material",
+            "beton",
+            "concrete",
+            "stahl",
+            "steel",
+            "holz",
+            "timber",
+            "wood",
+            "ziegel",
+            "brick",
+            "glas",
+            "glass",
+            "daemmung",
+            "insulation",
+            "fliesen",
+            "tile",
+            "putz",
+            "plaster",
+            "farbe",
+            "paint",
+            "rohr",
+            "pipe",
+            "kabel",
+            "cable",
+            "mortar",
+            "kies",
+            "gravel",
+            "sand",
+            "zement",
+            "cement",
+            "bitumen",
+            "asphalt",
+            "kupfer",
+            "copper",
+            "aluminium",
+            "aluminum",
+            "lieferung",
+            "delivery",
+            "material",
         )
         labor_keywords = (
-            "montage", "installation", "verlegung", "laying", "einbau",
-            "abbruch", "demolition", "aushub", "excavation", "erdarbeit",
-            "earthwork", "schalung", "formwork", "bewehrung", "reinforcement",
-            "anstrich", "painting", "labor", "labour", "arbeit", "work",
-            "verlegen", "install", "mauern", "betonieren",
+            "montage",
+            "installation",
+            "verlegung",
+            "laying",
+            "einbau",
+            "abbruch",
+            "demolition",
+            "aushub",
+            "excavation",
+            "erdarbeit",
+            "earthwork",
+            "schalung",
+            "formwork",
+            "bewehrung",
+            "reinforcement",
+            "anstrich",
+            "painting",
+            "labor",
+            "labour",
+            "arbeit",
+            "work",
+            "verlegen",
+            "install",
+            "mauern",
+            "betonieren",
         )
         equipment_keywords = (
-            "kran", "crane", "bagger", "excavator", "geruest", "scaffold",
-            "equipment", "machine", "pump", "pumpe", "container",
-            "transport", "miete", "rental", "hire",
+            "kran",
+            "crane",
+            "bagger",
+            "excavator",
+            "geruest",
+            "scaffold",
+            "equipment",
+            "machine",
+            "pump",
+            "pumpe",
+            "container",
+            "transport",
+            "miete",
+            "rental",
+            "hire",
         )
 
         for kw in material_keywords:
@@ -2146,9 +2170,7 @@ class BOQService:
         return "other"
 
     @staticmethod
-    async def _lookup_cost_item_components(
-        cost_repo: CostItemRepository, description: str
-    ) -> list[dict[str, Any]]:
+    async def _lookup_cost_item_components(cost_repo: CostItemRepository, description: str) -> list[dict[str, Any]]:
         """Look up cost item components matching a position description.
 
         Searches the cost database for an item whose description matches the
@@ -2174,6 +2196,7 @@ class BOQService:
             components = item.components or []
             if isinstance(components, str):
                 import json as _json
+
                 components = _json.loads(components)
             if isinstance(components, list) and len(components) > 0:
                 return components
@@ -2188,9 +2211,7 @@ class BOQService:
         result: list[TemplateInfo] = []
         for template_id, tpl in TEMPLATES.items():
             section_count = len(tpl["sections"])
-            position_count = sum(
-                len(sec["positions"]) for sec in tpl["sections"]
-            )
+            position_count = sum(len(sec["positions"]) for sec in tpl["sections"])
             result.append(
                 TemplateInfo(
                     id=template_id,
@@ -2223,8 +2244,7 @@ class BOQService:
         if template is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unknown template: {data.template_id}. "
-                f"Available: {', '.join(TEMPLATES.keys())}",
+                detail=f"Unknown template: {data.template_id}. Available: {', '.join(TEMPLATES.keys())}",
             )
 
         boq_name = data.boq_name or template["name"]
@@ -2371,9 +2391,7 @@ class BOQService:
         # Verify BOQ exists
         await self.get_boq(boq_id)
 
-        entries, total = await self.activity_repo.list_for_boq(
-            boq_id, offset=offset, limit=limit
-        )
+        entries, total = await self.activity_repo.list_for_boq(boq_id, offset=offset, limit=limit)
         items = [
             ActivityLogResponse(
                 id=e.id,
@@ -2409,9 +2427,7 @@ class BOQService:
         Returns:
             ActivityLogList with items, total, offset, limit.
         """
-        entries, total = await self.activity_repo.list_for_project(
-            project_id, offset=offset, limit=limit
-        )
+        entries, total = await self.activity_repo.list_for_project(project_id, offset=offset, limit=limit)
         items = [
             ActivityLogResponse(
                 id=e.id,
@@ -2432,9 +2448,7 @@ class BOQService:
 
     # ── AACE Estimate Classification ─────────────────────────────────────
 
-    async def get_estimate_classification(
-        self, boq_id: uuid.UUID
-    ) -> EstimateClassificationResponse:
+    async def get_estimate_classification(self, boq_id: uuid.UUID) -> EstimateClassificationResponse:
         """Determine AACE 18R-97 estimate class for a BOQ.
 
         Auto-detects class based on:
@@ -2460,25 +2474,17 @@ class BOQService:
             return _build_classification(0, 0, 0, 0)
 
         # Count positions with non-zero unit rates
-        positions_with_rates = sum(
-            1 for p in items if _str_to_float(p.unit_rate) > 0
-        )
+        positions_with_rates = sum(1 for p in items if _str_to_float(p.unit_rate) > 0)
 
         # "Resources" = has description AND quantity > 0 AND unit_rate > 0
         positions_with_resources = sum(
             1
             for p in items
-            if (p.description or "").strip()
-            and _str_to_float(p.quantity) > 0
-            and _str_to_float(p.unit_rate) > 0
+            if (p.description or "").strip() and _str_to_float(p.quantity) > 0 and _str_to_float(p.unit_rate) > 0
         )
 
         # Positions with at least one classification code
-        positions_with_classification = sum(
-            1
-            for p in items
-            if p.classification and any(p.classification.values())
-        )
+        positions_with_classification = sum(1 for p in items if p.classification and any(p.classification.values()))
 
         return _build_classification(
             total_positions,
@@ -2493,11 +2499,7 @@ class BOQService:
         """List all snapshots for a BOQ, newest first."""
         from sqlalchemy import select
 
-        stmt = (
-            select(BOQSnapshot)
-            .where(BOQSnapshot.boq_id == boq_id)
-            .order_by(BOQSnapshot.created_at.desc())
-        )
+        stmt = select(BOQSnapshot).where(BOQSnapshot.boq_id == boq_id).order_by(BOQSnapshot.created_at.desc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -2510,33 +2512,37 @@ class BOQService:
         # Serialize positions
         positions_data = []
         for p in boq.positions:
-            positions_data.append({
-                "ordinal": p.ordinal,
-                "description": p.description,
-                "unit": p.unit,
-                "quantity": p.quantity,
-                "unit_rate": p.unit_rate,
-                "total": p.total,
-                "parent_id": str(p.parent_id) if p.parent_id else None,
-                "classification": p.classification,
-                "source": p.source,
-                "metadata": p.metadata_,
-                "sort_order": p.sort_order,
-            })
+            positions_data.append(
+                {
+                    "ordinal": p.ordinal,
+                    "description": p.description,
+                    "unit": p.unit,
+                    "quantity": p.quantity,
+                    "unit_rate": p.unit_rate,
+                    "total": p.total,
+                    "parent_id": str(p.parent_id) if p.parent_id else None,
+                    "classification": p.classification,
+                    "source": p.source,
+                    "metadata": p.metadata_,
+                    "sort_order": p.sort_order,
+                }
+            )
 
         # Serialize markups
         markups_data = []
         for m in boq.markups:
-            markups_data.append({
-                "name": m.name,
-                "markup_type": m.markup_type,
-                "category": m.category,
-                "percentage": m.percentage,
-                "fixed_amount": m.fixed_amount,
-                "apply_to": m.apply_to,
-                "sort_order": m.sort_order,
-                "is_active": m.is_active,
-            })
+            markups_data.append(
+                {
+                    "name": m.name,
+                    "markup_type": m.markup_type,
+                    "category": m.category,
+                    "percentage": m.percentage,
+                    "fixed_amount": m.fixed_amount,
+                    "apply_to": m.apply_to,
+                    "sort_order": m.sort_order,
+                    "is_active": m.is_active,
+                }
+            )
 
         snapshot_data = {
             "boq_name": boq.name,
@@ -2558,14 +2564,13 @@ class BOQService:
         await self.session.refresh(snap)
         return snap
 
-    async def restore_snapshot(
-        self, boq_id: uuid.UUID, snapshot_id: uuid.UUID
-    ) -> BOQWithPositions:
+    async def restore_snapshot(self, boq_id: uuid.UUID, snapshot_id: uuid.UUID) -> BOQWithPositions:
         """Restore a BOQ to a previous snapshot state.
 
         Deletes all current positions and recreates them from the snapshot.
         """
-        from sqlalchemy import select, delete as sa_delete
+        from sqlalchemy import delete as sa_delete
+        from sqlalchemy import select
 
         # Load snapshot
         stmt = select(BOQSnapshot).where(
@@ -2580,9 +2585,7 @@ class BOQService:
         data = snap.snapshot_data
 
         # Delete current positions
-        await self.session.execute(
-            sa_delete(Position).where(Position.boq_id == boq_id)
-        )
+        await self.session.execute(sa_delete(Position).where(Position.boq_id == boq_id))
         await self.session.flush()
 
         # Recreate positions from snapshot
@@ -2649,6 +2652,7 @@ class BOQService:
 
         try:
             import asyncio
+
             matches = await asyncio.to_thread(vector_search, query_vec, None, 10)
         except Exception:
             logger.debug("Vector search failed for classify_position")
@@ -2687,12 +2691,14 @@ class BOQService:
         suggestions: list[dict[str, Any]] = []
         for code, score in ranked:
             confidence = round(max(0.0, min(score / max_score, 1.0)), 3)
-            suggestions.append({
-                "standard": project_standard,
-                "code": code,
-                "label": code_labels.get(code, ""),
-                "confidence": confidence,
-            })
+            suggestions.append(
+                {
+                    "standard": project_standard,
+                    "code": code,
+                    "label": code_labels.get(code, ""),
+                    "confidence": confidence,
+                }
+            )
 
         return suggestions
 
@@ -2747,6 +2753,7 @@ class BOQService:
 
         try:
             import asyncio
+
             matches = await asyncio.to_thread(vector_search, query_vec, region, 10)
         except Exception:
             logger.debug("Vector search failed for suggest_rate")
@@ -2758,10 +2765,7 @@ class BOQService:
         # Filter by matching unit if provided
         if unit:
             unit_lower = unit.lower().strip()
-            unit_filtered = [
-                m for m in matches
-                if str(m.get("unit", "")).lower().strip() == unit_lower
-            ]
+            unit_filtered = [m for m in matches if str(m.get("unit", "")).lower().strip() == unit_lower]
             # If filtering removes everything, keep all matches
             if unit_filtered:
                 matches = unit_filtered
@@ -2781,13 +2785,15 @@ class BOQService:
             weighted_sum += rate * score
             total_weight += score
 
-            rate_matches.append({
-                "code": str(m.get("code", "")),
-                "description": str(m.get("description", "")),
-                "rate": round(rate, 2),
-                "region": str(m.get("region", "")),
-                "score": round(score, 4),
-            })
+            rate_matches.append(
+                {
+                    "code": str(m.get("code", "")),
+                    "description": str(m.get("description", "")),
+                    "rate": round(rate, 2),
+                    "region": str(m.get("region", "")),
+                    "score": round(score, 4),
+                }
+            )
 
         if total_weight == 0:
             return empty_result
@@ -2808,9 +2814,7 @@ class BOQService:
 
     # ── Anomaly detection ─────────────────────────────────────────────────
 
-    async def check_anomalies(
-        self, boq_id: uuid.UUID
-    ) -> dict[str, Any]:
+    async def check_anomalies(self, boq_id: uuid.UUID) -> dict[str, Any]:
         """Check all positions in a BOQ for pricing anomalies.
 
         For each position with a description and unit_rate > 0, uses vector
@@ -2875,15 +2879,11 @@ class BOQService:
         # Search for each position in parallel
         async def _search_one(idx: int) -> list[dict]:
             try:
-                return await asyncio.to_thread(
-                    vector_search, all_vectors[idx], None, 10
-                )
+                return await asyncio.to_thread(vector_search, all_vectors[idx], None, 10)
             except Exception:
                 return []
 
-        all_matches = await asyncio.gather(
-            *[_search_one(i) for i in range(len(eligible))]
-        )
+        all_matches = await asyncio.gather(*[_search_one(i) for i in range(len(eligible))])
 
         def _percentile_val(data: list[float], pct: float) -> float:
             idx = pct / 100.0 * (len(data) - 1)
@@ -2894,26 +2894,19 @@ class BOQService:
 
         anomalies: list[dict[str, Any]] = []
 
-        for pos, matches in zip(eligible, all_matches):
+        for pos, matches in zip(eligible, all_matches, strict=False):
             if not matches:
                 continue
 
             # Filter by matching unit if possible
             if pos.unit:
                 unit_lower = pos.unit.lower().strip()
-                unit_filtered = [
-                    m for m in matches
-                    if str(m.get("unit", "")).lower().strip() == unit_lower
-                ]
+                unit_filtered = [m for m in matches if str(m.get("unit", "")).lower().strip() == unit_lower]
                 if unit_filtered:
                     matches = unit_filtered
 
             # Extract rates from matches
-            rates = [
-                float(m.get("rate", 0.0))
-                for m in matches
-                if float(m.get("rate", 0.0)) > 0
-            ]
+            rates = [float(m.get("rate", 0.0)) for m in matches if float(m.get("rate", 0.0)) > 0]
 
             if len(rates) < 2:
                 continue
@@ -2942,8 +2935,7 @@ class BOQService:
             elif current_rate > 2.0 * median:
                 severity = "warning"
                 message = (
-                    f"Unit rate {current_rate:.2f} is more than 2x the "
-                    f"market median {median:.2f}. Review recommended."
+                    f"Unit rate {current_rate:.2f} is more than 2x the market median {median:.2f}. Review recommended."
                 )
             elif current_rate < 0.3 * median:
                 severity = "warning"
@@ -2953,15 +2945,17 @@ class BOQService:
                 )
 
             if severity:
-                anomalies.append({
-                    "position_id": str(pos.id),
-                    "field": "unit_rate",
-                    "current_value": round(current_rate, 2),
-                    "market_range": market_range,
-                    "severity": severity,
-                    "message": message,
-                    "suggestion": median,
-                })
+                anomalies.append(
+                    {
+                        "position_id": str(pos.id),
+                        "field": "unit_rate",
+                        "current_value": round(current_rate, 2),
+                        "market_range": market_range,
+                        "severity": severity,
+                        "message": message,
+                        "suggestion": median,
+                    }
+                )
 
         return {
             "anomalies": anomalies,
@@ -3027,9 +3021,7 @@ class BOQService:
         # Search (request more than limit to allow filtering)
         t1 = time.monotonic()
         try:
-            raw_matches = await asyncio.to_thread(
-                vector_search, vectors[0], region, min(limit * 2, 30)
-            )
+            raw_matches = await asyncio.to_thread(vector_search, vectors[0], region, min(limit * 2, 30))
         except Exception:
             logger.debug("Vector search failed for search_cost_items")
             return empty
@@ -3064,18 +3056,20 @@ class BOQService:
         for m in filtered:
             code = str(m.get("code", ""))
             db_item = db_map.get(code)
-            results.append({
-                "id": str(m.get("id", "")),
-                "code": code,
-                "description": str(m.get("description", "")),
-                "unit": str(m.get("unit", "")),
-                "rate": round(float(m.get("rate", 0)), 2),
-                "region": str(m.get("region", "")),
-                "score": round(float(m.get("score", 0)), 4),
-                "classification": (db_item.classification or {}) if db_item else {},
-                "components": (db_item.components or []) if db_item else [],
-                "currency": (db_item.currency if db_item else "EUR") or "EUR",
-            })
+            results.append(
+                {
+                    "id": str(m.get("id", "")),
+                    "code": code,
+                    "description": str(m.get("description", "")),
+                    "unit": str(m.get("unit", "")),
+                    "rate": round(float(m.get("rate", 0)), 2),
+                    "region": str(m.get("region", "")),
+                    "score": round(float(m.get("score", 0)), 4),
+                    "classification": (db_item.classification or {}) if db_item else {},
+                    "components": (db_item.components or []) if db_item else [],
+                    "currency": (db_item.currency if db_item else "EUR") or "EUR",
+                }
+            )
 
         return {
             "results": results,
@@ -3095,9 +3089,10 @@ class BOQService:
         Raises:
             HTTPException 400: If no API key is configured.
         """
+        import uuid as _uuid
+
         from app.modules.ai.ai_client import resolve_provider_and_key
         from app.modules.ai.repository import AISettingsRepository
-        import uuid as _uuid
 
         settings_repo = AISettingsRepository(self.session)
         uid = _uuid.UUID(user_id)
@@ -3111,9 +3106,7 @@ class BOQService:
                 detail=str(exc),
             ) from exc
 
-    async def _call_llm(
-        self, user_id: str, system: str, prompt: str
-    ) -> tuple[str, str, int]:
+    async def _call_llm(self, user_id: str, system: str, prompt: str) -> tuple[str, str, int]:
         """Call LLM and return (raw_text, provider, tokens_used)."""
         from app.modules.ai.ai_client import call_ai
 
@@ -3156,11 +3149,15 @@ class BOQService:
 
         cls_str = ", ".join(f"{k}: {v}" for k, v in (classification or {}).items()) or "none"
         prompt = ENHANCE_DESCRIPTION_PROMPT.format(
-            description=description, unit=unit, classification=cls_str,
+            description=description,
+            unit=unit,
+            classification=cls_str,
         )
 
         raw_text, provider, tokens = await self._call_llm(
-            user_id, with_locale(ENHANCE_DESCRIPTION_SYSTEM, locale), prompt,
+            user_id,
+            with_locale(ENHANCE_DESCRIPTION_SYSTEM, locale),
+            prompt,
         )
         parsed = extract_json(raw_text)
 
@@ -3213,9 +3210,7 @@ class BOQService:
         )
 
         cls_str = ", ".join(f"{k}: {v}" for k, v in (classification or {}).items()) or "none"
-        existing = "\n".join(
-            f"  - {d}" for d in (existing_descriptions or [])[:30]
-        ) or "  (none)"
+        existing = "\n".join(f"  - {d}" for d in (existing_descriptions or [])[:30]) or "  (none)"
 
         prompt = SUGGEST_PREREQUISITES_PROMPT.format(
             description=description,
@@ -3225,7 +3220,9 @@ class BOQService:
         )
 
         raw_text, provider, tokens = await self._call_llm(
-            user_id, with_locale(SUGGEST_PREREQUISITES_SYSTEM, locale), prompt,
+            user_id,
+            with_locale(SUGGEST_PREREQUISITES_SYSTEM, locale),
+            prompt,
         )
         parsed = extract_json(raw_text)
 
@@ -3236,13 +3233,15 @@ class BOQService:
         for item in parsed[:8]:
             if not isinstance(item, dict):
                 continue
-            suggestions.append({
-                "description": str(item.get("description", "")),
-                "unit": str(item.get("unit", "lsum")),
-                "typical_rate_eur": round(float(item.get("typical_rate_eur", 0)), 2),
-                "relationship": str(item.get("relationship", "companion")),
-                "reason": str(item.get("reason", "")),
-            })
+            suggestions.append(
+                {
+                    "description": str(item.get("description", "")),
+                    "unit": str(item.get("unit", "lsum")),
+                    "typical_rate_eur": round(float(item.get("typical_rate_eur", 0)), 2),
+                    "relationship": str(item.get("relationship", "companion")),
+                    "reason": str(item.get("reason", "")),
+                }
+            )
 
         return {"suggestions": suggestions, "model_used": provider, "tokens_used": tokens}
 
@@ -3312,7 +3311,9 @@ class BOQService:
         )
 
         raw_text, provider, tokens = await self._call_llm(
-            user_id, with_locale(CHECK_SCOPE_SYSTEM, locale), prompt,
+            user_id,
+            with_locale(CHECK_SCOPE_SYSTEM, locale),
+            prompt,
         )
         parsed = extract_json(raw_text)
 
@@ -3330,14 +3331,16 @@ class BOQService:
         for item in parsed.get("missing_items", [])[:10]:
             if not isinstance(item, dict):
                 continue
-            missing.append({
-                "description": str(item.get("description", "")),
-                "category": str(item.get("category", "")),
-                "priority": str(item.get("priority", "medium")),
-                "reason": str(item.get("reason", "")),
-                "estimated_rate": round(float(item.get("estimated_rate", 0)), 2),
-                "unit": str(item.get("unit", "lsum")),
-            })
+            missing.append(
+                {
+                    "description": str(item.get("description", "")),
+                    "category": str(item.get("category", "")),
+                    "priority": str(item.get("priority", "medium")),
+                    "reason": str(item.get("reason", "")),
+                    "estimated_rate": round(float(item.get("estimated_rate", 0)), 2),
+                    "unit": str(item.get("unit", "lsum")),
+                }
+            )
 
         return {
             "completeness_score": max(0.0, min(float(parsed.get("completeness_score", 0)), 1.0)),
@@ -3376,7 +3379,11 @@ class BOQService:
             Dict with escalated_rate, escalation_percent, factors, reasoning.
         """
         from app.modules.ai.ai_client import extract_json
-        from app.modules.boq.ai_prompts import ESCALATE_RATE_PROMPT, ESCALATE_RATE_SYSTEM, with_locale
+        from app.modules.boq.ai_prompts import (
+            ESCALATE_RATE_PROMPT,
+            ESCALATE_RATE_SYSTEM,
+            with_locale,
+        )
 
         prompt = ESCALATE_RATE_PROMPT.format(
             description=description,
@@ -3389,7 +3396,9 @@ class BOQService:
         )
 
         raw_text, provider, tokens = await self._call_llm(
-            user_id, with_locale(ESCALATE_RATE_SYSTEM, locale), prompt,
+            user_id,
+            with_locale(ESCALATE_RATE_SYSTEM, locale),
+            prompt,
         )
         parsed = extract_json(raw_text)
 

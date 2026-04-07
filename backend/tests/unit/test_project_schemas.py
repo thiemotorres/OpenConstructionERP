@@ -10,7 +10,6 @@ from pydantic import ValidationError
 
 from app.modules.projects.schemas import ProjectCreate, ProjectUpdate
 
-
 # ── ProjectCreate ────────────────────────────────────────────────────────────
 
 

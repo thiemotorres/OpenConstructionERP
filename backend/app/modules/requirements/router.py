@@ -241,10 +241,7 @@ async def export_requirements(
     rows = [_req_to_response(r) for r in reqs]
 
     if format == "json":
-        data = [
-            {col: getattr(r, col, "") for col in _EXPORT_COLUMNS}
-            for r in rows
-        ]
+        data = [{col: getattr(r, col, "") for col in _EXPORT_COLUMNS} for r in rows]
         return JSONResponse(
             content=data,
             headers={

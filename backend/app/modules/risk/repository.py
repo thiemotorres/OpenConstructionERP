@@ -72,9 +72,7 @@ class RiskRepository:
 
     async def count_for_project(self, project_id: uuid.UUID) -> int:
         """Count risk items for a project (used for code generation)."""
-        stmt = select(func.count()).select_from(
-            select(RiskItem).where(RiskItem.project_id == project_id).subquery()
-        )
+        stmt = select(func.count()).select_from(select(RiskItem).where(RiskItem.project_id == project_id).subquery())
         return (await self.session.execute(stmt)).scalar_one()
 
     async def all_for_project(self, project_id: uuid.UUID) -> list[RiskItem]:

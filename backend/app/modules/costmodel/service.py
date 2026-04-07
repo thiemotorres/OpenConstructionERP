@@ -10,20 +10,23 @@ Stateless service layer.  Handles:
 
 import logging
 import uuid
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
+
+
 from app.modules.costmodel.models import BudgetLine, CashFlow, CostSnapshot
 from app.modules.costmodel.repository import (
     BudgetLineRepository,
@@ -43,7 +46,6 @@ from app.modules.costmodel.schemas import (
     SCurveData,
     SCurvePeriod,
     SnapshotCreate,
-    SnapshotResponse,
     SnapshotUpdate,
     WhatIfAdjustments,
     WhatIfResult,
@@ -89,17 +91,16 @@ class CostModelService:
         """Get the currency from the project settings. Defaults to EUR."""
         try:
             from app.modules.projects.repository import ProjectRepository
+
             repo = ProjectRepository(self.session)
             project = await repo.get_by_id(project_id)
-            return (project.currency if project and project.currency else "EUR")
+            return project.currency if project and project.currency else "EUR"
         except Exception:
             return "EUR"
 
     # ── Snapshot operations ────────────────────────────────────────────────
 
-    async def create_snapshot(
-        self, data: SnapshotCreate
-    ) -> CostSnapshot:
+    async def create_snapshot(self, data: SnapshotCreate) -> CostSnapshot:
         """Create a monthly EVM snapshot.
 
         Computes SPI and CPI from the provided planned/earned/actual values
@@ -179,9 +180,7 @@ class CostModelService:
             limit=limit,
         )
 
-    async def update_snapshot(
-        self, snapshot_id: uuid.UUID, data: SnapshotUpdate
-    ) -> CostSnapshot:
+    async def update_snapshot(self, snapshot_id: uuid.UUID, data: SnapshotUpdate) -> CostSnapshot:
         """Update an EVM snapshot.
 
         Args:
@@ -282,9 +281,7 @@ class CostModelService:
         Returns:
             SCurveData with list of period data points.
         """
-        snapshots, _ = await self.snapshot_repo.list_for_project(
-            project_id, limit=1000
-        )
+        snapshots, _ = await self.snapshot_repo.list_for_project(project_id, limit=1000)
 
         cumulative_planned = 0.0
         cumulative_earned = 0.0
@@ -335,38 +332,26 @@ class CostModelService:
         Returns:
             CashFlowData with list of period data points.
         """
-        entries, _ = await self.cashflow_repo.list_for_project(
-            project_id, limit=1000
-        )
+        entries, _ = await self.cashflow_repo.list_for_project(project_id, limit=1000)
 
         periods: list[CashFlowPeriod] = []
         for entry in entries:
-            inflow = _str_to_float(entry.actual_inflow) or _str_to_float(
-                entry.planned_inflow
-            )
-            outflow = _str_to_float(entry.actual_outflow) or _str_to_float(
-                entry.planned_outflow
-            )
+            inflow = _str_to_float(entry.actual_inflow) or _str_to_float(entry.planned_inflow)
+            outflow = _str_to_float(entry.actual_outflow) or _str_to_float(entry.planned_outflow)
 
             periods.append(
                 CashFlowPeriod(
                     period=entry.period,
                     inflow=round(inflow, 2),
                     outflow=round(outflow, 2),
-                    cumulative_planned=round(
-                        _str_to_float(entry.cumulative_planned), 2
-                    ),
-                    cumulative_actual=round(
-                        _str_to_float(entry.cumulative_actual), 2
-                    ),
+                    cumulative_planned=round(_str_to_float(entry.cumulative_planned), 2),
+                    cumulative_actual=round(_str_to_float(entry.cumulative_actual), 2),
                 )
             )
 
         return CashFlowData(periods=periods)
 
-    async def create_cash_flow_entry(
-        self, data: CashFlowCreate
-    ) -> CashFlow:
+    async def create_cash_flow_entry(self, data: CashFlowCreate) -> CashFlow:
         """Create a manual cash flow entry.
 
         Args:
@@ -408,9 +393,7 @@ class CostModelService:
 
     # ── Budget operations ──────────────────────────────────────────────────
 
-    async def get_budget_summary(
-        self, project_id: uuid.UUID
-    ) -> BudgetSummary:
+    async def get_budget_summary(self, project_id: uuid.UUID) -> BudgetSummary:
         """Group budget lines by category and compute per-category totals.
 
         Args:
@@ -450,13 +433,9 @@ class CostModelService:
         limit: int = 200,
     ) -> tuple[list[BudgetLine], int]:
         """List detailed budget lines for a project."""
-        return await self.budget_repo.list_for_project(
-            project_id, category=category, offset=offset, limit=limit
-        )
+        return await self.budget_repo.list_for_project(project_id, category=category, offset=offset, limit=limit)
 
-    async def create_budget_line(
-        self, data: BudgetLineCreate
-    ) -> BudgetLine:
+    async def create_budget_line(self, data: BudgetLineCreate) -> BudgetLine:
         """Create a single budget line.
 
         Args:
@@ -499,9 +478,7 @@ class CostModelService:
         )
         return line
 
-    async def update_budget_line(
-        self, line_id: uuid.UUID, data: BudgetLineUpdate
-    ) -> BudgetLine:
+    async def update_budget_line(self, line_id: uuid.UUID, data: BudgetLineUpdate) -> BudgetLine:
         """Update committed, actual, forecast or other fields on a budget line.
 
         Args:
@@ -639,9 +616,7 @@ class CostModelService:
                     total_days = (end - start).days
                     if total_days > 0:
                         elapsed_days = (today - start).days
-                        time_elapsed_pct = max(
-                            0.0, min(100.0, (elapsed_days / total_days) * 100.0)
-                        )
+                        time_elapsed_pct = max(0.0, min(100.0, (elapsed_days / total_days) * 100.0))
                 except (ValueError, TypeError):
                     pass
 
@@ -651,21 +626,15 @@ class CostModelService:
             total_weight = 0.0
 
             for schedule in schedules:
-                activities, _ = await activity_repo.list_for_schedule(
-                    schedule.id, limit=10000
-                )
+                activities, _ = await activity_repo.list_for_schedule(schedule.id, limit=10000)
 
                 # Build lookup: budget lines keyed by activity_id
-                budget_lines, _ = await self.budget_repo.list_for_project(
-                    project_id, limit=10000
-                )
+                budget_lines, _ = await self.budget_repo.list_for_project(project_id, limit=10000)
                 activity_budget: dict[str, float] = {}
                 for bl in budget_lines:
                     if bl.activity_id is not None:
                         aid = str(bl.activity_id)
-                        activity_budget[aid] = activity_budget.get(aid, 0.0) + _str_to_float(
-                            bl.planned_amount
-                        )
+                        activity_budget[aid] = activity_budget.get(aid, 0.0) + _str_to_float(bl.planned_amount)
 
                 for act in activities:
                     act_id = str(act.id)
@@ -898,9 +867,7 @@ class CostModelService:
         sorted_boqs = sorted(boqs, key=lambda b: b.updated_at, reverse=True)
         return sorted_boqs[0].id
 
-    async def generate_budget_from_boq(
-        self, project_id: uuid.UUID, boq_id: uuid.UUID
-    ) -> list[BudgetLine]:
+    async def generate_budget_from_boq(self, project_id: uuid.UUID, boq_id: uuid.UUID) -> list[BudgetLine]:
         """Auto-generate budget lines from BOQ positions.
 
         Each BOQ position becomes a budget line with planned_amount = position total.
@@ -960,9 +927,7 @@ class CostModelService:
         )
         return created
 
-    async def generate_cash_flow_from_schedule(
-        self, project_id: uuid.UUID
-    ) -> list[CashFlow]:
+    async def generate_cash_flow_from_schedule(self, project_id: uuid.UUID) -> list[CashFlow]:
         """Generate cash flow entries by spreading budget line amounts across their schedule.
 
         For budget lines that have period_start and period_end, the planned_amount
@@ -975,9 +940,7 @@ class CostModelService:
         Returns:
             List of newly created cash flow entries.
         """
-        budget_lines, _ = await self.budget_repo.list_for_project(
-            project_id, limit=10000
-        )
+        budget_lines, _ = await self.budget_repo.list_for_project(project_id, limit=10000)
 
         if not budget_lines:
             raise HTTPException(
@@ -1009,9 +972,7 @@ class CostModelService:
                     period_outflows[p] = period_outflows.get(p, Decimal("0")) + amount
             else:
                 # No schedule — use a generic unscheduled bucket
-                period_outflows["unscheduled"] = (
-                    period_outflows.get("unscheduled", Decimal("0")) + amount
-                )
+                period_outflows["unscheduled"] = period_outflows.get("unscheduled", Decimal("0")) + amount
 
         # Build cash flow entries with running cumulative
         entries: list[CashFlow] = []

@@ -30,15 +30,9 @@ class AISettingsRepository:
         await self.session.flush()
         return settings
 
-    async def update_fields(
-        self, settings_id: uuid.UUID, **fields: object
-    ) -> None:
+    async def update_fields(self, settings_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on AI settings."""
-        stmt = (
-            update(AISettings)
-            .where(AISettings.id == settings_id)
-            .values(**fields)
-        )
+        stmt = update(AISettings).where(AISettings.id == settings_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         # Expire cached ORM instances so the next get_by_id re-reads from DB
@@ -63,15 +57,9 @@ class AIEstimateJobRepository:
         await self.session.flush()
         return job
 
-    async def update_fields(
-        self, job_id: uuid.UUID, **fields: object
-    ) -> None:
+    async def update_fields(self, job_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on an estimate job."""
-        stmt = (
-            update(AIEstimateJob)
-            .where(AIEstimateJob.id == job_id)
-            .values(**fields)
-        )
+        stmt = update(AIEstimateJob).where(AIEstimateJob.id == job_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         # Expire cached ORM instances so the next get_by_id re-reads from DB

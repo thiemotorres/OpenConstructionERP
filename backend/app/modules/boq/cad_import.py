@@ -337,13 +337,9 @@ def group_cad_elements(elements: list[dict]) -> dict:
     cat_types: dict[str, dict[str, dict]] = OrderedDict()
 
     for el in elements:
-        raw_cat = str(
-            el.get("category", el.get("element type", "Other"))
-        ).strip()
+        raw_cat = str(el.get("category", el.get("element type", "Other"))).strip()
         category = raw_cat if raw_cat and raw_cat != "None" else "Other"
-        type_name = str(
-            el.get("type name", el.get("family", el.get("type", "Unknown")))
-        ).strip() or "Unknown"
+        type_name = str(el.get("type name", el.get("family", el.get("type", "Unknown")))).strip() or "Unknown"
         count = _to_float(el.get("count", 1))
         volume = _to_float(el.get("volume", el.get("volume (m3)", 0)))
         area = _to_float(el.get("area", el.get("area (m2)", 0)))
@@ -393,16 +389,18 @@ def group_cad_elements(elements: list[dict]) -> dict:
             it["area_m2"] = round(it["area_m2"], 2)
             it["length_m"] = round(it["length_m"], 2)
 
-        groups.append({
-            "category": cat_name,
-            "items": items,
-            "totals": {
-                "count": round(cat_count, 1),
-                "volume_m3": round(cat_volume, 3),
-                "area_m2": round(cat_area, 2),
-                "length_m": round(cat_length, 2),
-            },
-        })
+        groups.append(
+            {
+                "category": cat_name,
+                "items": items,
+                "totals": {
+                    "count": round(cat_count, 1),
+                    "volume_m3": round(cat_volume, 3),
+                    "area_m2": round(cat_area, 2),
+                    "length_m": round(cat_length, 2),
+                },
+            }
+        )
 
         grand_count += cat_count
         grand_volume += cat_volume
@@ -464,9 +462,20 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
 
     # Keywords that indicate a quantity / measurement column
     quantity_keywords = {
-        "volume", "area", "length", "width", "height", "count",
-        "weight", "perimeter", "thickness", "depth", "radius",
-        "diameter", "mass", "quantity",
+        "volume",
+        "area",
+        "length",
+        "width",
+        "height",
+        "count",
+        "weight",
+        "perimeter",
+        "thickness",
+        "depth",
+        "radius",
+        "diameter",
+        "mass",
+        "quantity",
     }
 
     grouping_cols: list[str] = []
@@ -550,30 +559,20 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
             "detailed": {
                 "label": "Detailed (with Level)",
                 "description": "Category + Type Name + Level — per-floor breakdown",
-                "group_by": [
-                    c for c in ["category", "type name", "level"] if c in grouping_cols
-                ],
-                "sum_columns": [
-                    c
-                    for c in ["volume", "area", "length", "count"]
-                    if c in available_qty
-                ],
+                "group_by": [c for c in ["category", "type name", "level"] if c in grouping_cols],
+                "sum_columns": [c for c in ["volume", "area", "length", "count"] if c in available_qty],
             },
             "by_family": {
                 "label": "By Family",
                 "description": "Family + Type — for procurement and ordering",
                 "group_by": [c for c in ["family", "type name"] if c in grouping_cols],
-                "sum_columns": [
-                    c for c in ["count", "volume", "area"] if c in available_qty
-                ],
+                "sum_columns": [c for c in ["count", "volume", "area"] if c in available_qty],
             },
             "summary": {
                 "label": "Quick Summary",
                 "description": "Category only — high-level overview",
                 "group_by": [c for c in ["category"] if c in grouping_cols],
-                "sum_columns": [
-                    c for c in ["count", "volume", "area"] if c in available_qty
-                ],
+                "sum_columns": [c for c in ["count", "volume", "area"] if c in available_qty],
             },
         }
     elif file_format == "ifc":
@@ -581,60 +580,32 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
             "standard": {
                 "label": "Standard IFC QTO",
                 "description": "Group by Category + Type — standard IFC entity breakdown",
-                "group_by": [
-                    c
-                    for c in ["category", "type name", "type"]
-                    if c in grouping_cols
-                ][:2],
+                "group_by": [c for c in ["category", "type name", "type"] if c in grouping_cols][:2],
                 "sum_columns": [c for c in ["volume", "area", "count"] if c in available_qty],
             },
             "detailed": {
                 "label": "Detailed (with Level)",
                 "description": "Category + Type + Level — per-floor breakdown",
-                "group_by": [
-                    c
-                    for c in ["category", "type name", "type", "level"]
-                    if c in grouping_cols
-                ][:3],
-                "sum_columns": [
-                    c
-                    for c in ["volume", "area", "length", "count"]
-                    if c in available_qty
-                ],
+                "group_by": [c for c in ["category", "type name", "type", "level"] if c in grouping_cols][:3],
+                "sum_columns": [c for c in ["volume", "area", "length", "count"] if c in available_qty],
             },
             "by_storey": {
                 "label": "By Building Storey",
                 "description": "Building Storey + Category + Type — storey-first breakdown",
-                "group_by": [
-                    c
-                    for c in ["level", "category", "type name", "type"]
-                    if c in grouping_cols
-                ][:3],
-                "sum_columns": [
-                    c
-                    for c in ["volume", "area", "length", "count"]
-                    if c in available_qty
-                ],
+                "group_by": [c for c in ["level", "category", "type name", "type"] if c in grouping_cols][:3],
+                "sum_columns": [c for c in ["volume", "area", "length", "count"] if c in available_qty],
             },
             "by_material": {
                 "label": "By Material",
                 "description": "Material + Category — material-first grouping for procurement",
-                "group_by": [
-                    c
-                    for c in ["material", "category"]
-                    if c in grouping_cols
-                ][:2],
-                "sum_columns": [
-                    c for c in ["volume", "area", "count"] if c in available_qty
-                ],
+                "group_by": [c for c in ["material", "category"] if c in grouping_cols][:2],
+                "sum_columns": [c for c in ["volume", "area", "count"] if c in available_qty],
             },
             "summary": {
                 "label": "Quick Summary",
                 "description": "Category only — high-level element count",
                 "group_by": [c for c in ["category"] if c in grouping_cols],
-                "sum_columns": [
-                    c for c in ["count", "volume", "area"] if c in available_qty
-                ],
+                "sum_columns": [c for c in ["count", "volume", "area"] if c in available_qty],
             },
         }
     elif file_format == "dwg":
@@ -643,9 +614,7 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
                 "label": "Standard DWG QTO",
                 "description": "Group by Layer — standard AutoCAD organization",
                 "group_by": [c for c in ["layer", "category"] if c in grouping_cols][:1],
-                "sum_columns": [
-                    c for c in ["count", "length", "area"] if c in available_qty
-                ],
+                "sum_columns": [c for c in ["count", "length", "area"] if c in available_qty],
             },
         }
     else:
@@ -664,10 +633,7 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
     # Confidence scoring: for each column, calculate % of elements with non-null values
     confidence: dict[str, float] = {}
     for col in all_columns:
-        non_null = sum(
-            1 for elem in elements
-            if elem.get(col) not in (None, "", "nan", "NaN")
-        )
+        non_null = sum(1 for elem in elements if elem.get(col) not in (None, "", "nan", "NaN"))
         confidence[col] = round(non_null / len(elements), 2) if elements else 0
 
     # Unit labels for quantity columns (+ "count" which is always available)

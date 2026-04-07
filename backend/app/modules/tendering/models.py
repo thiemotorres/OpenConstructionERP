@@ -7,7 +7,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import ForeignKey, JSON, String, Text
+from sqlalchemy import JSON, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import GUID, Base
@@ -30,9 +30,7 @@ class TenderPackage(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="draft"
-    )
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
     deadline: Mapped[str | None] = mapped_column(String(20), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",

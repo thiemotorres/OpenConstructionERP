@@ -180,9 +180,7 @@ async def list_packages(
     """List tender packages with optional project filter."""
     if project_id is not None:
         await _verify_tender_project_owner(session, project_id, user_id, payload)
-    packages, _ = await service.list_packages(
-        project_id=project_id, offset=offset, limit=limit
-    )
+    packages, _ = await service.list_packages(project_id=project_id, offset=offset, limit=limit)
     return [_package_to_response(p) for p in packages]
 
 
@@ -217,9 +215,7 @@ async def update_package(
 # ── Bid Endpoints ────────────────────────────────────────────────────────────
 
 
-@router.post(
-    "/packages/{package_id}/bids", response_model=BidResponse, status_code=201
-)
+@router.post("/packages/{package_id}/bids", response_model=BidResponse, status_code=201)
 async def create_bid(
     package_id: uuid.UUID,
     data: BidCreate,

@@ -9,7 +9,7 @@ Tables:
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -28,9 +28,7 @@ class Document(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    category: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="other"
-    )
+    category: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
     file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     file_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
@@ -65,9 +63,7 @@ class ProjectPhoto(Base):
         nullable=False,
         index=True,
     )
-    document_id: Mapped[str | None] = mapped_column(
-        String(36), nullable=True, default=None
-    )
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
@@ -79,12 +75,8 @@ class ProjectPhoto(Base):
         default=list,
         server_default="[]",
     )
-    taken_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, default=None
-    )
-    category: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="site"
-    )
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    category: Mapped[str] = mapped_column(String(100), nullable=False, default="site")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -109,37 +101,17 @@ class Sheet(Base):
         nullable=False,
         index=True,
     )
-    document_id: Mapped[str] = mapped_column(
-        String(255), nullable=False, default=""
-    )
+    document_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     page_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    sheet_number: Mapped[str | None] = mapped_column(
-        String(100), nullable=True, default=None
-    )
-    sheet_title: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    discipline: Mapped[str | None] = mapped_column(
-        String(100), nullable=True, default=None
-    )
-    revision: Mapped[str | None] = mapped_column(
-        String(50), nullable=True, default=None
-    )
-    revision_date: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, default=None
-    )
-    scale: Mapped[str | None] = mapped_column(
-        String(50), nullable=True, default=None
-    )
-    is_current: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True
-    )
-    previous_version_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(), nullable=True, default=None
-    )
-    thumbnail_path: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
+    sheet_number: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
+    sheet_title: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    discipline: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
+    revision: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
+    revision_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    scale: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)
+    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    previous_version_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, default=None)
+    thumbnail_path: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,

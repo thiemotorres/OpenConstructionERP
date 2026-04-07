@@ -11,9 +11,7 @@ aiosqlite or asyncpg at import time).
 
 import uuid
 
-from sqlalchemy import MetaData, String, TypeDecorator
-from sqlalchemy.orm import DeclarativeBase
-
+from sqlalchemy import String, TypeDecorator
 
 # ── Replicate GUID locally to test the logic without importing app.database ──
 # This avoids the side-effect of engine creation at module level.
@@ -25,18 +23,14 @@ class GUID(TypeDecorator):
     impl = String(36)
     cache_ok = True
 
-    def process_bind_param(
-        self, value: uuid.UUID | str | None, dialect: object
-    ) -> str | None:
+    def process_bind_param(self, value: uuid.UUID | str | None, dialect: object) -> str | None:
         if value is None:
             return None
         if isinstance(value, uuid.UUID):
             return str(value)
         return value
 
-    def process_result_value(
-        self, value: str | None, dialect: object
-    ) -> uuid.UUID | None:
+    def process_result_value(self, value: str | None, dialect: object) -> uuid.UUID | None:
         if value is None:
             return None
         if isinstance(value, uuid.UUID):

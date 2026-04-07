@@ -22,9 +22,7 @@ class Project(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     region: Mapped[str] = mapped_column(String(50), nullable=False, default="DACH")
-    classification_standard: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="din276"
-    )
+    classification_standard: Mapped[str] = mapped_column(String(50), nullable=False, default="din276")
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="EUR")
     locale: Mapped[str] = mapped_column(String(10), nullable=False, default="de")
     validation_rule_sets: Mapped[list] = mapped_column(  # type: ignore[assignment]

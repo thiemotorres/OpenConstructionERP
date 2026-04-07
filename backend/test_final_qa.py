@@ -14,13 +14,11 @@ Usage:
 Requires: server running on http://localhost:8000
 """
 
-import json
 import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
-from typing import Any
+from datetime import date, datetime
 
 import httpx
 
@@ -57,8 +55,7 @@ class Section:
         detail: str = "",
     ) -> None:
         self.results.append(
-            TestResult(name=name, passed=passed, status_code=status_code,
-                       expected=expected, detail=detail)
+            TestResult(name=name, passed=passed, status_code=status_code, expected=expected, detail=detail)
         )
         icon = "PASS" if passed else "FAIL"
         sc = f" [{status_code}]" if status_code is not None else ""
@@ -88,9 +85,7 @@ sections: list[Section] = []
 def login() -> bool:
     """Login and set global token. Returns True on success."""
     global TOKEN
-    r = client.post("/api/v1/users/auth/login", json={
-        "email": DEMO_EMAIL, "password": DEMO_PASSWORD
-    })
+    r = client.post("/api/v1/users/auth/login", json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD})
     if r.status_code == 200:
         TOKEN = r.json().get("access_token", "")
         client.headers["Authorization"] = f"Bearer {TOKEN}"
@@ -143,49 +138,51 @@ def get_project_with_boq() -> tuple[str, str, str]:
 
 def test_field_reports() -> Section:
     s = Section("1. Field Reports")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     report_id = ""
     today = date.today().isoformat()
 
     # 1.1 Create daily report with workforce
-    r = client.post("/api/v1/fieldreports/reports", json={
-        "project_id": PROJECT_ID,
-        "report_date": today,
-        "report_type": "daily",
-        "weather_condition": "clear",
-        "temperature_c": 22.5,
-        "humidity": 55,
-        "workforce": [
-            {"trade": "Carpenter", "count": 4, "hours": 8.0},
-            {"trade": "Electrician", "count": 2, "hours": 6.0},
-        ],
-        "equipment_on_site": ["Crane", "Excavator"],
-        "work_performed": "Foundation pouring completed",
-        "notes": "QA test report",
-    })
+    r = client.post(
+        "/api/v1/fieldreports/reports",
+        json={
+            "project_id": PROJECT_ID,
+            "report_date": today,
+            "report_type": "daily",
+            "weather_condition": "clear",
+            "temperature_c": 22.5,
+            "humidity": 55,
+            "workforce": [
+                {"trade": "Carpenter", "count": 4, "hours": 8.0},
+                {"trade": "Electrician", "count": 2, "hours": 6.0},
+            ],
+            "equipment_on_site": ["Crane", "Excavator"],
+            "work_performed": "Foundation pouring completed",
+            "notes": "QA test report",
+        },
+    )
     passed = r.status_code == 201
     if passed:
         report_id = r.json().get("id", "")
         data = r.json()
-        passed = (
-            passed
-            and len(data.get("workforce", [])) == 2
-            and data.get("status") == "draft"
-        )
+        passed = passed and len(data.get("workforce", [])) == 2 and data.get("status") == "draft"
     s.add("1.1 Create daily report with workforce", passed, r.status_code, 201)
 
     # 1.2 Create inspection report
-    r2 = client.post("/api/v1/fieldreports/reports", json={
-        "project_id": PROJECT_ID,
-        "report_date": today,
-        "report_type": "inspection",
-        "weather_condition": "cloudy",
-        "work_performed": "Rebar inspection before pour",
-        "safety_incidents": "None",
-    })
+    r2 = client.post(
+        "/api/v1/fieldreports/reports",
+        json={
+            "project_id": PROJECT_ID,
+            "report_date": today,
+            "report_type": "inspection",
+            "weather_condition": "cloudy",
+            "work_performed": "Rebar inspection before pour",
+            "safety_incidents": "None",
+        },
+    )
     inspection_id = ""
     passed2 = r2.status_code == 201
     if passed2:
@@ -196,8 +193,13 @@ def test_field_reports() -> Section:
     # 1.3 List reports with date filter
     r3 = client.get(f"/api/v1/fieldreports/reports?project_id={PROJECT_ID}&date_from={today}")
     passed3 = r3.status_code == 200 and isinstance(r3.json(), list) and len(r3.json()) >= 2
-    s.add("1.3 List reports with date filter", passed3, r3.status_code, 200,
-          detail=f"count={len(r3.json()) if r3.status_code == 200 else 'N/A'}")
+    s.add(
+        "1.3 List reports with date filter",
+        passed3,
+        r3.status_code,
+        200,
+        detail=f"count={len(r3.json()) if r3.status_code == 200 else 'N/A'}",
+    )
 
     # 1.4 Get single report
     r4 = client.get(f"/api/v1/fieldreports/reports/{report_id}")
@@ -205,10 +207,13 @@ def test_field_reports() -> Section:
     s.add("1.4 Get single report", passed4, r4.status_code, 200)
 
     # 1.5 Update report (add delays)
-    r5 = client.patch(f"/api/v1/fieldreports/reports/{report_id}", json={
-        "delays": "Rain delay - 2 hours",
-        "delay_hours": 2.0,
-    })
+    r5 = client.patch(
+        f"/api/v1/fieldreports/reports/{report_id}",
+        json={
+            "delays": "Rain delay - 2 hours",
+            "delay_hours": 2.0,
+        },
+    )
     passed5 = r5.status_code == 200
     if passed5:
         d = r5.json()
@@ -218,14 +223,24 @@ def test_field_reports() -> Section:
     # 1.6 Submit report (draft -> submitted)
     r6 = client.post(f"/api/v1/fieldreports/reports/{report_id}/submit")
     passed6 = r6.status_code == 200 and r6.json().get("status") == "submitted"
-    s.add("1.6 Submit report (draft -> submitted)", passed6, r6.status_code, 200,
-          detail=f"status={r6.json().get('status') if r6.status_code == 200 else 'N/A'}")
+    s.add(
+        "1.6 Submit report (draft -> submitted)",
+        passed6,
+        r6.status_code,
+        200,
+        detail=f"status={r6.json().get('status') if r6.status_code == 200 else 'N/A'}",
+    )
 
     # 1.7 Approve report (submitted -> approved)
     r7 = client.post(f"/api/v1/fieldreports/reports/{report_id}/approve")
     passed7 = r7.status_code == 200 and r7.json().get("status") == "approved"
-    s.add("1.7 Approve report (submitted -> approved)", passed7, r7.status_code, 200,
-          detail=f"status={r7.json().get('status') if r7.status_code == 200 else 'N/A'}")
+    s.add(
+        "1.7 Approve report (submitted -> approved)",
+        passed7,
+        r7.status_code,
+        200,
+        detail=f"status={r7.json().get('status') if r7.status_code == 200 else 'N/A'}",
+    )
 
     # 1.8 Calendar endpoint
     month_str = date.today().strftime("%Y-%m")
@@ -260,9 +275,9 @@ def test_field_reports() -> Section:
 
 def test_photo_gallery() -> Section:
     s = Section("2. Photo Gallery")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # 2.1 Photos list endpoint
     r1 = client.get(f"/api/v1/documents/photos?project_id={PROJECT_ID}")
@@ -314,23 +329,26 @@ def test_photo_gallery() -> Section:
 
 def test_takeoff_measurements() -> Section:
     s = Section("3. Takeoff Measurements")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     measurement_ids: list[str] = []
 
     # 3.1 Create distance measurement
-    r1 = client.post("/api/v1/takeoff/measurements", json={
-        "project_id": PROJECT_ID,
-        "type": "distance",
-        "group_name": "Walls",
-        "group_color": "#FF0000",
-        "annotation": "Wall length A-B",
-        "points": [{"x": 100, "y": 200}, {"x": 300, "y": 200}],
-        "measurement_value": 12.5,
-        "measurement_unit": "m",
-    })
+    r1 = client.post(
+        "/api/v1/takeoff/measurements",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "distance",
+            "group_name": "Walls",
+            "group_color": "#FF0000",
+            "annotation": "Wall length A-B",
+            "points": [{"x": 100, "y": 200}, {"x": 300, "y": 200}],
+            "measurement_value": 12.5,
+            "measurement_unit": "m",
+        },
+    )
     passed1 = r1.status_code == 201
     if passed1:
         measurement_ids.append(r1.json()["id"])
@@ -338,45 +356,54 @@ def test_takeoff_measurements() -> Section:
     s.add("3.1 Create distance measurement", passed1, r1.status_code, 201)
 
     # 3.2 Create polyline measurement (multi-point)
-    r2 = client.post("/api/v1/takeoff/measurements", json={
-        "project_id": PROJECT_ID,
-        "type": "polyline",
-        "group_name": "Perimeter",
-        "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}, {"x": 100, "y": 50}, {"x": 0, "y": 50}],
-        "measurement_value": 300.0,
-        "measurement_unit": "m",
-    })
+    r2 = client.post(
+        "/api/v1/takeoff/measurements",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "polyline",
+            "group_name": "Perimeter",
+            "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}, {"x": 100, "y": 50}, {"x": 0, "y": 50}],
+            "measurement_value": 300.0,
+            "measurement_unit": "m",
+        },
+    )
     passed2 = r2.status_code == 201
     if passed2:
         measurement_ids.append(r2.json()["id"])
     s.add("3.2 Create polyline measurement", passed2, r2.status_code, 201)
 
     # 3.3 Create area measurement
-    r3 = client.post("/api/v1/takeoff/measurements", json={
-        "project_id": PROJECT_ID,
-        "type": "area",
-        "group_name": "Floors",
-        "group_color": "#00FF00",
-        "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}, {"x": 100, "y": 80}, {"x": 0, "y": 80}],
-        "measurement_value": 45.0,
-        "measurement_unit": "m2",
-    })
+    r3 = client.post(
+        "/api/v1/takeoff/measurements",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "area",
+            "group_name": "Floors",
+            "group_color": "#00FF00",
+            "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}, {"x": 100, "y": 80}, {"x": 0, "y": 80}],
+            "measurement_value": 45.0,
+            "measurement_unit": "m2",
+        },
+    )
     passed3 = r3.status_code == 201
     if passed3:
         measurement_ids.append(r3.json()["id"])
     s.add("3.3 Create area measurement", passed3, r3.status_code, 201)
 
     # 3.4 Create volume measurement (with depth)
-    r4 = client.post("/api/v1/takeoff/measurements", json={
-        "project_id": PROJECT_ID,
-        "type": "volume",
-        "group_name": "Concrete",
-        "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}, {"x": 100, "y": 80}, {"x": 0, "y": 80}],
-        "measurement_value": 45.0,
-        "measurement_unit": "m3",
-        "depth": 0.3,
-        "volume": 13.5,
-    })
+    r4 = client.post(
+        "/api/v1/takeoff/measurements",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "volume",
+            "group_name": "Concrete",
+            "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}, {"x": 100, "y": 80}, {"x": 0, "y": 80}],
+            "measurement_value": 45.0,
+            "measurement_unit": "m3",
+            "depth": 0.3,
+            "volume": 13.5,
+        },
+    )
     passed4 = r4.status_code == 201
     if passed4:
         measurement_ids.append(r4.json()["id"])
@@ -384,14 +411,17 @@ def test_takeoff_measurements() -> Section:
     s.add("3.4 Create volume measurement (with depth)", passed4, r4.status_code, 201)
 
     # 3.5 Create count measurement
-    r5 = client.post("/api/v1/takeoff/measurements", json={
-        "project_id": PROJECT_ID,
-        "type": "count",
-        "group_name": "Windows",
-        "points": [{"x": 50, "y": 50}],
-        "count_value": 12,
-        "measurement_unit": "pcs",
-    })
+    r5 = client.post(
+        "/api/v1/takeoff/measurements",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "count",
+            "group_name": "Windows",
+            "points": [{"x": 50, "y": 50}],
+            "count_value": 12,
+            "measurement_unit": "pcs",
+        },
+    )
     passed5 = r5.status_code == 201
     if passed5:
         measurement_ids.append(r5.json()["id"])
@@ -399,12 +429,15 @@ def test_takeoff_measurements() -> Section:
     s.add("3.5 Create count measurement", passed5, r5.status_code, 201)
 
     # 3.6 List measurements with filters (group, type, page)
-    r6 = client.get(
-        f"/api/v1/takeoff/measurements?project_id={PROJECT_ID}&group=Walls&type=distance"
-    )
+    r6 = client.get(f"/api/v1/takeoff/measurements?project_id={PROJECT_ID}&group=Walls&type=distance")
     passed6 = r6.status_code == 200 and isinstance(r6.json(), list) and len(r6.json()) >= 1
-    s.add("3.6 List measurements with filters", passed6, r6.status_code, 200,
-          detail=f"count={len(r6.json()) if r6.status_code == 200 else 'N/A'}")
+    s.add(
+        "3.6 List measurements with filters",
+        passed6,
+        r6.status_code,
+        200,
+        detail=f"count={len(r6.json()) if r6.status_code == 200 else 'N/A'}",
+    )
 
     # 3.7 Measurement summary endpoint
     r7 = client.get(f"/api/v1/takeoff/measurements/summary?project_id={PROJECT_ID}")
@@ -412,8 +445,13 @@ def test_takeoff_measurements() -> Section:
     if passed7:
         d = r7.json()
         passed7 = "total_measurements" in d and d["total_measurements"] >= 5
-    s.add("3.7 Measurement summary endpoint", passed7, r7.status_code, 200,
-          detail=f"total={r7.json().get('total_measurements') if r7.status_code == 200 else 'N/A'}")
+    s.add(
+        "3.7 Measurement summary endpoint",
+        passed7,
+        r7.status_code,
+        200,
+        detail=f"total={r7.json().get('total_measurements') if r7.status_code == 200 else 'N/A'}",
+    )
 
     # 3.8 Export measurements (CSV format)
     r8 = client.get(f"/api/v1/takeoff/measurements/export?project_id={PROJECT_ID}&format=csv")
@@ -427,8 +465,7 @@ def test_takeoff_measurements() -> Section:
     test_pos = POSITION_ID if POSITION_ID else str(uuid.uuid4())
     if measurement_ids:
         r9 = client.post(
-            f"/api/v1/takeoff/measurements/{measurement_ids[0]}/link-to-boq",
-            json={"boq_position_id": test_pos}
+            f"/api/v1/takeoff/measurements/{measurement_ids[0]}/link-to-boq", json={"boq_position_id": test_pos}
         )
         passed9 = r9.status_code == 200
         if passed9:
@@ -438,26 +475,29 @@ def test_takeoff_measurements() -> Section:
         s.add("3.9 Link measurement to BOQ position", False, detail="No measurements created")
 
     # 3.10 Bulk create measurements
-    r10 = client.post("/api/v1/takeoff/measurements/bulk", json={
-        "measurements": [
-            {
-                "project_id": PROJECT_ID,
-                "type": "distance",
-                "group_name": "Bulk Group",
-                "points": [{"x": 10, "y": 20}, {"x": 30, "y": 40}],
-                "measurement_value": 5.0,
-                "measurement_unit": "m",
-            },
-            {
-                "project_id": PROJECT_ID,
-                "type": "area",
-                "group_name": "Bulk Group",
-                "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10}, {"x": 0, "y": 10}],
-                "measurement_value": 100.0,
-                "measurement_unit": "m2",
-            },
-        ]
-    })
+    r10 = client.post(
+        "/api/v1/takeoff/measurements/bulk",
+        json={
+            "measurements": [
+                {
+                    "project_id": PROJECT_ID,
+                    "type": "distance",
+                    "group_name": "Bulk Group",
+                    "points": [{"x": 10, "y": 20}, {"x": 30, "y": 40}],
+                    "measurement_value": 5.0,
+                    "measurement_unit": "m",
+                },
+                {
+                    "project_id": PROJECT_ID,
+                    "type": "area",
+                    "group_name": "Bulk Group",
+                    "points": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10}, {"x": 0, "y": 10}],
+                    "measurement_value": 100.0,
+                    "measurement_unit": "m2",
+                },
+            ]
+        },
+    )
     passed10 = r10.status_code == 201 and isinstance(r10.json(), list) and len(r10.json()) == 2
     if passed10:
         for item in r10.json():
@@ -487,20 +527,23 @@ def test_takeoff_measurements() -> Section:
 
 def test_requirements() -> Section:
     s = Section("4. Requirements")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     set_id = ""
     req_ids: list[str] = []
 
     # 4.1 Create set + 3 requirements
-    r1 = client.post("/api/v1/requirements/", json={
-        "project_id": PROJECT_ID,
-        "name": "QA Test Requirements",
-        "description": "Testing quality gates",
-        "source_type": "manual",
-    })
+    r1 = client.post(
+        "/api/v1/requirements/",
+        json={
+            "project_id": PROJECT_ID,
+            "name": "QA Test Requirements",
+            "description": "Testing quality gates",
+            "source_type": "manual",
+        },
+    )
     passed1 = r1.status_code == 201
     if passed1:
         set_id = r1.json().get("id", "")
@@ -543,8 +586,11 @@ def test_requirements() -> Section:
             passed1 = False
 
     passed1 = passed1 and len(req_ids) == 3
-    s.add("4.1 Create set + 3 requirements", passed1,
-          detail=f"set_id={set_id[:8] if set_id else 'N/A'}, reqs={len(req_ids)}")
+    s.add(
+        "4.1 Create set + 3 requirements",
+        passed1,
+        detail=f"set_id={set_id[:8] if set_id else 'N/A'}, reqs={len(req_ids)}",
+    )
 
     # 4.2 Run all 4 gates (verify status pass/fail, score 0-100)
     gate_results = []
@@ -560,8 +606,7 @@ def test_requirements() -> Section:
                 all_gates_ok = False
         else:
             all_gates_ok = False
-    s.add("4.2 Run all 4 gates (score 0-100)", all_gates_ok,
-          detail=f"gates_run={len(gate_results)}")
+    s.add("4.2 Run all 4 gates (score 0-100)", all_gates_ok, detail=f"gates_run={len(gate_results)}")
 
     # 4.3 Export CSV
     r3 = client.get(f"/api/v1/requirements/{set_id}/export?format=csv")
@@ -574,24 +619,30 @@ def test_requirements() -> Section:
     if passed4:
         data = r4.json()
         passed4 = isinstance(data, list) and len(data) == 3
-    s.add("4.4 Export JSON", passed4, r4.status_code, 200,
-          detail=f"count={len(r4.json()) if r4.status_code == 200 and isinstance(r4.json(), list) else 'N/A'}")
+    s.add(
+        "4.4 Export JSON",
+        passed4,
+        r4.status_code,
+        200,
+        detail=f"count={len(r4.json()) if r4.status_code == 200 and isinstance(r4.json(), list) else 'N/A'}",
+    )
 
     # 4.5 Import from text (pipe-separated: entity | attribute | constraint_value)
-    r5 = client.post(f"/api/v1/requirements/{set_id}/import/text", json={
-        "text": "Wall | thickness | min | 200 | mm\nSlab | fire_rating | equals | F90\nDoor | width | min | 900 | mm",
-        "set_name": "Imported from spec",
-        "default_category": "structural",
-        "default_priority": "must",
-    })
+    r5 = client.post(
+        f"/api/v1/requirements/{set_id}/import/text",
+        json={
+            "text": "Wall | thickness | min | 200 | mm\nSlab | fire_rating | equals | F90\nDoor | width | min | 900 | mm",
+            "set_name": "Imported from spec",
+            "default_category": "structural",
+            "default_priority": "must",
+        },
+    )
     passed5 = r5.status_code == 201
     s.add("4.5 Import from text", passed5, r5.status_code, 201)
 
     # 4.6 Link to BOQ (requires a real position since endpoint validates FK)
     if req_ids and POSITION_ID:
-        r6 = client.post(
-            f"/api/v1/requirements/{set_id}/requirements/{req_ids[0]}/link/{POSITION_ID}"
-        )
+        r6 = client.post(f"/api/v1/requirements/{set_id}/requirements/{req_ids[0]}/link/{POSITION_ID}")
         passed6 = r6.status_code == 200
         if passed6:
             passed6 = r6.json().get("linked_position_id") is not None
@@ -599,13 +650,16 @@ def test_requirements() -> Section:
     elif req_ids:
         # No real position available - test that endpoint rejects invalid FK correctly
         fake_pos = str(uuid.uuid4())
-        r6 = client.post(
-            f"/api/v1/requirements/{set_id}/requirements/{req_ids[0]}/link/{fake_pos}"
-        )
+        r6 = client.post(f"/api/v1/requirements/{set_id}/requirements/{req_ids[0]}/link/{fake_pos}")
         # 404 is expected when position doesn't exist — endpoint validates FK
         passed6 = r6.status_code == 404
-        s.add("4.6 Link to BOQ (FK validation)", passed6, r6.status_code, 404,
-              detail="No real position; verified FK check returns 404")
+        s.add(
+            "4.6 Link to BOQ (FK validation)",
+            passed6,
+            r6.status_code,
+            404,
+            detail="No real position; verified FK check returns 404",
+        )
     else:
         s.add("4.6 Link to BOQ", False, detail="No requirements created")
 
@@ -629,36 +683,54 @@ def test_requirements() -> Section:
 
 def test_markups() -> Section:
     s = Section("5. Markups")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     markup_ids: list[str] = []
     doc_id = f"doc-qa-{uuid.uuid4().hex[:8]}"
 
     # 5.1 Create cloud, arrow, text, distance, stamp markups
     markup_types = [
-        {"type": "cloud", "geometry": {"points": [{"x": 10, "y": 10}, {"x": 100, "y": 10}, {"x": 100, "y": 80}]}, "text": "Check this area", "color": "#ff0000"},
-        {"type": "arrow", "geometry": {"start": {"x": 50, "y": 50}, "end": {"x": 150, "y": 100}}, "text": "Arrow note", "color": "#0000ff"},
+        {
+            "type": "cloud",
+            "geometry": {"points": [{"x": 10, "y": 10}, {"x": 100, "y": 10}, {"x": 100, "y": 80}]},
+            "text": "Check this area",
+            "color": "#ff0000",
+        },
+        {
+            "type": "arrow",
+            "geometry": {"start": {"x": 50, "y": 50}, "end": {"x": 150, "y": 100}},
+            "text": "Arrow note",
+            "color": "#0000ff",
+        },
         {"type": "text", "geometry": {"x": 200, "y": 200}, "text": "Important: verify dimensions", "color": "#00ff00"},
-        {"type": "distance", "geometry": {"start": {"x": 0, "y": 0}, "end": {"x": 100, "y": 0}}, "measurement_value": 5.2, "measurement_unit": "m", "color": "#ff9900"},
+        {
+            "type": "distance",
+            "geometry": {"start": {"x": 0, "y": 0}, "end": {"x": 100, "y": 0}},
+            "measurement_value": 5.2,
+            "measurement_unit": "m",
+            "color": "#ff9900",
+        },
         {"type": "stamp", "geometry": {"x": 300, "y": 300}, "text": "APPROVED", "color": "#22c55e"},
     ]
     all_created = True
     for mdata in markup_types:
-        r = client.post("/api/v1/markups/", json={
-            "project_id": PROJECT_ID,
-            "document_id": doc_id,
-            "page": 1,
-            **mdata,
-        })
+        r = client.post(
+            "/api/v1/markups/",
+            json={
+                "project_id": PROJECT_ID,
+                "document_id": doc_id,
+                "page": 1,
+                **mdata,
+            },
+        )
         if r.status_code == 201:
             markup_ids.append(r.json()["id"])
         else:
             all_created = False
     all_created = all_created and len(markup_ids) == 5
-    s.add("5.1 Create cloud/arrow/text/distance/stamp", all_created,
-          detail=f"created={len(markup_ids)}/5")
+    s.add("5.1 Create cloud/arrow/text/distance/stamp", all_created, detail=f"created={len(markup_ids)}/5")
 
     # 5.2 List with type filter
     r2 = client.get(f"/api/v1/markups/?project_id={PROJECT_ID}&type=cloud")
@@ -676,19 +748,27 @@ def test_markups() -> Section:
     # 5.4 Summary
     r4 = client.get(f"/api/v1/markups/summary?project_id={PROJECT_ID}")
     passed4 = r4.status_code == 200 and "total_markups" in r4.json()
-    s.add("5.4 Summary", passed4, r4.status_code, 200,
-          detail=f"total={r4.json().get('total_markups') if r4.status_code == 200 else 'N/A'}")
+    s.add(
+        "5.4 Summary",
+        passed4,
+        r4.status_code,
+        200,
+        detail=f"total={r4.json().get('total_markups') if r4.status_code == 200 else 'N/A'}",
+    )
 
     # 5.5 Stamp templates CRUD
-    stamp_r = client.post("/api/v1/markups/stamps/templates", json={
-        "project_id": PROJECT_ID,
-        "name": "QA Approved",
-        "category": "custom",
-        "text": "QA APPROVED",
-        "color": "#22c55e",
-        "include_date": True,
-        "include_name": True,
-    })
+    stamp_r = client.post(
+        "/api/v1/markups/stamps/templates",
+        json={
+            "project_id": PROJECT_ID,
+            "name": "QA Approved",
+            "category": "custom",
+            "text": "QA APPROVED",
+            "color": "#22c55e",
+            "include_date": True,
+            "include_name": True,
+        },
+    )
     stamp_id = ""
     passed5 = stamp_r.status_code == 201
     if passed5:
@@ -699,14 +779,17 @@ def test_markups() -> Section:
     s.add("5.5 Stamp templates CRUD", passed5, stamp_r.status_code, 201)
 
     # 5.6 Scale config CRUD
-    scale_r = client.post("/api/v1/markups/scales/", json={
-        "document_id": doc_id,
-        "page": 1,
-        "pixels_per_unit": 50.0,
-        "unit_label": "m",
-        "real_distance": 10.0,
-        "calibration_points": {"p1": {"x": 0, "y": 0}, "p2": {"x": 500, "y": 0}},
-    })
+    scale_r = client.post(
+        "/api/v1/markups/scales/",
+        json={
+            "document_id": doc_id,
+            "page": 1,
+            "pixels_per_unit": 50.0,
+            "unit_label": "m",
+            "real_distance": 10.0,
+            "calibration_points": {"p1": {"x": 0, "y": 0}, "p2": {"x": 500, "y": 0}},
+        },
+    )
     scale_id = ""
     passed6 = scale_r.status_code == 201
     if passed6:
@@ -719,9 +802,12 @@ def test_markups() -> Section:
     # 5.7 Link to BOQ
     test_pos7 = POSITION_ID if POSITION_ID else str(uuid.uuid4())
     if markup_ids:
-        r7 = client.post(f"/api/v1/markups/{markup_ids[1]}/link-to-boq", json={
-            "position_id": test_pos7,
-        })
+        r7 = client.post(
+            f"/api/v1/markups/{markup_ids[1]}/link-to-boq",
+            json={
+                "position_id": test_pos7,
+            },
+        )
         passed7 = r7.status_code == 200
         if passed7:
             passed7 = r7.json().get("linked_boq_position_id") is not None
@@ -752,9 +838,9 @@ def test_markups() -> Section:
 
 def test_punch_list() -> Section:
     s = Section("6. Punch List")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     item_ids: list[str] = []
 
@@ -793,24 +879,31 @@ def test_punch_list() -> Section:
         else:
             all_ok = False
     all_ok = all_ok and len(item_ids) == 3
-    s.add("6.1 Create 3 items (critical/low/high)", all_ok,
-          detail=f"created={len(item_ids)}/3")
+    s.add("6.1 Create 3 items (critical/low/high)", all_ok, detail=f"created={len(item_ids)}/3")
 
     # 6.2 List with priority filter
     r2 = client.get(f"/api/v1/punchlist/items?project_id={PROJECT_ID}&priority=critical")
     passed2 = r2.status_code == 200 and isinstance(r2.json(), list) and len(r2.json()) >= 1
-    s.add("6.2 List with priority filter (critical)", passed2, r2.status_code, 200,
-          detail=f"count={len(r2.json()) if r2.status_code == 200 else 'N/A'}")
+    s.add(
+        "6.2 List with priority filter (critical)",
+        passed2,
+        r2.status_code,
+        200,
+        detail=f"count={len(r2.json()) if r2.status_code == 200 else 'N/A'}",
+    )
 
     # 6.3 Full workflow: open -> in_progress -> resolved -> verified -> closed
     workflow_id = item_ids[0] if item_ids else ""
     workflow_ok = True
     transitions = ["in_progress", "resolved", "verified", "closed"]
     for new_status in transitions:
-        rt = client.post(f"/api/v1/punchlist/items/{workflow_id}/transition", json={
-            "new_status": new_status,
-            "notes": f"Moving to {new_status}",
-        })
+        rt = client.post(
+            f"/api/v1/punchlist/items/{workflow_id}/transition",
+            json={
+                "new_status": new_status,
+                "notes": f"Moving to {new_status}",
+            },
+        )
         if rt.status_code == 200:
             actual = rt.json().get("status", "")
             if actual != new_status:
@@ -818,8 +911,7 @@ def test_punch_list() -> Section:
         else:
             workflow_ok = False
             break
-    s.add("6.3 Full workflow open->...->closed", workflow_ok,
-          detail=f"transitions={len(transitions)}")
+    s.add("6.3 Full workflow open->...->closed", workflow_ok, detail=f"transitions={len(transitions)}")
 
     # 6.4 Summary
     r4 = client.get(f"/api/v1/punchlist/summary?project_id={PROJECT_ID}")
@@ -836,10 +928,13 @@ def test_punch_list() -> Section:
 
     # 6.6 Update item
     if len(item_ids) >= 2:
-        r6 = client.patch(f"/api/v1/punchlist/items/{item_ids[1]}", json={
-            "description": "Updated: Paint defect with additional area",
-            "priority": "medium",
-        })
+        r6 = client.patch(
+            f"/api/v1/punchlist/items/{item_ids[1]}",
+            json={
+                "description": "Updated: Paint defect with additional area",
+                "priority": "medium",
+            },
+        )
         passed6 = r6.status_code == 200
         if passed6:
             passed6 = r6.json().get("description", "").startswith("Updated")
@@ -875,102 +970,108 @@ def test_punch_list() -> Section:
 
 def test_cross_module() -> Section:
     s = Section("7. Cross-module Integration")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # For cross-module BOQ link tests, use a fake position_id if no real one exists.
     # The link endpoints store the ID as a string reference; they don't validate FK.
     test_pos_id = POSITION_ID if POSITION_ID else str(uuid.uuid4())
 
     # 7.1 Measurement links to BOQ position
-    m_r = client.post("/api/v1/takeoff/measurements", json={
-        "project_id": PROJECT_ID,
-        "type": "distance",
-        "group_name": "Cross-test",
-        "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}],
-        "measurement_value": 10.0,
-        "measurement_unit": "m",
-    })
+    m_r = client.post(
+        "/api/v1/takeoff/measurements",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "distance",
+            "group_name": "Cross-test",
+            "points": [{"x": 0, "y": 0}, {"x": 100, "y": 0}],
+            "measurement_value": 10.0,
+            "measurement_unit": "m",
+        },
+    )
     m_id = ""
     if m_r.status_code == 201:
         m_id = m_r.json()["id"]
     if m_id:
-        link_r = client.post(f"/api/v1/takeoff/measurements/{m_id}/link-to-boq",
-                             json={"boq_position_id": test_pos_id})
+        link_r = client.post(f"/api/v1/takeoff/measurements/{m_id}/link-to-boq", json={"boq_position_id": test_pos_id})
         passed1 = link_r.status_code == 200 and link_r.json().get("linked_boq_position_id") == test_pos_id
     else:
         passed1 = False
-    s.add("7.1 Measurement -> BOQ position link", passed1,
-          detail=f"m_id={m_id[:8] if m_id else 'N/A'}")
+    s.add("7.1 Measurement -> BOQ position link", passed1, detail=f"m_id={m_id[:8] if m_id else 'N/A'}")
     if m_id:
         client.delete(f"/api/v1/takeoff/measurements/{m_id}")
 
     # 7.2 Markup links to BOQ position
-    mk_r = client.post("/api/v1/markups/", json={
-        "project_id": PROJECT_ID,
-        "type": "cloud",
-        "geometry": {"points": [{"x": 0, "y": 0}]},
-        "text": "Cross-module test",
-    })
+    mk_r = client.post(
+        "/api/v1/markups/",
+        json={
+            "project_id": PROJECT_ID,
+            "type": "cloud",
+            "geometry": {"points": [{"x": 0, "y": 0}]},
+            "text": "Cross-module test",
+        },
+    )
     mk_id = ""
     if mk_r.status_code == 201:
         mk_id = mk_r.json()["id"]
     if mk_id:
-        link_r2 = client.post(f"/api/v1/markups/{mk_id}/link-to-boq",
-                              json={"position_id": test_pos_id})
+        link_r2 = client.post(f"/api/v1/markups/{mk_id}/link-to-boq", json={"position_id": test_pos_id})
         passed2 = link_r2.status_code == 200
     else:
         passed2 = False
-    s.add("7.2 Markup -> BOQ position link", passed2,
-          detail=f"mk_id={mk_id[:8] if mk_id else 'N/A'}")
+    s.add("7.2 Markup -> BOQ position link", passed2, detail=f"mk_id={mk_id[:8] if mk_id else 'N/A'}")
     if mk_id:
         client.delete(f"/api/v1/markups/{mk_id}")
 
     # 7.3 Requirement links to BOQ position
-    rs_r = client.post("/api/v1/requirements/", json={
-        "project_id": PROJECT_ID,
-        "name": "Cross-module test set",
-    })
+    rs_r = client.post(
+        "/api/v1/requirements/",
+        json={
+            "project_id": PROJECT_ID,
+            "name": "Cross-module test set",
+        },
+    )
     rs_id = ""
     if rs_r.status_code == 201:
         rs_id = rs_r.json().get("id", "")
     req_r = None
     rq_id = ""
     if rs_id:
-        req_r = client.post(f"/api/v1/requirements/{rs_id}/requirements", json={
-            "entity": "Test",
-            "attribute": "value",
-            "constraint_type": "min",
-            "constraint_value": "100",
-        })
+        req_r = client.post(
+            f"/api/v1/requirements/{rs_id}/requirements",
+            json={
+                "entity": "Test",
+                "attribute": "value",
+                "constraint_type": "min",
+                "constraint_value": "100",
+            },
+        )
         if req_r and req_r.status_code == 201:
             rq_id = req_r.json().get("id", "")
     if rq_id and POSITION_ID:
-        link_r3 = client.post(
-            f"/api/v1/requirements/{rs_id}/requirements/{rq_id}/link/{POSITION_ID}"
-        )
+        link_r3 = client.post(f"/api/v1/requirements/{rs_id}/requirements/{rq_id}/link/{POSITION_ID}")
         passed3 = link_r3.status_code == 200
     elif rq_id:
         # No real position - verify FK validation works (should return 404)
-        link_r3 = client.post(
-            f"/api/v1/requirements/{rs_id}/requirements/{rq_id}/link/{test_pos_id}"
-        )
+        link_r3 = client.post(f"/api/v1/requirements/{rs_id}/requirements/{rq_id}/link/{test_pos_id}")
         passed3 = link_r3.status_code == 404  # Expected: FK validation rejects
     else:
         passed3 = False
-    s.add("7.3 Requirement -> BOQ position link", passed3,
-          detail=f"req_id={rq_id[:8] if rq_id else 'N/A'}")
+    s.add("7.3 Requirement -> BOQ position link", passed3, detail=f"req_id={rq_id[:8] if rq_id else 'N/A'}")
     if rs_id:
         client.delete(f"/api/v1/requirements/{rs_id}")
 
     # 7.4 Field report references project correctly
-    fr_r = client.post("/api/v1/fieldreports/reports", json={
-        "project_id": PROJECT_ID,
-        "report_date": date.today().isoformat(),
-        "report_type": "daily",
-        "work_performed": "Cross-module integration test",
-    })
+    fr_r = client.post(
+        "/api/v1/fieldreports/reports",
+        json={
+            "project_id": PROJECT_ID,
+            "report_date": date.today().isoformat(),
+            "report_type": "daily",
+            "work_performed": "Cross-module integration test",
+        },
+    )
     passed4 = fr_r.status_code == 201
     fr_id = ""
     if passed4:
@@ -981,24 +1082,24 @@ def test_cross_module() -> Section:
         client.delete(f"/api/v1/fieldreports/reports/{fr_id}")
 
     # 7.5 Punch item references document
-    pi_r = client.post("/api/v1/punchlist/items", json={
-        "project_id": PROJECT_ID,
-        "title": "Cross-module: punch with document ref",
-        "document_id": "test-doc-001",
-        "page": 3,
-        "location_x": 0.5,
-        "location_y": 0.7,
-        "priority": "medium",
-    })
+    pi_r = client.post(
+        "/api/v1/punchlist/items",
+        json={
+            "project_id": PROJECT_ID,
+            "title": "Cross-module: punch with document ref",
+            "document_id": "test-doc-001",
+            "page": 3,
+            "location_x": 0.5,
+            "location_y": 0.7,
+            "priority": "medium",
+        },
+    )
     passed5 = pi_r.status_code == 201
     pi_id = ""
     if passed5:
         pi_id = pi_r.json().get("id", "")
         d = pi_r.json()
-        passed5 = (
-            d.get("document_id") == "test-doc-001"
-            and d.get("page") == 3
-        )
+        passed5 = d.get("document_id") == "test-doc-001" and d.get("page") == 3
     s.add("7.5 Punch item references document", passed5, pi_r.status_code, 201)
     if pi_id:
         client.delete(f"/api/v1/punchlist/items/{pi_id}")
@@ -1013,9 +1114,9 @@ def test_cross_module() -> Section:
 
 def test_regression() -> Section:
     s = Section("8. Regression (All Existing Modules)")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  SECTION: {s.name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # 8.1 Health
     r = client.get("/api/health")
@@ -1023,9 +1124,7 @@ def test_regression() -> Section:
     s.add("8.1 Health endpoint", passed, r.status_code, 200)
 
     # 8.2 Auth (login)
-    r = client.post("/api/v1/users/auth/login", json={
-        "email": DEMO_EMAIL, "password": DEMO_PASSWORD
-    })
+    r = client.post("/api/v1/users/auth/login", json={"email": DEMO_EMAIL, "password": DEMO_PASSWORD})
     passed = r.status_code == 200 and "access_token" in r.json()
     s.add("8.2 Auth login", passed, r.status_code, 200)
 
@@ -1033,16 +1132,18 @@ def test_regression() -> Section:
     r = client.get("/api/v1/projects/")
     passed = r.status_code == 200 and isinstance(r.json(), list)
     project_count = len(r.json()) if r.status_code == 200 else 0
-    s.add("8.3 Projects list", passed, r.status_code, 200,
-          detail=f"count={project_count}")
+    s.add("8.3 Projects list", passed, r.status_code, 200, detail=f"count={project_count}")
 
     # 8.4 Projects create + delete
-    r = client.post("/api/v1/projects/", json={
-        "name": f"QA Regression {uuid.uuid4().hex[:6]}",
-        "description": "Regression test project",
-        "country": "DE",
-        "currency": "EUR",
-    })
+    r = client.post(
+        "/api/v1/projects/",
+        json={
+            "name": f"QA Regression {uuid.uuid4().hex[:6]}",
+            "description": "Regression test project",
+            "country": "DE",
+            "currency": "EUR",
+        },
+    )
     passed = r.status_code in (200, 201)
     temp_proj_id = ""
     if passed:
@@ -1110,16 +1211,14 @@ def test_regression() -> Section:
     r = client.get("/api/v1/takeoff/converters")
     passed = r.status_code == 200 and "converters" in r.json()
     converter_count = r.json().get("total_count", 0) if r.status_code == 200 else 0
-    s.add("8.14 Takeoff converters", passed, r.status_code, 200,
-          detail=f"count={converter_count}")
+    s.add("8.14 Takeoff converters", passed, r.status_code, 200, detail=f"count={converter_count}")
 
     # 8.15 System modules count
     r = client.get("/api/system/modules")
     passed = r.status_code == 200 and "modules" in r.json()
     module_count = len(r.json().get("modules", [])) if r.status_code == 200 else 0
     passed = passed and module_count >= 15
-    s.add("8.15 System modules (>= 15)", passed, r.status_code, 200,
-          detail=f"count={module_count}")
+    s.add("8.15 System modules (>= 15)", passed, r.status_code, 200, detail=f"count={module_count}")
 
     # Cleanup temp project
     if temp_proj_id:
@@ -1183,11 +1282,11 @@ def main() -> int:
     print("=" * 60)
     print()
     print(f"  {'Section':<42} {'Pass':>5} {'Fail':>5} {'Total':>5}")
-    print(f"  {'-'*42} {'-'*5} {'-'*5} {'-'*5}")
+    print(f"  {'-' * 42} {'-' * 5} {'-' * 5} {'-' * 5}")
     for s in sections:
         total_s = s.passed_count + s.failed_count
         print(f"  {s.name:<42} {s.passed_count:>5} {s.failed_count:>5} {total_s:>5}")
-    print(f"  {'-'*42} {'-'*5} {'-'*5} {'-'*5}")
+    print(f"  {'-' * 42} {'-' * 5} {'-' * 5} {'-' * 5}")
     print(f"  {'TOTAL':<42} {total_passed:>5} {total_failed:>5} {total_tests:>5}")
     print()
     print(f"  Duration: {elapsed:.1f}s")

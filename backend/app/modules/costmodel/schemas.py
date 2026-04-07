@@ -11,7 +11,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── CostSnapshot schemas ─────────────────────────────────────────────────────
 
 
@@ -279,12 +278,8 @@ class EVMResponse(BaseModel):
     etc: float = Field(0.0, description="Estimate To Complete — EAC - AC")
     vac: float = Field(0.0, description="Variance At Completion — BAC - EAC")
     tcpi: float = Field(0.0, description="To-Complete Performance Index — (BAC - EV) / (BAC - AC)")
-    time_elapsed_pct: float = Field(
-        0.0, description="Percentage of project duration elapsed (0.0 - 100.0)"
-    )
-    schedule_progress_pct: float = Field(
-        0.0, description="Weighted average schedule progress (0.0 - 100.0)"
-    )
+    time_elapsed_pct: float = Field(0.0, description="Percentage of project duration elapsed (0.0 - 100.0)")
+    schedule_progress_pct: float = Field(0.0, description="Weighted average schedule progress (0.0 - 100.0)")
     status: str = Field(
         "unknown",
         description="Overall project health: on_track, at_risk, critical, unknown",
@@ -300,18 +295,10 @@ class WhatIfAdjustments(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    name: str = Field(
-        ..., min_length=1, max_length=200, description="Scenario display name"
-    )
-    material_cost_pct: float = Field(
-        0.0, ge=-100.0, le=100.0, description="Material cost adjustment (-100% to +100%)"
-    )
-    labor_cost_pct: float = Field(
-        0.0, ge=-100.0, le=100.0, description="Labor cost adjustment (-100% to +100%)"
-    )
-    duration_pct: float = Field(
-        0.0, ge=-100.0, le=100.0, description="Duration adjustment (-100% to +100%)"
-    )
+    name: str = Field(..., min_length=1, max_length=200, description="Scenario display name")
+    material_cost_pct: float = Field(0.0, ge=-100.0, le=100.0, description="Material cost adjustment (-100% to +100%)")
+    labor_cost_pct: float = Field(0.0, ge=-100.0, le=100.0, description="Labor cost adjustment (-100% to +100%)")
+    duration_pct: float = Field(0.0, ge=-100.0, le=100.0, description="Duration adjustment (-100% to +100%)")
 
 
 class WhatIfResult(BaseModel):
@@ -328,6 +315,4 @@ class WhatIfResult(BaseModel):
     delta: float = Field(0.0, description="adjusted_eac - original_eac")
     delta_pct: float = Field(0.0, description="Percentage change in EAC")
     adjustments_applied: dict[str, float] = Field(default_factory=dict)
-    snapshot_id: UUID | None = Field(
-        None, description="ID of the snapshot created for this scenario"
-    )
+    snapshot_id: UUID | None = Field(None, description="ID of the snapshot created for this scenario")

@@ -25,15 +25,11 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="editor")
     locale: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    last_login_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Tracks when the password was last changed. Tokens issued (`iat`) before
     # this timestamp are considered invalid — see dependencies.get_current_user.
     # Used to invalidate existing sessions on password change.
-    password_changed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -66,17 +62,11 @@ class APIKey(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    key_prefix: Mapped[str] = mapped_column(
-        String(12), nullable=False
-    )  # First 8 chars for identification
+    key_prefix: Mapped[str] = mapped_column(String(12), nullable=False)  # First 8 chars for identification
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    last_used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     permissions: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=list, server_default="[]"
     )

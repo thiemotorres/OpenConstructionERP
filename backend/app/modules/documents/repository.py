@@ -80,9 +80,7 @@ class DocumentRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def summary_for_project(
-        self, project_id: uuid.UUID
-    ) -> tuple[int, int, list[tuple[str, int]]]:
+    async def summary_for_project(self, project_id: uuid.UUID) -> tuple[int, int, list[tuple[str, int]]]:
         """Return aggregated stats using SQL: (total_count, total_size, [(category, count)])."""
         # Total count and size
         totals_stmt = select(
@@ -283,11 +281,7 @@ class SheetRepository:
         # (or any sheet in the chain) as their previous_version_id
         forward_ids = {s.id for s in chain}
         while True:
-            stmt = (
-                select(Sheet)
-                .where(Sheet.previous_version_id.in_(forward_ids))
-                .where(Sheet.id.notin_(forward_ids))
-            )
+            stmt = select(Sheet).where(Sheet.previous_version_id.in_(forward_ids)).where(Sheet.id.notin_(forward_ids))
             result = await self.session.execute(stmt)
             newer = list(result.scalars().all())
             if not newer:

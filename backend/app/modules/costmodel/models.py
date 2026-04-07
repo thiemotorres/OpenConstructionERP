@@ -8,7 +8,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import ForeignKey, JSON, String, Text
+from sqlalchemy import JSON, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -29,9 +29,7 @@ class CostSnapshot(Base):
         nullable=False,
         index=True,
     )
-    period: Mapped[str] = mapped_column(
-        String(10), nullable=False, doc="YYYY-MM format, e.g. '2026-04'"
-    )
+    period: Mapped[str] = mapped_column(String(10), nullable=False, doc="YYYY-MM format, e.g. '2026-04'")
     planned_cost: Mapped[str] = mapped_column(
         String(50), nullable=False, default="0", doc="BCWS — Budgeted Cost of Work Scheduled"
     )
@@ -41,15 +39,9 @@ class CostSnapshot(Base):
     actual_cost: Mapped[str] = mapped_column(
         String(50), nullable=False, default="0", doc="ACWP — Actual Cost of Work Performed"
     )
-    forecast_eac: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0", doc="Estimate At Completion"
-    )
-    spi: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="0", doc="Schedule Performance Index"
-    )
-    cpi: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="0", doc="Cost Performance Index"
-    )
+    forecast_eac: Mapped[str] = mapped_column(String(50), nullable=False, default="0", doc="Estimate At Completion")
+    spi: Mapped[str] = mapped_column(String(10), nullable=False, default="0", doc="Schedule Performance Index")
+    cpi: Mapped[str] = mapped_column(String(10), nullable=False, default="0", doc="Cost Performance Index")
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
@@ -78,12 +70,8 @@ class BudgetLine(Base):
         nullable=False,
         index=True,
     )
-    boq_position_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(), nullable=True, index=True
-    )
-    activity_id: Mapped[uuid.UUID | None] = mapped_column(
-        GUID(), nullable=True, doc="Link to 4D schedule activity"
-    )
+    boq_position_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
+    activity_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, doc="Link to 4D schedule activity")
     category: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
@@ -91,22 +79,12 @@ class BudgetLine(Base):
     )
     description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     planned_amount: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
-    committed_amount: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0", doc="Contracts signed"
-    )
-    actual_amount: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0", doc="Invoices paid"
-    )
+    committed_amount: Mapped[str] = mapped_column(String(50), nullable=False, default="0", doc="Contracts signed")
+    actual_amount: Mapped[str] = mapped_column(String(50), nullable=False, default="0", doc="Invoices paid")
     forecast_amount: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
-    period_start: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, doc="ISO date start"
-    )
-    period_end: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, doc="ISO date end"
-    )
-    currency: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="", doc="From project settings"
-    )
+    period_start: Mapped[str | None] = mapped_column(String(20), nullable=True, doc="ISO date start")
+    period_end: Mapped[str | None] = mapped_column(String(20), nullable=True, doc="ISO date end")
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="", doc="From project settings")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -134,9 +112,7 @@ class CashFlow(Base):
         nullable=False,
         index=True,
     )
-    period: Mapped[str] = mapped_column(
-        String(10), nullable=False, doc="YYYY-MM format"
-    )
+    period: Mapped[str] = mapped_column(String(10), nullable=False, doc="YYYY-MM format")
     category: Mapped[str] = mapped_column(String(100), nullable=False, default="total")
     planned_inflow: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     planned_outflow: Mapped[str] = mapped_column(String(50), nullable=False, default="0")

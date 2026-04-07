@@ -7,7 +7,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import Integer, JSON, String, Text
+from sqlalchemy import JSON, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -24,30 +24,14 @@ class AISettings(Base):
         unique=True,
         index=True,
     )
-    anthropic_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    openai_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    gemini_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    openrouter_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    mistral_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    groq_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    deepseek_api_key: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, default=None
-    )
-    preferred_model: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="claude-sonnet"
-    )
+    anthropic_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    openai_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    gemini_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    openrouter_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    mistral_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    groq_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    deepseek_api_key: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
+    preferred_model: Mapped[str] = mapped_column(String(100), nullable=False, default="claude-sonnet")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -75,14 +59,10 @@ class AIEstimateJob(Base):
         nullable=True,
         index=True,
     )
-    input_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="text"
-    )
+    input_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text")
     input_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     input_filename: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="pending"
-    )
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     result: Mapped[dict | None] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=True, default=None
     )

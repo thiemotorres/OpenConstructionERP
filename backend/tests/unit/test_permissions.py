@@ -9,7 +9,6 @@ from app.core.permissions import (
     register_core_permissions,
 )
 
-
 # ── Role enum tests ──────────────────────────────────────────────────────────
 
 
@@ -352,21 +351,15 @@ class TestRegisterCorePermissions:
 
             # Viewer-level permissions
             assert permission_registry.role_has_permission(Role.VIEWER, "system.modules.list")
-            assert permission_registry.role_has_permission(
-                Role.VIEWER, "system.validation_rules.list"
-            )
+            assert permission_registry.role_has_permission(Role.VIEWER, "system.validation_rules.list")
 
             # Manager-level permissions
             assert not permission_registry.role_has_permission(Role.VIEWER, "system.settings.read")
             assert permission_registry.role_has_permission(Role.MANAGER, "system.settings.read")
 
             # Admin-only permissions
-            assert not permission_registry.role_has_permission(
-                Role.MANAGER, "system.modules.install"
-            )
-            assert not permission_registry.role_has_permission(
-                Role.MANAGER, "system.settings.write"
-            )
+            assert not permission_registry.role_has_permission(Role.MANAGER, "system.modules.install")
+            assert not permission_registry.role_has_permission(Role.MANAGER, "system.settings.write")
             assert permission_registry.role_has_permission(Role.ADMIN, "system.modules.install")
             assert permission_registry.role_has_permission(Role.ADMIN, "system.settings.write")
 

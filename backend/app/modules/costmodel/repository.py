@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.costmodel.models import BudgetLine, CashFlow, CostSnapshot
 
-
 # ── CostSnapshot repository ─────────────────────────────────────────────────
 
 
@@ -62,9 +61,7 @@ class SnapshotRepository:
 
         return snapshots, total
 
-    async def get_latest_for_project(
-        self, project_id: uuid.UUID
-    ) -> CostSnapshot | None:
+    async def get_latest_for_project(self, project_id: uuid.UUID) -> CostSnapshot | None:
         """Get the most recent snapshot for a project (by period desc)."""
         stmt = (
             select(CostSnapshot)
@@ -141,9 +138,7 @@ class BudgetLineRepository:
 
         return lines, total
 
-    async def aggregate_by_project(
-        self, project_id: uuid.UUID
-    ) -> dict[str, str]:
+    async def aggregate_by_project(self, project_id: uuid.UUID) -> dict[str, str]:
         """Aggregate budget line totals for a project.
 
         Returns:
@@ -169,9 +164,7 @@ class BudgetLineRepository:
             "total_forecast": str(row[3]),
         }
 
-    async def aggregate_by_category(
-        self, project_id: uuid.UUID
-    ) -> list[dict[str, str]]:
+    async def aggregate_by_category(self, project_id: uuid.UUID) -> list[dict[str, str]]:
         """Aggregate budget lines grouped by category.
 
         Returns:

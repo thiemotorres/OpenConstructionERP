@@ -14,25 +14,17 @@ class CostItem(Base):
     """A single cost database entry (rate, unit price, assembly component)."""
 
     __tablename__ = "oe_costs_item"
-    __table_args__ = (
-        UniqueConstraint("code", "region", name="uq_costs_code_region"),
-    )
+    __table_args__ = (UniqueConstraint("code", "region", name="uq_costs_code_region"),)
 
-    code: Mapped[str] = mapped_column(
-        String(100), index=True, nullable=False
-    )
+    code: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     descriptions: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=dict, server_default="{}"
     )
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
-    rate: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )  # Stored as string for SQLite compatibility
+    rate: Mapped[str] = mapped_column(String(50), nullable=False)  # Stored as string for SQLite compatibility
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="EUR")
-    source: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="cwicr"
-    )  # cwicr, rsmeans, bki, custom
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="cwicr")  # cwicr, rsmeans, bki, custom
     classification: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=dict, server_default="{}"
     )

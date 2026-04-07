@@ -10,7 +10,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── AI Settings schemas ──────────────────────────────────────────────────────
 
 
@@ -63,31 +62,21 @@ class QuickEstimateRequest(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    description: str = Field(
-        ..., min_length=10, max_length=5000, description="Project description"
-    )
+    description: str = Field(..., min_length=10, max_length=5000, description="Project description")
     project_type: str | None = Field(
         default=None,
         max_length=100,
         description="Building type: office, residential, warehouse, etc.",
     )
-    area_m2: float | None = Field(
-        default=None, gt=0, le=1_000_000, description="Total area in m2"
-    )
-    location: str | None = Field(
-        default=None, max_length=200, description="City or country for pricing context"
-    )
-    currency: str | None = Field(
-        default=None, max_length=10, description="Currency code: EUR, USD, GBP, etc."
-    )
+    area_m2: float | None = Field(default=None, gt=0, le=1_000_000, description="Total area in m2")
+    location: str | None = Field(default=None, max_length=200, description="City or country for pricing context")
+    currency: str | None = Field(default=None, max_length=10, description="Currency code: EUR, USD, GBP, etc.")
     standard: str | None = Field(
         default=None,
         max_length=50,
         description="Classification standard: din276, nrm, masterformat",
     )
-    project_id: UUID | None = Field(
-        default=None, description="Optional project to link the estimate job to"
-    )
+    project_id: UUID | None = Field(default=None, description="Optional project to link the estimate job to")
 
 
 class PhotoEstimateRequest(BaseModel):
@@ -150,6 +139,4 @@ class CreateBOQFromEstimateRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     project_id: UUID
-    boq_name: str = Field(
-        default="AI Estimate", min_length=1, max_length=255
-    )
+    boq_name: str = Field(default="AI Estimate", min_length=1, max_length=255)

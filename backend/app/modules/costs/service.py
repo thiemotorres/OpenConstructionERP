@@ -15,13 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
+
+
 from app.modules.costs.models import CostItem
 from app.modules.costs.repository import CostItemRepository
 from app.modules.costs.schemas import CostItemCreate, CostItemUpdate, CostSearchQuery
@@ -91,9 +94,7 @@ class CostItemService:
         """Get multiple cost items by their codes."""
         return await self.repo.get_by_codes(codes)
 
-    async def search_costs(
-        self, query: CostSearchQuery
-    ) -> tuple[list[CostItem], int]:
+    async def search_costs(self, query: CostSearchQuery) -> tuple[list[CostItem], int]:
         """Search cost items with filters and pagination."""
         return await self.repo.search(
             q=query.q,
@@ -109,9 +110,7 @@ class CostItemService:
 
     # ── Update ────────────────────────────────────────────────────────────
 
-    async def update_cost_item(
-        self, item_id: uuid.UUID, data: CostItemUpdate
-    ) -> CostItem:
+    async def update_cost_item(self, item_id: uuid.UUID, data: CostItemUpdate) -> CostItem:
         """Update a cost item. Raises 404 if not found, 409 on code conflict."""
         item = await self.repo.get_by_id(item_id)
         if item is None:

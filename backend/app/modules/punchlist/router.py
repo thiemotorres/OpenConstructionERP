@@ -200,7 +200,6 @@ async def transition_status(
     # For verify and close transitions, require the verify permission
     if data.new_status in ("verified", "closed"):
         # Check verify permission manually
-        from app.dependencies import get_current_user_payload
 
         # The RequirePermission("punchlist.update") already ran;
         # for verify/close we need the extra verify permission check.

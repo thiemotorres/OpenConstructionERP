@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 logger = logging.getLogger(__name__)
 
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, check_ai_rate_limit
+from app.modules.ai.ai_client import call_ai, resolve_provider_and_key
 from app.modules.ai.schemas import (
     AISettingsResponse,
     AISettingsUpdate,
@@ -29,7 +30,6 @@ from app.modules.ai.schemas import (
     EstimateJobResponse,
     QuickEstimateRequest,
 )
-from app.modules.ai.ai_client import call_ai, resolve_provider_and_key
 from app.modules.ai.service import AIService
 
 router = APIRouter()
@@ -262,10 +262,7 @@ async def photo_estimate(
     if content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Unsupported image type: {content_type}. "
-                f"Accepted: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}"
-            ),
+            detail=(f"Unsupported image type: {content_type}. Accepted: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}"),
         )
 
     # Read and validate size
@@ -344,10 +341,7 @@ async def file_estimate(
     if not category:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Unsupported file type: .{ext}. "
-                f"Accepted: {', '.join(f'.{e}' for e in sorted(_EXT_CATEGORY))}"
-            ),
+            detail=(f"Unsupported file type: .{ext}. Accepted: {', '.join(f'.{e}' for e in sorted(_EXT_CATEGORY))}"),
         )
 
     content = await file.read()
@@ -500,32 +494,27 @@ async def enrich_estimate(
             from app.core.vector import encode_texts, vector_search
 
             query_vec = encode_texts([description])[0]
-            raw_matches = vector_search(
-                query_vec, region=region or None, limit=5
-            )
+            raw_matches = vector_search(query_vec, region=region or None, limit=5)
             for m in raw_matches:
-                matches.append({
-                    "code": m.get("code", ""),
-                    "description": m.get("description", ""),
-                    "unit": m.get("unit", ""),
-                    "rate": float(m.get("rate", 0)),
-                    "region": m.get("region", ""),
-                    "score": float(m.get("score", 0)),
-                })
+                matches.append(
+                    {
+                        "code": m.get("code", ""),
+                        "description": m.get("description", ""),
+                        "unit": m.get("unit", ""),
+                        "rate": float(m.get("rate", 0)),
+                        "region": m.get("region", ""),
+                        "score": float(m.get("score", 0)),
+                    }
+                )
         except Exception as vec_err:
             logger.debug("Vector search unavailable for item %d: %s", idx, vec_err)
 
         # 5b. If vector search returned nothing, fall back to text search
         if not matches:
             try:
-                from sqlalchemy import or_
-
                 # Extract meaningful keywords (skip short/common words)
                 stop = {"the", "and", "for", "with", "from", "into", "per", "all"}
-                keywords = [
-                    w for w in description.lower().split()
-                    if len(w) > 2 and w not in stop
-                ][:5]
+                keywords = [w for w in description.lower().split() if len(w) > 2 and w not in stop][:5]
 
                 if keywords:
                     # Search each keyword separately with OR
@@ -549,21 +538,21 @@ async def enrich_estimate(
                                 desc_lower = (ci.description or "").lower()
                                 kw_hits = sum(1 for k in keywords if k in desc_lower)
                                 score = min(0.9, 0.3 + kw_hits * 0.15)
-                                matches.append({
-                                    "code": ci.code,
-                                    "description": (ci.description or "")[:200],
-                                    "unit": ci.unit or "",
-                                    "rate": float(ci.rate) if ci.rate else 0.0,
-                                    "region": ci.region or "",
-                                    "score": score,
-                                })
+                                matches.append(
+                                    {
+                                        "code": ci.code,
+                                        "description": (ci.description or "")[:200],
+                                        "unit": ci.unit or "",
+                                        "rate": float(ci.rate) if ci.rate else 0.0,
+                                        "region": ci.region or "",
+                                        "score": score,
+                                    }
+                                )
                     # Keep top 5
                     matches.sort(key=lambda m: m["score"], reverse=True)
                     matches = matches[:5]
             except Exception as txt_err:
-                logger.warning(
-                    "Text search failed for item %d (%s): %s", idx, description[:30], txt_err
-                )
+                logger.warning("Text search failed for item %d (%s): %s", idx, description[:30], txt_err)
 
         # 5c. Prefer matches with the same unit — boost their score
         if item_unit:
@@ -579,14 +568,16 @@ async def enrich_estimate(
         if best_match:
             total_matched += 1
 
-        enriched_items.append({
-            "index": idx,
-            "description": description,
-            "unit": item_unit,
-            "ai_rate": float(ai_rate),
-            "matches": matches,
-            "best_match": best_match,
-        })
+        enriched_items.append(
+            {
+                "index": idx,
+                "description": description,
+                "unit": item_unit,
+                "ai_rate": float(ai_rate),
+                "matches": matches,
+                "best_match": best_match,
+            }
+        )
 
     logger.info(
         "Enriched estimate job %s: %d/%d items matched",
@@ -672,8 +663,9 @@ async def advisor_chat(
     history: list[dict] = body.get("history", []) or []
 
     # 1. Search cost database for relevant items
+    from sqlalchemy import or_, select
+
     from app.modules.costs.models import CostItem
-    from sqlalchemy import select, or_
 
     context_items: list[dict] = []
 
@@ -689,29 +681,29 @@ async def advisor_chat(
         keywords = [w for w in message.split() if len(w) > 2]
         if keywords:
             conditions = [CostItem.description.ilike(f"%{kw}%") for kw in keywords[:5]]
-            stmt = (
-                select(CostItem)
-                .where(CostItem.is_active.is_(True), or_(*conditions))
-                .limit(8)
-            )
+            stmt = select(CostItem).where(CostItem.is_active.is_(True), or_(*conditions)).limit(8)
             result = await session.execute(stmt)
             items = result.scalars().all()
             for item in items:
-                context_items.append({
-                    "code": item.code,
-                    "description": item.description[:200],
-                    "unit": item.unit,
-                    "rate": float(item.rate) if item.rate else 0,
-                    "region": item.region or "",
-                })
+                context_items.append(
+                    {
+                        "code": item.code,
+                        "description": item.description[:200],
+                        "unit": item.unit,
+                        "rate": float(item.rate) if item.rate else 0,
+                        "region": item.region or "",
+                    }
+                )
 
     # 2. Build context from found items
     if context_items:
-        items_text = "\n".join([
-            f"- {it.get('code', '')}: {it.get('description', '')[:100]} | "
-            f"{it.get('unit', '')} | {it.get('rate', 0)} | {it.get('region', '')}"
-            for it in context_items[:8]
-        ])
+        items_text = "\n".join(
+            [
+                f"- {it.get('code', '')}: {it.get('description', '')[:100]} | "
+                f"{it.get('unit', '')} | {it.get('rate', 0)} | {it.get('region', '')}"
+                for it in context_items[:8]
+            ]
+        )
         context = (
             f"Cost database results (may or may not be relevant — use only if they "
             f"actually match the user's question):\n{items_text}"
@@ -727,20 +719,32 @@ async def advisor_chat(
 
             proj = await session.get(Project, project_id)
             if proj:
-                project_context = (
-                    f"\nProject: {proj.name}, Region: {proj.region}, "
-                    f"Currency: {proj.currency}"
-                )
+                project_context = f"\nProject: {proj.name}, Region: {proj.region}, Currency: {proj.currency}"
         except Exception:
             pass
 
     # 4. Build prompt — locale-aware, allows general knowledge
     _LOCALE_NAMES = {
-        "en": "English", "de": "German", "fr": "French", "es": "Spanish",
-        "pt": "Portuguese", "ru": "Russian", "zh": "Chinese", "ar": "Arabic",
-        "hi": "Hindi", "tr": "Turkish", "it": "Italian", "nl": "Dutch",
-        "pl": "Polish", "cs": "Czech", "ja": "Japanese", "ko": "Korean",
-        "sv": "Swedish", "no": "Norwegian", "da": "Danish", "fi": "Finnish",
+        "en": "English",
+        "de": "German",
+        "fr": "French",
+        "es": "Spanish",
+        "pt": "Portuguese",
+        "ru": "Russian",
+        "zh": "Chinese",
+        "ar": "Arabic",
+        "hi": "Hindi",
+        "tr": "Turkish",
+        "it": "Italian",
+        "nl": "Dutch",
+        "pl": "Polish",
+        "cs": "Czech",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "sv": "Swedish",
+        "no": "Norwegian",
+        "da": "Danish",
+        "fi": "Finnish",
         "bg": "Bulgarian",
     }
     lang_name = _LOCALE_NAMES.get(locale, "English")
@@ -787,11 +791,7 @@ async def advisor_chat(
             prefix = "User" if role == "user" else "Assistant"
             history_lines.append(f"{prefix}: {content}")
         if history_lines:
-            history_text = (
-                "Previous conversation:\n"
-                + "\n".join(history_lines)
-                + "\n\n---\n\n"
-            )
+            history_text = "Previous conversation:\n" + "\n".join(history_lines) + "\n\n---\n\n"
 
     user_prompt = (
         f"{context}{project_context}\n\n"
@@ -826,28 +826,30 @@ async def advisor_chat(
             "fr": "IA non configurée. Veuillez ajouter votre clé API dans les Paramètres.",
             "es": "IA no configurada. Agregue su clave API en Configuración.",
         }
-        fallback = _err_msgs.get(locale, f"AI is not configured. Please set up an AI provider in Settings.")
+        fallback = _err_msgs.get(locale, "AI is not configured. Please set up an AI provider in Settings.")
         answer = f"{fallback}\n({str(exc)[:100]})"
         used_db = False
 
     # 6. Build source references — only include if items seem relevant
-    sources = [
-        {
-            "code": it.get("code", ""),
-            "description": it.get("description", "")[:80],
-            "rate": it.get("rate", 0),
-            "unit": it.get("unit", ""),
-            "region": it.get("region", ""),
-        }
-        for it in context_items[:5]
-    ] if used_db else []
+    sources = (
+        [
+            {
+                "code": it.get("code", ""),
+                "description": it.get("description", "")[:80],
+                "rate": it.get("rate", 0),
+                "unit": it.get("unit", ""),
+                "region": it.get("region", ""),
+            }
+            for it in context_items[:5]
+        ]
+        if used_db
+        else []
+    )
 
     # If AI didn't reference any sources in its answer, don't show them
     if sources and answer:
         # Check if the AI actually used any source codes in its response
-        codes_in_answer = any(
-            it.get("code", "xxx") in answer for it in context_items[:5]
-        )
+        codes_in_answer = any(it.get("code", "xxx") in answer for it in context_items[:5])
         if not codes_in_answer:
             sources = []  # AI ignored the DB items — don't show irrelevant sources
 

@@ -174,9 +174,7 @@ class MarkupsService:
         await self.markup_repo.delete(markup_id)
         logger.info("Markup deleted: %s", markup_id)
 
-    async def bulk_create_markups(
-        self, markups_data: list[MarkupCreate], user_id: str
-    ) -> list[Markup]:
+    async def bulk_create_markups(self, markups_data: list[MarkupCreate], user_id: str) -> list[Markup]:
         """Create multiple markups at once (for import workflows)."""
         items = [
             Markup(
@@ -214,9 +212,7 @@ class MarkupsService:
             "by_status": summary["by_status"],
         }
 
-    async def search_markups(
-        self, project_id: uuid.UUID, query: str
-    ) -> list[Markup]:
+    async def search_markups(self, project_id: uuid.UUID, query: str) -> list[Markup]:
         """Search markups by label/text content."""
         return await self.markup_repo.search(project_id, query)
 
@@ -238,38 +234,42 @@ class MarkupsService:
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "id",
-            "document_id",
-            "page",
-            "type",
-            "text",
-            "label",
-            "color",
-            "status",
-            "measurement_value",
-            "measurement_unit",
-            "author_id",
-            "linked_boq_position_id",
-            "created_at",
-        ])
+        writer.writerow(
+            [
+                "id",
+                "document_id",
+                "page",
+                "type",
+                "text",
+                "label",
+                "color",
+                "status",
+                "measurement_value",
+                "measurement_unit",
+                "author_id",
+                "linked_boq_position_id",
+                "created_at",
+            ]
+        )
 
         for item in items:
-            writer.writerow([
-                str(item.id),
-                item.document_id or "",
-                item.page,
-                item.type,
-                item.text or "",
-                item.label or "",
-                item.color,
-                item.status,
-                item.measurement_value if item.measurement_value is not None else "",
-                item.measurement_unit or "",
-                item.author_id,
-                item.linked_boq_position_id or "",
-                item.created_at.isoformat() if item.created_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(item.id),
+                    item.document_id or "",
+                    item.page,
+                    item.type,
+                    item.text or "",
+                    item.label or "",
+                    item.color,
+                    item.status,
+                    item.measurement_value if item.measurement_value is not None else "",
+                    item.measurement_unit or "",
+                    item.author_id,
+                    item.linked_boq_position_id or "",
+                    item.created_at.isoformat() if item.created_at else "",
+                ]
+            )
 
         return output.getvalue()
 
@@ -277,14 +277,10 @@ class MarkupsService:
         """Link a measurement markup to a BOQ position."""
         item = await self.get_markup(markup_id)
 
-        await self.markup_repo.update_fields(
-            markup_id, linked_boq_position_id=position_id
-        )
+        await self.markup_repo.update_fields(markup_id, linked_boq_position_id=position_id)
         await self.session.refresh(item)
 
-        logger.info(
-            "Markup %s linked to BOQ position %s", markup_id, position_id
-        )
+        logger.info("Markup %s linked to BOQ position %s", markup_id, position_id)
         return item
 
     # ── Scale Config CRUD ────────────────────────────────────────────────
@@ -310,9 +306,7 @@ class MarkupsService:
         )
         return item
 
-    async def list_scales(
-        self, document_id: str, *, page: int | None = None
-    ) -> list[ScaleConfig]:
+    async def list_scales(self, document_id: str, *, page: int | None = None) -> list[ScaleConfig]:
         """List scale configs for a document."""
         return await self.scale_repo.list_for_document(document_id, page=page)
 
@@ -362,9 +356,7 @@ class MarkupsService:
             logger.info("Seeded %d default stamp templates", created)
         return created
 
-    async def create_stamp(
-        self, data: StampTemplateCreate, user_id: str
-    ) -> StampTemplate:
+    async def create_stamp(self, data: StampTemplateCreate, user_id: str) -> StampTemplate:
         """Create a new stamp template."""
         item = StampTemplate(
             project_id=data.project_id,
@@ -384,9 +376,7 @@ class MarkupsService:
         logger.info("Stamp template created: %s (%s)", data.name, item.id)
         return item
 
-    async def list_stamps(
-        self, project_id: uuid.UUID | None
-    ) -> list[StampTemplate]:
+    async def list_stamps(self, project_id: uuid.UUID | None) -> list[StampTemplate]:
         """List stamp templates: predefined + project-specific."""
         return await self.stamp_repo.list_for_project(project_id)
 

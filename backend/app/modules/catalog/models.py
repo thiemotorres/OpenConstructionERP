@@ -4,7 +4,7 @@ Tables:
     oe_catalog_resource — curated resources (materials, equipment, labor, operators)
 """
 
-from sqlalchemy import Boolean, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -22,19 +22,11 @@ class CatalogResource(Base):
     resource_type: Mapped[str] = mapped_column(
         String(20), nullable=False, index=True
     )  # material, equipment, labor, operator
-    category: Mapped[str] = mapped_column(
-        String(100), nullable=False, index=True
-    )  # e.g. "Concrete & Cement", "Cranes"
+    category: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # e.g. "Concrete & Cement", "Cranes"
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
-    base_price: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )  # Stored as string for SQLite compatibility
-    min_price: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0"
-    )
-    max_price: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0"
-    )
+    base_price: Mapped[str] = mapped_column(String(50), nullable=False)  # Stored as string for SQLite compatibility
+    min_price: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
+    max_price: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="EUR")
     usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     source: Mapped[str] = mapped_column(

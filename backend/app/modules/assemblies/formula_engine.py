@@ -83,15 +83,14 @@ class FormulaEvaluator:
 
     def _substitute_params(self, formula: str, params: dict) -> str:
         """Replace ${param_name} with parameter values."""
+
         def replace_var(match: re.Match) -> str:
             name = match.group(1)
             if name not in params:
                 raise FormulaError(f"Unknown parameter: '{name}'")
             val = params[name]
             if isinstance(val, str):
-                raise FormulaError(
-                    f"Parameter '{name}' is a string ('{val}'), cannot use in arithmetic"
-                )
+                raise FormulaError(f"Parameter '{name}' is a string ('{val}'), cannot use in arithmetic")
             return str(val)
 
         return re.sub(r"\$\{([a-zA-Z_]\w*)\}", replace_var, formula)
@@ -110,9 +109,7 @@ class FormulaEvaluator:
                 raise FormulaError(f"Key '{key}' not found in table '{table_name}'")
             val = table[key]
             if isinstance(val, dict):
-                raise FormulaError(
-                    f"Lookup '{table_name}[{key}]' returned a dict — use specific field"
-                )
+                raise FormulaError(f"Lookup '{table_name}[{key}]' returned a dict — use specific field")
             return str(val)
 
         return re.sub(pattern, replace_lookup, formula)

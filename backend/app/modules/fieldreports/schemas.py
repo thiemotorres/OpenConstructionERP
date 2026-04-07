@@ -10,7 +10,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Workforce entry ────────────────────────────────────────────────────
 
 
@@ -158,9 +157,7 @@ class LinkDocumentsRequest(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    document_ids: list[str] = Field(
-        ..., min_length=1, description="List of document UUIDs to link"
-    )
+    document_ids: list[str] = Field(..., min_length=1, description="List of document UUIDs to link")
 
 
 class LinkedDocumentResponse(BaseModel):

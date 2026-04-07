@@ -99,7 +99,9 @@ class ChangeOrderRepository:
                 summary["approved_count"] = int(summary["approved_count"]) + 1  # type: ignore[arg-type]
                 # Only approved orders count toward total cost/schedule impact
                 summary["total_cost_impact"] = float(summary["total_cost_impact"]) + float(order.cost_impact)  # type: ignore[arg-type]
-                summary["total_schedule_impact_days"] = int(summary["total_schedule_impact_days"]) + order.schedule_impact_days  # type: ignore[arg-type]
+                summary["total_schedule_impact_days"] = (
+                    int(summary["total_schedule_impact_days"]) + order.schedule_impact_days
+                )  # type: ignore[arg-type]
             elif order.status == "rejected":
                 summary["rejected_count"] = int(summary["rejected_count"]) + 1  # type: ignore[arg-type]
 

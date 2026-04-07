@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Create / Update ───────────────────────────────────────────────────────
 
 
@@ -14,7 +13,7 @@ class CostItemCreate(BaseModel):
     """Create a new cost item."""
 
     code: str = Field(..., min_length=1, max_length=100)
-    description: str = Field(default='')
+    description: str = Field(default="")
     descriptions: dict[str, str] = Field(default_factory=dict)
     unit: str = Field(..., min_length=1, max_length=20)
     rate: float = Field(..., ge=0)
@@ -92,9 +91,7 @@ class CostSearchQuery(BaseModel):
     unit: str | None = None
     source: str | None = None
     region: str | None = Field(default=None, description="Filter by region (e.g. DE_BERLIN)")
-    category: str | None = Field(
-        default=None, description="Filter by classification.collection value"
-    )
+    category: str | None = Field(default=None, description="Filter by classification.collection value")
     min_rate: float | None = Field(default=None, ge=0)
     max_rate: float | None = Field(default=None, ge=0)
     limit: int = Field(default=50, ge=1, le=500)

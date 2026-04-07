@@ -11,7 +11,7 @@ module is loaded (see ``module_loader._load_module`` → ``events.py``).
 import logging
 import uuid
 
-from app.core.events import Event, event_bus
+from app.core.events import Event
 from app.database import async_session_factory
 from app.modules.boq.models import BOQActivityLog
 
@@ -151,6 +151,4 @@ async def _log_boq_activity(event: Event) -> None:
             session.add(entry)
             await session.commit()
     except Exception:
-        logger.exception(
-            "Failed to write activity log for event '%s'", event.name
-        )
+        logger.exception("Failed to write activity log for event '%s'", event.name)

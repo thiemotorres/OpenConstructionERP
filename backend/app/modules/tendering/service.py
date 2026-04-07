@@ -14,13 +14,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
+
+
 from app.modules.tendering.models import TenderBid, TenderPackage
 from app.modules.tendering.repository import TenderingRepository
 from app.modules.tendering.schemas import (
@@ -76,13 +79,9 @@ class TenderingService:
         limit: int = 50,
     ) -> tuple[list[TenderPackage], int]:
         """List packages with optional project filter."""
-        return await self.repo.list_packages(
-            project_id=project_id, offset=offset, limit=limit
-        )
+        return await self.repo.list_packages(project_id=project_id, offset=offset, limit=limit)
 
-    async def update_package(
-        self, package_id: uuid.UUID, data: PackageUpdate
-    ) -> TenderPackage:
+    async def update_package(self, package_id: uuid.UUID, data: PackageUpdate) -> TenderPackage:
         """Update package fields. Raises 404 if not found."""
         await self.get_package(package_id)
 
@@ -98,12 +97,12 @@ class TenderingService:
         await self.repo.update_package_fields(package_id, **fields)
 
         # await _safe_publish(
-            # "tendering.package.updated",
-            # {
-                # "package_id": str(package_id),
-                # "updated_fields": list(fields.keys()),
-            # },
-            # source_module="oe_tendering",
+        # "tendering.package.updated",
+        # {
+        # "package_id": str(package_id),
+        # "updated_fields": list(fields.keys()),
+        # },
+        # source_module="oe_tendering",
         # )
 
         logger.info("Tender package updated: %s (fields=%s)", package_id, list(fields.keys()))
@@ -113,9 +112,7 @@ class TenderingService:
 
     # ── Bids ─────────────────────────────────────────────────────────────
 
-    async def create_bid(
-        self, package_id: uuid.UUID, data: BidCreate
-    ) -> TenderBid:
+    async def create_bid(self, package_id: uuid.UUID, data: BidCreate) -> TenderBid:
         """Create a new bid for a package."""
         # Verify package exists
         await self.get_package(package_id)
@@ -137,13 +134,13 @@ class TenderingService:
         bid = await self.repo.create_bid(bid)
 
         # await _safe_publish(
-            # "tendering.bid.created",
-            # {
-                # "bid_id": str(bid.id),
-                # "package_id": str(package_id),
-                # "company_name": bid.company_name,
-            # },
-            # source_module="oe_tendering",
+        # "tendering.bid.created",
+        # {
+        # "bid_id": str(bid.id),
+        # "package_id": str(package_id),
+        # "company_name": bid.company_name,
+        # },
+        # source_module="oe_tendering",
         # )
 
         logger.info("Bid created: %s for package %s", bid.company_name, package_id)
@@ -164,9 +161,7 @@ class TenderingService:
         await self.get_package(package_id)
         return await self.repo.list_bids_for_package(package_id)
 
-    async def update_bid(
-        self, bid_id: uuid.UUID, data: BidUpdate
-    ) -> TenderBid:
+    async def update_bid(self, bid_id: uuid.UUID, data: BidUpdate) -> TenderBid:
         """Update bid fields. Raises 404 if not found."""
         await self.get_bid(bid_id)
 
@@ -179,8 +174,7 @@ class TenderingService:
         # Serialize line_items if present
         if "line_items" in fields and fields["line_items"] is not None:
             fields["line_items"] = [
-                item.model_dump() if hasattr(item, "model_dump") else item
-                for item in fields["line_items"]
+                item.model_dump() if hasattr(item, "model_dump") else item for item in fields["line_items"]
             ]
 
         if not fields:
@@ -189,12 +183,12 @@ class TenderingService:
         await self.repo.update_bid_fields(bid_id, **fields)
 
         # await _safe_publish(
-            # "tendering.bid.updated",
-            # {
-                # "bid_id": str(bid_id),
-                # "updated_fields": list(fields.keys()),
-            # },
-            # source_module="oe_tendering",
+        # "tendering.bid.updated",
+        # {
+        # "bid_id": str(bid_id),
+        # "updated_fields": list(fields.keys()),
+        # },
+        # source_module="oe_tendering",
         # )
 
         logger.info("Bid updated: %s (fields=%s)", bid_id, list(fields.keys()))
@@ -247,7 +241,7 @@ class TenderingService:
             for bid in bids:
                 # Find matching line item in bid
                 matching = None
-                for item in (bid.line_items or []):
+                for item in bid.line_items or []:
                     if item.get("position_id") == pid:
                         matching = item
                         break
@@ -255,26 +249,26 @@ class TenderingService:
                     bid_rate = float(matching.get("unit_rate", 0))
                     bid_total = float(matching.get("total", 0))
                     budget_rate = pdata["unit_rate"]
-                    deviation = (
-                        ((bid_rate - budget_rate) / budget_rate * 100)
-                        if budget_rate > 0
-                        else 0.0
+                    deviation = ((bid_rate - budget_rate) / budget_rate * 100) if budget_rate > 0 else 0.0
+                    bid_entries.append(
+                        {
+                            "company_name": bid.company_name,
+                            "bid_id": str(bid.id),
+                            "unit_rate": bid_rate,
+                            "total": bid_total,
+                            "deviation_pct": round(deviation, 1),
+                        }
                     )
-                    bid_entries.append({
-                        "company_name": bid.company_name,
-                        "bid_id": str(bid.id),
-                        "unit_rate": bid_rate,
-                        "total": bid_total,
-                        "deviation_pct": round(deviation, 1),
-                    })
                 else:
-                    bid_entries.append({
-                        "company_name": bid.company_name,
-                        "bid_id": str(bid.id),
-                        "unit_rate": 0.0,
-                        "total": 0.0,
-                        "deviation_pct": 0.0,
-                    })
+                    bid_entries.append(
+                        {
+                            "company_name": bid.company_name,
+                            "bid_id": str(bid.id),
+                            "unit_rate": 0.0,
+                            "total": 0.0,
+                            "deviation_pct": 0.0,
+                        }
+                    )
 
             rows.append(
                 BidComparisonRow(
@@ -292,19 +286,17 @@ class TenderingService:
         bid_totals = []
         for bid in bids:
             total = float(bid.total_amount) if bid.total_amount else 0.0
-            deviation = (
-                ((total - budget_total) / budget_total * 100)
-                if budget_total > 0
-                else 0.0
+            deviation = ((total - budget_total) / budget_total * 100) if budget_total > 0 else 0.0
+            bid_totals.append(
+                {
+                    "bid_id": str(bid.id),
+                    "company_name": bid.company_name,
+                    "total": total,
+                    "currency": bid.currency,
+                    "deviation_pct": round(deviation, 1),
+                    "status": bid.status,
+                }
             )
-            bid_totals.append({
-                "bid_id": str(bid.id),
-                "company_name": bid.company_name,
-                "total": total,
-                "currency": bid.currency,
-                "deviation_pct": round(deviation, 1),
-                "status": bid.status,
-            })
 
         return BidComparisonResponse(
             package_id=package_id,

@@ -7,7 +7,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import GUID, Base
@@ -27,9 +27,7 @@ class ChangeOrder(Base):
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    reason_category: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="client_request"
-    )
+    reason_category: Mapped[str] = mapped_column(String(50), nullable=False, default="client_request")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
     submitted_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     approved_by: Mapped[str | None] = mapped_column(String(36), nullable=True)

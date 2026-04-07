@@ -433,14 +433,6 @@ function UpdateInstructionsModal({
       cmd: 'pip install --upgrade openconstructionerp',
     },
     {
-      key: 'docker',
-      title: t('update.method_docker', { defaultValue: 'Docker' }),
-      subtitle: t('update.method_docker_sub', {
-        defaultValue: 'Pull the new image and restart the container',
-      }),
-      cmd: `docker pull ghcr.io/datadrivenconstruction/openconstructionerp:${version}\ndocker compose up -d`,
-    },
-    {
       key: 'source',
       title: t('update.method_source', { defaultValue: 'Source (git)' }),
       subtitle: t('update.method_source_sub', {

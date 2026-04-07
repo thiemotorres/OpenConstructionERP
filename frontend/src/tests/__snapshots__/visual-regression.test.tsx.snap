@@ -232,7 +232,9 @@ exports[`Visual Regression — Button > danger button 1`] = `
   <button
     class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-semantic-error text-content-inverse hover:opacity-90 active:opacity-80 shadow-xs hover:shadow-md border border-transparent hover:scale-[1.02] active:scale-[0.98] h-8 px-3.5 text-sm gap-1.5 rounded-lg"
   >
-    <span>
+    <span
+      class="inline-flex items-center"
+    >
       Delete
     </span>
   </button>
@@ -245,7 +247,9 @@ exports[`Visual Regression — Button > disabled state 1`] = `
     class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-oe-blue text-content-inverse hover:bg-oe-blue-hover active:bg-oe-blue-active shadow-xs hover:shadow-md border border-transparent hover:scale-[1.02] active:scale-[0.98] h-8 px-3.5 text-sm gap-1.5 rounded-lg opacity-40 pointer-events-none"
     disabled=""
   >
-    <span>
+    <span
+      class="inline-flex items-center"
+    >
       Disabled
     </span>
   </button>
@@ -257,7 +261,9 @@ exports[`Visual Regression — Button > ghost button 1`] = `
   <button
     class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-transparent text-content-secondary hover:bg-surface-secondary active:bg-surface-tertiary border border-transparent active:scale-[0.98] h-8 px-3.5 text-sm gap-1.5 rounded-lg"
   >
-    <span>
+    <span
+      class="inline-flex items-center"
+    >
       Options
     </span>
   </button>
@@ -299,7 +305,9 @@ exports[`Visual Regression — Button > primary button 1`] = `
   <button
     class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-oe-blue text-content-inverse hover:bg-oe-blue-hover active:bg-oe-blue-active shadow-xs hover:shadow-md border border-transparent hover:scale-[1.02] active:scale-[0.98] h-8 px-3.5 text-sm gap-1.5 rounded-lg"
   >
-    <span>
+    <span
+      class="inline-flex items-center"
+    >
       Save
     </span>
   </button>
@@ -311,7 +319,9 @@ exports[`Visual Regression — Button > secondary button 1`] = `
   <button
     class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-8 px-3.5 text-sm gap-1.5 rounded-lg"
   >
-    <span>
+    <span
+      class="inline-flex items-center"
+    >
       Cancel
     </span>
   </button>
@@ -330,7 +340,9 @@ exports[`Visual Regression — Button > with icon (left) 1`] = `
         +
       </span>
     </span>
-    <span>
+    <span
+      class="inline-flex items-center"
+    >
       Add Item
     </span>
   </button>
@@ -733,7 +745,7 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
         </p>
         <a
           class="mt-3 flex items-center gap-3 rounded-xl bg-gradient-to-r from-oe-blue/8 via-violet-500/8 to-emerald-500/8 border border-oe-blue/15 px-4 py-2.5 hover:shadow-md hover:border-oe-blue/30 transition-all animate-stagger-in"
-          href="https://github.com/datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR"
+          href="https://github.com/datadrivenconstruction/OpenConstructionERP"
           rel="noopener noreferrer"
           style="animation-delay: 150ms;"
           target="_blank"
@@ -810,72 +822,280 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
               />
             </svg>
           </span>
-          <span>
+          <span
+            class="inline-flex items-center"
+          >
             projects.new_project
           </span>
         </button>
       </div>
     </div>
     <div
-      class="rounded-xl border border-oe-blue/20 bg-gradient-to-r from-oe-blue/[0.04] to-violet-500/[0.04] px-5 py-4 animate-fade-in"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
     >
       <div
-        class="flex items-start gap-3"
+        class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      />
+      <div
+        class="relative w-full max-w-lg rounded-2xl border border-border-light bg-surface-elevated shadow-2xl overflow-hidden"
       >
         <div
-          class="flex-1"
+          class="bg-gradient-to-r from-oe-blue to-violet-600 px-6 py-5 text-white text-center"
         >
-          <h3
-            class="text-sm font-semibold text-content-primary mb-1"
+          <h2
+            class="text-lg font-bold"
           >
             Welcome to OpenConstructionERP
-          </h3>
+          </h2>
           <p
-            class="text-xs text-content-secondary leading-relaxed"
+            class="mt-1 text-sm text-white/80"
           >
-            Free, open-source construction cost estimation by Data Driven Construction. 55K+ cost items, AI estimation, CAD/BIM takeoff, 20+ languages.
+            Free & open-source construction cost estimation
+          </p>
+        </div>
+        <div
+          class="px-6 py-5"
+        >
+          <p
+            class="text-sm text-content-secondary text-center mb-5 leading-relaxed"
+          >
+            This project is built and maintained by the community. Your support helps us add new features, regional databases, and keep it free for everyone.
           </p>
           <div
-            class="mt-2 flex items-center gap-2"
+            class="space-y-2.5"
           >
             <a
-              class="inline-flex items-center gap-1 rounded-lg bg-oe-blue px-3 py-1.5 text-xs font-medium text-white hover:bg-oe-blue/90 transition-colors"
-              href="https://datadrivenconstruction.io/erp"
+              class="flex items-center gap-3 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-900/10 px-4 py-3 hover:shadow-md transition-all group"
+              href="https://github.com/datadrivenconstruction/OpenConstructionERP"
               rel="noopener noreferrer"
               target="_blank"
             >
-              Learn more
+              <svg
+                class="lucide lucide-star text-amber-500 shrink-0 group-hover:scale-110 transition-transform"
+                fill="none"
+                height="22"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="22"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
+                />
+              </svg>
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-semibold text-content-primary"
+                >
+                  Star on GitHub
+                </div>
+                <div
+                  class="text-2xs text-content-tertiary"
+                >
+                  Help others discover the project — takes 2 seconds
+                </div>
+              </div>
+              <svg
+                class="lucide lucide-external-link text-content-quaternary shrink-0"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
             </a>
-            <button
-              class="text-xs text-content-tertiary hover:text-content-secondary transition-colors"
+            <a
+              class="flex items-center gap-3 rounded-xl border border-rose-200 dark:border-rose-800/40 bg-rose-50/50 dark:bg-rose-900/10 px-4 py-3 hover:shadow-md transition-all group"
+              href="https://github.com/sponsors/datadrivenconstruction"
+              rel="noopener noreferrer"
+              target="_blank"
             >
-              Dismiss
-            </button>
+              <svg
+                class="lucide lucide-sparkles text-rose-500 shrink-0 group-hover:scale-110 transition-transform"
+                fill="none"
+                height="22"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="22"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+                />
+                <path
+                  d="M20 3v4"
+                />
+                <path
+                  d="M22 5h-4"
+                />
+                <path
+                  d="M4 17v2"
+                />
+                <path
+                  d="M5 18H3"
+                />
+              </svg>
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-semibold text-content-primary"
+                >
+                  Become a Sponsor
+                </div>
+                <div
+                  class="text-2xs text-content-tertiary"
+                >
+                  Fund new features and keep the project free for everyone
+                </div>
+              </div>
+              <svg
+                class="lucide lucide-external-link text-content-quaternary shrink-0"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
+            <a
+              class="flex items-center gap-3 rounded-xl border border-oe-blue/20 dark:border-blue-800/40 bg-oe-blue/[0.03] dark:bg-blue-900/10 px-4 py-3 hover:shadow-md transition-all group"
+              href="https://datadrivenconstruction.io/contact-support/"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class="lucide lucide-building2 text-oe-blue shrink-0 group-hover:scale-110 transition-transform"
+                fill="none"
+                height="22"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="22"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"
+                />
+                <path
+                  d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"
+                />
+                <path
+                  d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"
+                />
+                <path
+                  d="M10 6h4"
+                />
+                <path
+                  d="M10 10h4"
+                />
+                <path
+                  d="M10 14h4"
+                />
+                <path
+                  d="M10 18h4"
+                />
+              </svg>
+              <div
+                class="flex-1 min-w-0"
+              >
+                <div
+                  class="text-sm font-semibold text-content-primary"
+                >
+                  Professional Consulting
+                </div>
+                <div
+                  class="text-2xs text-content-tertiary"
+                >
+                  Custom deployment, training, and enterprise solutions worldwide
+                </div>
+              </div>
+              <svg
+                class="lucide lucide-external-link text-content-quaternary shrink-0"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M15 3h6v6"
+                />
+                <path
+                  d="M10 14 21 3"
+                />
+                <path
+                  d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                />
+              </svg>
+            </a>
           </div>
         </div>
-        <button
-          class="text-content-quaternary hover:text-content-secondary transition-colors shrink-0 p-1"
+        <div
+          class="px-6 py-3 border-t border-border-light bg-surface-secondary/30 flex items-center justify-between"
         >
-          <svg
-            class="lucide lucide-x"
-            fill="none"
-            height="14"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="14"
-            xmlns="http://www.w3.org/2000/svg"
+          <div
+            class="flex items-center gap-3"
           >
-            <path
-              d="M18 6 6 18"
-            />
-            <path
-              d="m6 6 12 12"
-            />
-          </svg>
-        </button>
+            <span
+              class="text-2xs text-content-quaternary"
+            >
+              datadrivenconstruction.io
+            </span>
+            <button
+              class="text-2xs text-oe-blue hover:text-oe-blue/80 transition-colors underline"
+            >
+              Run Setup Wizard
+            </button>
+          </div>
+          <button
+            class="rounded-lg bg-oe-blue px-4 py-1.5 text-sm font-medium text-white hover:bg-oe-blue/90 transition-colors"
+          >
+            Get Started
+          </button>
+        </div>
       </div>
     </div>
     <div>
@@ -1143,6 +1363,204 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
         </div>
       </div>
     </div>
+    <div
+      class="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto sm:scrollbar-none items-center gap-2 rounded-lg border border-border-light bg-surface-primary px-3 py-2 animate-card-in"
+      style="animation-delay: 80ms;"
+    >
+      <span
+        class="text-xs font-medium text-content-tertiary mr-1"
+      >
+        Quick Actions
+        :
+      </span>
+      <button
+        class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-oe-blue text-content-inverse hover:bg-oe-blue-hover active:bg-oe-blue-active shadow-xs hover:shadow-md border border-transparent hover:scale-[1.02] active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md"
+      >
+        <span
+          class="shrink-0"
+        >
+          <svg
+            class="lucide lucide-sparkles"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
+            />
+            <path
+              d="M20 3v4"
+            />
+            <path
+              d="M22 5h-4"
+            />
+            <path
+              d="M4 17v2"
+            />
+            <path
+              d="M5 18H3"
+            />
+          </svg>
+        </span>
+        <span
+          class="inline-flex items-center"
+        >
+          Quick Start Estimate
+        </span>
+      </button>
+      <button
+        class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md"
+      >
+        <span
+          class="shrink-0"
+        >
+          <svg
+            class="lucide lucide-folder-plus"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 10v6"
+            />
+            <path
+              d="M9 13h6"
+            />
+            <path
+              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+            />
+          </svg>
+        </span>
+        <span
+          class="inline-flex items-center"
+        >
+          New Project
+        </span>
+      </button>
+      <button
+        class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md"
+      >
+        <span
+          class="shrink-0"
+        >
+          <svg
+            class="lucide lucide-file-text"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
+            />
+            <path
+              d="M14 2v4a2 2 0 0 0 2 2h4"
+            />
+            <path
+              d="M10 9H8"
+            />
+            <path
+              d="M16 13H8"
+            />
+            <path
+              d="M16 17H8"
+            />
+          </svg>
+        </span>
+        <span
+          class="inline-flex items-center"
+        >
+          New BOQ
+        </span>
+      </button>
+      <button
+        class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md"
+      >
+        <span
+          class="shrink-0"
+        >
+          <svg
+            class="lucide lucide-shield-check"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+            />
+            <path
+              d="m9 12 2 2 4-4"
+            />
+          </svg>
+        </span>
+        <span
+          class="inline-flex items-center"
+        >
+          Validate
+        </span>
+      </button>
+      <button
+        class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md"
+      >
+        <span
+          class="shrink-0"
+        >
+          <svg
+            class="lucide lucide-download"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+            />
+            <polyline
+              points="7 10 12 15 17 10"
+            />
+            <line
+              x1="12"
+              x2="12"
+              y1="15"
+              y2="3"
+            />
+          </svg>
+        </span>
+        <span
+          class="inline-flex items-center"
+        >
+          Import Database
+        </span>
+      </button>
+    </div>
     <div>
       <div
         class="mb-5 flex items-center justify-between animate-card-in"
@@ -1180,7 +1598,8 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
             class="inline-flex items-center rounded-full font-medium whitespace-nowrap animate-scale-in transition-colors duration-fast ease-oe bg-oe-blue-subtle text-oe-blue h-5 px-1.5 text-2xs gap-1"
           >
             0
-            /5
+            /
+            6
           </span>
         </div>
       </div>
@@ -1198,7 +1617,7 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
         </div>
       </div>
       <div
-        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
       >
         <div
           class="animate-card-in"
@@ -1264,7 +1683,9 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 <button
                   class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md w-full"
                 >
-                  <span>
+                  <span
+                    class="inline-flex items-center"
+                  >
                     Import Database
                   </span>
                   <span
@@ -1367,7 +1788,9 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                   class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md opacity-40 pointer-events-none w-full"
                   disabled=""
                 >
-                  <span>
+                  <span
+                    class="inline-flex items-center"
+                  >
                     Configure
                   </span>
                   <span
@@ -1492,7 +1915,9 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 <button
                   class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md w-full"
                 >
-                  <span>
+                  <span
+                    class="inline-flex items-center"
+                  >
                     Add API Keys
                   </span>
                   <span
@@ -1591,7 +2016,9 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                   <button
                     class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md flex-[3]"
                   >
-                    <span>
+                    <span
+                      class="inline-flex items-center"
+                    >
                       New Project
                     </span>
                     <span
@@ -1651,7 +2078,9 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                         />
                       </svg>
                     </span>
-                    <span>
+                    <span
+                      class="inline-flex items-center"
+                    >
                       Demo
                     </span>
                   </button>
@@ -1735,8 +2164,112 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                   class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md opacity-40 pointer-events-none w-full"
                   disabled=""
                 >
-                  <span>
+                  <span
+                    class="inline-flex items-center"
+                  >
                     Create BOQ
+                  </span>
+                  <span
+                    class="shrink-0"
+                  >
+                    <svg
+                      class="lucide lucide-arrow-right"
+                      fill="none"
+                      height="13"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="13"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M5 12h14"
+                      />
+                      <path
+                        d="m12 5 7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div
+              class="h-0.5 w-full"
+              style="background: var(--oe-border-light); opacity: 0.3;"
+            />
+          </div>
+        </div>
+        <div
+          class="animate-card-in"
+          style="animation-delay: 420ms;"
+        >
+          <div
+            class="rounded-xl border border-border-light bg-surface-elevated shadow-xs transition-all duration-normal ease-oe transform-gpu relative overflow-hidden h-full flex flex-col  opacity-50"
+          >
+            <div
+              class="flex flex-1 flex-col p-5"
+            >
+              <div
+                class="mb-4 flex items-center gap-3"
+              >
+                <div
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold bg-oe-blue-subtle text-oe-blue"
+                >
+                  6
+                </div>
+                <div
+                  class="text-content-tertiary"
+                >
+                  <svg
+                    class="lucide lucide-chart-column"
+                    fill="none"
+                    height="22"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 24 24"
+                    width="22"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M3 3v16a2 2 0 0 0 2 2h16"
+                    />
+                    <path
+                      d="M18 17V9"
+                    />
+                    <path
+                      d="M13 17V5"
+                    />
+                    <path
+                      d="M8 17v-3"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <h4
+                class="text-sm font-semibold text-content-primary leading-snug"
+              >
+                Set Quantities
+              </h4>
+              <p
+                class="mt-1.5 flex-1 text-xs leading-relaxed text-content-tertiary"
+              >
+                Add quantities and unit rates to your BOQ positions
+              </p>
+              <div
+                class="mt-4"
+              >
+                <button
+                  class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-surface-primary text-content-primary border border-border hover:bg-surface-secondary active:bg-surface-tertiary shadow-xs hover:shadow-sm active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md opacity-40 pointer-events-none w-full"
+                  disabled=""
+                >
+                  <span
+                    class="inline-flex items-center"
+                  >
+                    Open BOQ
                   </span>
                   <span
                     class="shrink-0"
@@ -1803,7 +2336,9 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 <button
                   class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-transparent text-content-secondary hover:bg-surface-secondary active:bg-surface-tertiary border border-transparent active:scale-[0.98] h-7 px-2.5 text-xs gap-1.5 rounded-md"
                 >
-                  <span>
+                  <span
+                    class="inline-flex items-center"
+                  >
                     projects.title
                   </span>
                   <span
@@ -1857,8 +2392,13 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 class="grid grid-cols-1 gap-3 sm:grid-cols-3"
               >
                 <button
-                  class="group flex flex-col items-center gap-2 rounded-xl border border-border-light bg-surface-primary p-5 text-center transition-all duration-normal ease-oe hover:border-oe-blue/40 hover:bg-oe-blue-subtle/30 disabled:opacity-60"
+                  class="group relative flex flex-col items-center gap-2 rounded-xl border border-border-light bg-surface-primary p-5 text-center transition-all duration-normal ease-oe hover:border-oe-blue/40 hover:bg-oe-blue-subtle/30 disabled:opacity-60"
                 >
+                  <span
+                    class="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-oe-blue text-white text-2xs font-bold"
+                  >
+                    1
+                  </span>
                   <div
                     class="flex h-10 w-10 items-center justify-center rounded-xl bg-oe-blue-subtle text-oe-blue transition-transform group-hover:scale-110"
                   >
@@ -1900,8 +2440,13 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                   </span>
                 </button>
                 <button
-                  class="group flex flex-col items-center gap-2 rounded-xl border border-border-light bg-surface-primary p-5 text-center transition-all duration-normal ease-oe hover:border-oe-blue/40 hover:bg-oe-blue-subtle/30"
+                  class="group relative flex flex-col items-center gap-2 rounded-xl border border-border-light bg-surface-primary p-5 text-center transition-all duration-normal ease-oe hover:border-oe-blue/40 hover:bg-oe-blue-subtle/30"
                 >
+                  <span
+                    class="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-oe-blue text-white text-2xs font-bold"
+                  >
+                    2
+                  </span>
                   <div
                     class="flex h-10 w-10 items-center justify-center rounded-xl bg-oe-blue-subtle text-oe-blue transition-transform group-hover:scale-110"
                   >
@@ -1940,8 +2485,13 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                   </span>
                 </button>
                 <button
-                  class="group flex flex-col items-center gap-2 rounded-xl border border-border-light bg-surface-primary p-5 text-center transition-all duration-normal ease-oe hover:border-oe-blue/40 hover:bg-oe-blue-subtle/30"
+                  class="group relative flex flex-col items-center gap-2 rounded-xl border border-border-light bg-surface-primary p-5 text-center transition-all duration-normal ease-oe hover:border-oe-blue/40 hover:bg-oe-blue-subtle/30"
                 >
+                  <span
+                    class="absolute top-2 left-2 flex h-5 w-5 items-center justify-center rounded-full bg-oe-blue text-white text-2xs font-bold"
+                  >
+                    3
+                  </span>
                   <div
                     class="flex h-10 w-10 items-center justify-center rounded-xl bg-oe-blue-subtle text-oe-blue transition-transform group-hover:scale-110"
                   >
@@ -2198,7 +2748,7 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 <span
                   class="text-sm font-semibold text-content-primary tabular-nums"
                 >
-                  17
+                  —
                 </span>
               </div>
               <div
@@ -2213,7 +2763,7 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 <span
                   class="text-sm font-semibold text-content-primary tabular-nums"
                 >
-                  42
+                  —
                 </span>
               </div>
               <div
@@ -2228,7 +2778,7 @@ exports[`Visual Regression — DashboardPage > renders loading/skeleton state 1`
                 <span
                   class="text-sm font-semibold text-content-primary tabular-nums"
                 >
-                  20
+                  2
                 </span>
               </div>
             </div>
@@ -2312,7 +2862,9 @@ exports[`Visual Regression — EmptyState > renders with icon, description, and 
       <button
         class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-oe-blue text-content-inverse hover:bg-oe-blue-hover active:bg-oe-blue-active shadow-xs hover:shadow-md border border-transparent hover:scale-[1.02] active:scale-[0.98] h-8 px-3.5 text-sm gap-1.5 rounded-lg"
       >
-        <span>
+        <span
+          class="inline-flex items-center"
+        >
           Create Project
         </span>
       </button>
@@ -2694,11 +3246,9 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             01.001
           </div>
           <div
-            class="oce-cell oce-cell-desc on"
+            class="oce-cell oce-cell-desc"
             data-txt="Reinforced concrete C30/37, slab"
-          >
-            Reinforced concrete C30/37, slab
-          </div>
+          />
           <div
             class="oce-cell on-h"
             data-txt="m³"
@@ -2706,25 +3256,29 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             m³
           </div>
           <div
-            class="oce-cell oce-cell-right on"
+            class="oce-cell oce-cell-right on-m"
             data-txt="86.40"
           >
             86.40
           </div>
           <div
-            class="oce-cell oce-cell-right on-m"
+            class="oce-cell oce-cell-right on-h"
             data-txt="€295.00"
           >
             €295.00
           </div>
           <div
-            class="oce-cell oce-cell-total oce-cell-right"
+            class="oce-cell oce-cell-total oce-cell-right on-h"
             data-txt="€25,488"
-          />
+          >
+            €25,488
+          </div>
           <div
-            class="oce-cell oce-cell-right"
+            class="oce-cell oce-cell-right on-h"
             data-txt="330"
-          />
+          >
+            330
+          </div>
           <div
             class="oce-cell oce-cell-pos on"
             data-txt="01.002"
@@ -2740,25 +3294,23 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             data-txt="m²"
           />
           <div
-            class="oce-cell oce-cell-right on-h"
+            class="oce-cell oce-cell-right"
             data-txt="432.00"
-          >
-            432.00
-          </div>
+          />
           <div
-            class="oce-cell oce-cell-right on"
+            class="oce-cell oce-cell-right"
             data-txt="€38.50"
-          >
-            €38.50
-          </div>
+          />
           <div
             class="oce-cell oce-cell-total oce-cell-right"
             data-txt="€16,632"
           />
           <div
-            class="oce-cell oce-cell-right"
+            class="oce-cell oce-cell-right on-h"
             data-txt="330"
-          />
+          >
+            330
+          </div>
           <div
             class="oce-cell oce-cell-pos on"
             data-txt="01.003"
@@ -2770,9 +3322,11 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             data-txt="Reinforcement BSt 500S, mesh"
           />
           <div
-            class="oce-cell"
+            class="oce-cell on-h"
             data-txt="kg"
-          />
+          >
+            kg
+          </div>
           <div
             class="oce-cell oce-cell-right"
             data-txt="10,368"
@@ -2782,15 +3336,15 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             data-txt="€2.18"
           />
           <div
-            class="oce-cell oce-cell-total oce-cell-right"
+            class="oce-cell oce-cell-total oce-cell-right on-h"
             data-txt="€22,602"
-          />
-          <div
-            class="oce-cell oce-cell-right on-m"
-            data-txt="330"
           >
-            330
+            €22,602
           </div>
+          <div
+            class="oce-cell oce-cell-right"
+            data-txt="330"
+          />
           <div
             class="oce-cell oce-cell-pos on"
             data-txt="01.004"
@@ -2798,29 +3352,31 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             01.004
           </div>
           <div
-            class="oce-cell oce-cell-desc"
+            class="oce-cell oce-cell-desc on-m"
             data-txt="Reinforced concrete C30/37, walls"
-          />
+          >
+            Reinforced concrete C30/37, walls
+          </div>
           <div
-            class="oce-cell on-h"
+            class="oce-cell"
             data-txt="m³"
-          >
-            m³
-          </div>
-          <div
-            class="oce-cell oce-cell-right on-m"
-            data-txt="156.00"
-          >
-            156.00
-          </div>
+          />
           <div
             class="oce-cell oce-cell-right"
-            data-txt="€285.00"
+            data-txt="156.00"
           />
           <div
-            class="oce-cell oce-cell-total oce-cell-right"
+            class="oce-cell oce-cell-right on-h"
+            data-txt="€285.00"
+          >
+            €285.00
+          </div>
+          <div
+            class="oce-cell oce-cell-total oce-cell-right on-h"
             data-txt="€44,460"
-          />
+          >
+            €44,460
+          </div>
           <div
             class="oce-cell oce-cell-right"
             data-txt="330"
@@ -2832,37 +3388,33 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             01.005
           </div>
           <div
-            class="oce-cell oce-cell-desc"
+            class="oce-cell oce-cell-desc on-h"
             data-txt="Formwork walls, smooth finish"
-          />
-          <div
-            class="oce-cell on-m"
-            data-txt="m²"
           >
-            m²
+            Formwork walls, smooth finish
           </div>
+          <div
+            class="oce-cell"
+            data-txt="m²"
+          />
           <div
             class="oce-cell oce-cell-right"
             data-txt="1,248"
           />
           <div
-            class="oce-cell oce-cell-right on-h"
+            class="oce-cell oce-cell-right"
             data-txt="€42.50"
-          >
-            €42.50
-          </div>
+          />
           <div
-            class="oce-cell oce-cell-total oce-cell-right on"
+            class="oce-cell oce-cell-total oce-cell-right on-m"
             data-txt="€53,040"
           >
             €53,040
           </div>
           <div
-            class="oce-cell oce-cell-right on-h"
+            class="oce-cell oce-cell-right"
             data-txt="330"
-          >
-            330
-          </div>
+          />
           <div
             class="oce-cell oce-cell-pos oce-cell-section on-m on"
             data-txt=""
@@ -2936,31 +3488,29 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             02.001
           </div>
           <div
-            class="oce-cell oce-cell-desc"
+            class="oce-cell oce-cell-desc on-m"
             data-txt="Masonry KS 24cm, load-bearing"
-          />
-          <div
-            class="oce-cell on-h"
-            data-txt="m²"
           >
-            m²
+            Masonry KS 24cm, load-bearing
           </div>
           <div
-            class="oce-cell oce-cell-right"
-            data-txt="890.00"
+            class="oce-cell"
+            data-txt="m²"
           />
           <div
             class="oce-cell oce-cell-right on"
-            data-txt="€68.00"
+            data-txt="890.00"
           >
-            €68.00
+            890.00
           </div>
           <div
-            class="oce-cell oce-cell-total oce-cell-right on-h"
+            class="oce-cell oce-cell-right"
+            data-txt="€68.00"
+          />
+          <div
+            class="oce-cell oce-cell-total oce-cell-right"
             data-txt="€60,520"
-          >
-            €60,520
-          </div>
+          />
           <div
             class="oce-cell oce-cell-right"
             data-txt="340"
@@ -2972,11 +3522,9 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             02.002
           </div>
           <div
-            class="oce-cell oce-cell-desc on-m"
+            class="oce-cell oce-cell-desc"
             data-txt="Masonry KS 11.5cm, partition"
-          >
-            Masonry KS 11.5cm, partition
-          </div>
+          />
           <div
             class="oce-cell"
             data-txt="m²"
@@ -2992,13 +3540,13 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             data-txt="€48.00"
           />
           <div
-            class="oce-cell oce-cell-total oce-cell-right on-m"
+            class="oce-cell oce-cell-total oce-cell-right on"
             data-txt="€29,760"
           >
             €29,760
           </div>
           <div
-            class="oce-cell oce-cell-right on-m"
+            class="oce-cell oce-cell-right on-h"
             data-txt="340"
           >
             340
@@ -3084,23 +3632,25 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             data-txt="m"
           />
           <div
-            class="oce-cell oce-cell-right on-m"
-            data-txt="840.00"
-          >
-            840.00
-          </div>
-          <div
             class="oce-cell oce-cell-right"
-            data-txt="€28.50"
+            data-txt="840.00"
           />
+          <div
+            class="oce-cell oce-cell-right on-m"
+            data-txt="€28.50"
+          >
+            €28.50
+          </div>
           <div
             class="oce-cell oce-cell-total oce-cell-right"
             data-txt="€23,940"
           />
           <div
-            class="oce-cell oce-cell-right"
+            class="oce-cell oce-cell-right on-m"
             data-txt="420"
-          />
+          >
+            420
+          </div>
           <div
             class="oce-cell oce-cell-pos on"
             data-txt="04.002"
@@ -3108,31 +3658,33 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             04.002
           </div>
           <div
-            class="oce-cell oce-cell-desc on-h"
+            class="oce-cell oce-cell-desc"
             data-txt="Cable NYM-J 3×1.5"
-          >
-            Cable NYM-J 3×1.5
-          </div>
-          <div
-            class="oce-cell"
-            data-txt="m"
           />
+          <div
+            class="oce-cell on-m"
+            data-txt="m"
+          >
+            m
+          </div>
           <div
             class="oce-cell oce-cell-right"
             data-txt="2,800"
           />
           <div
-            class="oce-cell oce-cell-right"
+            class="oce-cell oce-cell-right on-m"
             data-txt="€4.80"
-          />
+          >
+            €4.80
+          </div>
           <div
-            class="oce-cell oce-cell-total oce-cell-right on-h"
+            class="oce-cell oce-cell-total oce-cell-right on"
             data-txt="€13,440"
           >
             €13,440
           </div>
           <div
-            class="oce-cell oce-cell-right on-m"
+            class="oce-cell oce-cell-right on-h"
             data-txt="440"
           >
             440
@@ -4323,7 +4875,27 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
         <p
           class="text-[10px] text-content-quaternary/40"
         >
-          Created by Artem Boiko · 2026 · OpenConstructionERP
+          Created by Artem Boiko · 2026 · OpenConstructionERP · 
+          <a
+            class="hover:text-content-tertiary"
+            href="/privacy-policy.html"
+          >
+            Privacy
+          </a>
+          · 
+          <a
+            class="hover:text-content-tertiary"
+            href="/terms.html"
+          >
+            Terms
+          </a>
+          · 
+          <a
+            class="hover:text-content-tertiary"
+            href="mailto:info@datadrivenconstruction.io"
+          >
+            info@datadrivenconstruction.io
+          </a>
         </p>
       </div>
     </div>
@@ -4553,6 +5125,11 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
           class="glass-strong rounded-2xl px-6 py-5 shadow-lg animate-form-scale-in"
           style="animation-delay: 150ms;"
         >
+          <h1
+            class="sr-only"
+          >
+            auth.login
+          </h1>
           <div
             class="animate-stagger-in"
             style="animation-delay: 200ms;"
@@ -4569,6 +5146,7 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             </p>
           </div>
           <form
+            aria-label="auth.login"
             class="space-y-3"
           >
             <div
@@ -4580,7 +5158,7 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
               >
                 <label
                   class="text-sm font-medium text-content-primary transition-colors duration-fast ease-oe"
-                  for="auth.email"
+                  for="login-email"
                 >
                   auth.email
                 </label>
@@ -4618,7 +5196,8 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
                     aria-invalid="false"
                     autocomplete="email"
                     class="h-9 w-full rounded-lg border bg-surface-primary px-3 text-sm text-content-primary placeholder:text-content-tertiary transition-all duration-normal ease-oe focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue focus:shadow-[0_0_0_4px_rgba(0,113,227,0.08)] pl-10 border-border hover:border-content-tertiary"
-                    id="auth.email"
+                    id="login-email"
+                    name="email"
                     placeholder="you@company.com"
                     required=""
                     type="email"
@@ -4683,12 +5262,14 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
                   class="h-9 w-full rounded-lg border border-border bg-surface-primary pl-9 pr-9 text-sm text-content-primary placeholder:text-content-tertiary transition-all duration-fast ease-oe focus:outline-none focus:ring-2 focus:ring-oe-blue focus:border-transparent hover:border-content-tertiary"
                   id="login-password"
                   minlength="8"
+                  name="password"
                   placeholder="auth.password_placeholder"
                   required=""
                   type="password"
                   value=""
                 />
                 <button
+                  aria-label="auth.show_password"
                   class="absolute inset-y-0 right-0 flex items-center pr-3 text-content-tertiary hover:text-content-secondary transition-colors"
                   tabindex="-1"
                   type="button"
@@ -4743,7 +5324,9 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
                 class="inline-flex items-center justify-center font-medium whitespace-nowrap select-none transition-all duration-normal ease-oe transform-gpu will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2 bg-oe-blue text-content-inverse hover:bg-oe-blue-hover active:bg-oe-blue-active shadow-xs hover:shadow-md border border-transparent hover:scale-[1.02] active:scale-[0.98] h-10 px-5 text-sm gap-2 rounded-xl w-full btn-shimmer"
                 type="submit"
               >
-                <span>
+                <span
+                  class="inline-flex items-center"
+                >
                   auth.login
                 </span>
               </button>
@@ -5001,7 +5584,7 @@ exports[`Visual Regression — LoginPage > renders the login form 1`] = `
             </span>
             <a
               class="hover:text-content-secondary transition-colors"
-              href="https://github.com/datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR"
+              href="https://github.com/datadrivenconstruction/OpenConstructionERP"
               rel="noopener noreferrer"
               target="_blank"
             >

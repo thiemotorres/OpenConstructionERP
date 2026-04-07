@@ -5,10 +5,23 @@ All settings are typed and validated via Pydantic.
 """
 
 from functools import lru_cache
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
 from typing import Literal
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _detect_version() -> str:
+    """Read the installed package version so /api/health stays in sync
+    with pyproject.toml. Falls back to a literal only if the package
+    isn't installed (e.g. running uvicorn directly from a fresh checkout
+    without `pip install -e .`)."""
+    try:
+        return _pkg_version("openconstructionerp")
+    except PackageNotFoundError:
+        return "0.0.0+local"
 
 
 class Settings(BaseSettings):
@@ -23,7 +36,7 @@ class Settings(BaseSettings):
 
     # ── App ──────────────────────────────────────────────────────────────
     app_name: str = "OpenConstructionERP"
-    app_version: str = "0.8.0"
+    app_version: str = Field(default_factory=_detect_version)
     app_env: Literal["development", "staging", "production"] = "development"
     app_debug: bool = True
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

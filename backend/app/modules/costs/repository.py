@@ -57,9 +57,7 @@ class CostItemRepository:
 
         if q:
             pattern = f"%{q}%"
-            base = base.where(
-                CostItem.code.ilike(pattern) | CostItem.description.ilike(pattern)
-            )
+            base = base.where(CostItem.code.ilike(pattern) | CostItem.description.ilike(pattern))
 
         # Count
         count_stmt = select(func.count()).select_from(base.subquery())
@@ -94,9 +92,7 @@ class CostItemRepository:
 
     async def count(self) -> int:
         """Total number of active cost items."""
-        stmt = select(func.count()).select_from(
-            select(CostItem).where(CostItem.is_active.is_(True)).subquery()
-        )
+        stmt = select(func.count()).select_from(select(CostItem).where(CostItem.is_active.is_(True)).subquery())
         return (await self.session.execute(stmt)).scalar_one()
 
     async def search(
@@ -134,9 +130,7 @@ class CostItemRepository:
 
         if q:
             pattern = f"%{q}%"
-            base = base.where(
-                CostItem.code.ilike(pattern) | CostItem.description.ilike(pattern)
-            )
+            base = base.where(CostItem.code.ilike(pattern) | CostItem.description.ilike(pattern))
 
         if unit:
             base = base.where(CostItem.unit == unit)

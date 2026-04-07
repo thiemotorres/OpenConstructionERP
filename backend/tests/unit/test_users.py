@@ -9,14 +9,13 @@ isolation.
 import hashlib
 import sys
 import uuid
-from datetime import datetime, timezone
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
-from app.core.permissions import PermissionRegistry, Role
+from app.core.permissions import Role
 
 # ── Mock the database module to avoid asyncpg/engine at import time ──────────
 # app.modules.users.service → app.modules.users.models → app.database (engine)
@@ -30,7 +29,7 @@ from app.core.permissions import PermissionRegistry, Role
 # This prevents pollution of integration tests that run later in the same
 # session.
 try:
-    from app.database import Base as _RealBase, GUID as _RealGUID  # noqa: F401, E402
+    from app.database import Base as _RealBase  # noqa: F401, E402
 except Exception:
     # If the real module cannot be imported (no DB available etc.), inject a
     # fake temporarily.  The module-scoped fixture below will clean up.
@@ -48,6 +47,8 @@ except Exception:
     sys.modules["app.modules.users.repository"] = _fake_repository
 
 # Now we can safely import the service utilities and schemas.
+from jose import jwt  # noqa: E402
+
 from app.modules.users.schemas import (  # noqa: E402
     ChangePasswordRequest,
     LoginRequest,
@@ -61,9 +62,6 @@ from app.modules.users.service import (  # noqa: E402
     hash_password,
     verify_password,
 )
-
-from jose import jwt  # noqa: E402
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -329,12 +327,8 @@ class TestRefreshToken:
         user = _make_user()
         access = create_access_token(user, settings)
         refresh = create_refresh_token(user, settings)
-        access_payload = jwt.decode(
-            access, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
-        refresh_payload = jwt.decode(
-            refresh, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        access_payload = jwt.decode(access, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        refresh_payload = jwt.decode(refresh, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         access_ttl = access_payload["exp"] - access_payload["iat"]
         refresh_ttl = refresh_payload["exp"] - refresh_payload["iat"]
         assert refresh_ttl > access_ttl

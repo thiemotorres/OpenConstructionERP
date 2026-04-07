@@ -5,6 +5,8 @@ detect_sheet_info regex extraction, and discipline auto-detection.
 No database required.
 """
 
+from datetime import UTC
+
 import pytest
 from pydantic import ValidationError
 
@@ -14,7 +16,6 @@ from app.modules.documents.service import (
     detect_discipline_from_sheet_number,
     detect_sheet_info,
 )
-
 
 # ── detect_discipline_from_sheet_number ───────────────────────────────────
 
@@ -201,34 +202,42 @@ class TestSheetUpdate:
 
 class TestSheetVersionHistory:
     def test_empty_history(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
         from uuid import uuid4
 
         current = SheetResponse(
             id=uuid4(),
             project_id=uuid4(),
             page_number=1,
-            created_at=datetime.now(tz=timezone.utc),
-            updated_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
+            updated_at=datetime.now(tz=UTC),
         )
         history = SheetVersionHistory(current=current, history=[])
         assert history.current.page_number == 1
         assert history.history == []
 
     def test_with_history(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
         from uuid import uuid4
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         pid = uuid4()
 
         current = SheetResponse(
-            id=uuid4(), project_id=pid, page_number=1,
-            revision="B", created_at=now, updated_at=now,
+            id=uuid4(),
+            project_id=pid,
+            page_number=1,
+            revision="B",
+            created_at=now,
+            updated_at=now,
         )
         prev = SheetResponse(
-            id=uuid4(), project_id=pid, page_number=1,
-            revision="A", created_at=now, updated_at=now,
+            id=uuid4(),
+            project_id=pid,
+            page_number=1,
+            revision="A",
+            created_at=now,
+            updated_at=now,
         )
         history = SheetVersionHistory(current=current, history=[prev])
         assert len(history.history) == 1

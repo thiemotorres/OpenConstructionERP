@@ -18,13 +18,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
+
+
 from app.modules.assemblies.models import Assembly, Component
 from app.modules.assemblies.repository import AssemblyRepository, ComponentRepository
 from app.modules.assemblies.schemas import (
@@ -175,9 +178,7 @@ class AssemblyService:
             limit=limit,
         )
 
-    async def update_assembly(
-        self, assembly_id: uuid.UUID, data: AssemblyUpdate
-    ) -> Assembly:
+    async def update_assembly(self, assembly_id: uuid.UUID, data: AssemblyUpdate) -> Assembly:
         """Update assembly metadata fields.
 
         Args:
@@ -246,9 +247,7 @@ class AssemblyService:
 
     # ── Component operations ───────────────────────────────────────────────
 
-    async def add_component(
-        self, assembly_id: uuid.UUID, data: ComponentCreate
-    ) -> Component:
+    async def add_component(self, assembly_id: uuid.UUID, data: ComponentCreate) -> Component:
         """Add a new component to an assembly.
 
         Auto-computes total = factor * quantity * unit_cost, then recalculates
@@ -299,9 +298,7 @@ class AssemblyService:
             source_module="oe_assemblies",
         )
 
-        logger.info(
-            "Component added to assembly %s: %s", assembly_id, data.description[:40]
-        )
+        logger.info("Component added to assembly %s: %s", assembly_id, data.description[:40])
         return component
 
     async def update_component(
@@ -375,9 +372,7 @@ class AssemblyService:
             )
         return updated
 
-    async def delete_component(
-        self, assembly_id: uuid.UUID, component_id: uuid.UUID
-    ) -> None:
+    async def delete_component(self, assembly_id: uuid.UUID, component_id: uuid.UUID) -> None:
         """Delete a component and recalculate assembly total.
 
         Raises HTTPException 404 if not found or does not belong to assembly.
@@ -403,15 +398,11 @@ class AssemblyService:
             source_module="oe_assemblies",
         )
 
-        logger.info(
-            "Component deleted: %s from assembly %s", component_id, assembly_id
-        )
+        logger.info("Component deleted: %s from assembly %s", component_id, assembly_id)
 
     # ── Composite operations ───────────────────────────────────────────────
 
-    async def get_assembly_with_components(
-        self, assembly_id: uuid.UUID
-    ) -> AssemblyWithComponents:
+    async def get_assembly_with_components(self, assembly_id: uuid.UUID) -> AssemblyWithComponents:
         """Get an assembly with all its components and computed total.
 
         Args:
@@ -486,9 +477,7 @@ class AssemblyService:
 
         await self.assembly_repo.update_fields(assembly_id, total_rate=new_total)
 
-    async def apply_to_boq(
-        self, assembly_id: uuid.UUID, data: ApplyToBOQRequest
-    ) -> object:
+    async def apply_to_boq(self, assembly_id: uuid.UUID, data: ApplyToBOQRequest) -> object:
         """Apply an assembly to a BOQ by creating a new position.
 
         The position's unit_rate is set to the assembly total_rate (optionally
@@ -538,15 +527,17 @@ class AssemblyService:
             elif any(w in desc_lower for w in ("operator", "оператор", "машинист")):
                 res_type = "operator"
 
-            resources.append({
-                "name": comp.description or "",
-                "code": "",
-                "type": res_type,
-                "unit": comp.unit or "",
-                "quantity": _str_to_float(comp.quantity),
-                "unit_rate": _str_to_float(comp.unit_cost),
-                "total": _str_to_float(comp.total),
-            })
+            resources.append(
+                {
+                    "name": comp.description or "",
+                    "code": "",
+                    "type": res_type,
+                    "unit": comp.unit or "",
+                    "quantity": _str_to_float(comp.quantity),
+                    "unit_rate": _str_to_float(comp.unit_cost),
+                    "total": _str_to_float(comp.total),
+                }
+            )
 
         position_data = PositionCreate(
             boq_id=data.boq_id,
@@ -631,9 +622,7 @@ class AssemblyService:
             total_rate=source.total_rate,
             currency=source.currency,
             bid_factor=source.bid_factor,
-            regional_factors=(
-                dict(source.regional_factors) if source.regional_factors else {}
-            ),
+            regional_factors=(dict(source.regional_factors) if source.regional_factors else {}),
             is_template=source.is_template,
             project_id=data.project_id if data.project_id else source.project_id,
             owner_id=uuid.UUID(owner_id) if owner_id else source.owner_id,
@@ -671,7 +660,5 @@ class AssemblyService:
             source_module="oe_assemblies",
         )
 
-        logger.info(
-            "Assembly cloned: %s → %s", source.code, new_code
-        )
+        logger.info("Assembly cloned: %s → %s", source.code, new_code)
         return cloned

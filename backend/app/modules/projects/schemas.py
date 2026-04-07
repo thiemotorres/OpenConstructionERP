@@ -23,6 +23,7 @@ class ProjectCreate(BaseModel):
     def strip_html_tags(cls, v: str) -> str:
         """Remove HTML tags to prevent XSS in project names."""
         return _HTML_TAG_RE.sub("", v).strip()
+
     description: str = Field(default="", max_length=5000)
     region: str = Field(
         default="",

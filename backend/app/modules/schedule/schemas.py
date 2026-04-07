@@ -23,9 +23,7 @@ def _validate_date_range(start: str | None, end: str | None) -> None:
         return
     # Compare on first 10 chars (YYYY-MM-DD) to ignore time-of-day diffs
     if start[:10] > end[:10]:
-        raise ValueError(
-            f"end_date ({end[:10]}) must be on or after start_date ({start[:10]})"
-        )
+        raise ValueError(f"end_date ({end[:10]}) must be on or after start_date ({start[:10]})")
 
 
 # ── Schedule schemas ─────────────────────────────────────────────────────────
@@ -365,12 +363,8 @@ class CriticalPathResponse(BaseModel):
 
     schedule_id: UUID
     project_duration_days: int = Field(description="Total project duration from CPM")
-    critical_path: list[CPMActivityResult] = Field(
-        description="Activities on the critical path (float = 0)"
-    )
-    all_activities: list[CPMActivityResult] = Field(
-        description="All activities with CPM data"
-    )
+    critical_path: list[CPMActivityResult] = Field(description="Activities on the critical path (float = 0)")
+    all_activities: list[CPMActivityResult] = Field(description="All activities with CPM data")
 
 
 class RiskAnalysisResponse(BaseModel):

@@ -13,16 +13,16 @@ Usage:
 
 import asyncio
 import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
-from app.database import Base, engine, async_session_factory
-from app.modules.projects.models import Project
+from app.database import Base, async_session_factory, engine
 from app.modules.boq.models import BOQ, Position
-from app.modules.schedule.models import Schedule, Activity
 from app.modules.costmodel.models import BudgetLine, CashFlow, CostSnapshot
-from app.modules.tendering.models import TenderPackage, TenderBid
+from app.modules.projects.models import Project
+from app.modules.schedule.models import Activity, Schedule
+from app.modules.tendering.models import TenderBid, TenderPackage
 
 
 def _id() -> uuid.UUID:
@@ -39,9 +39,7 @@ async def main() -> None:
 
     async with async_session_factory() as session:
         result = await session.execute(
-            select(Project).where(
-                Project.name.in_(["Wohnanlage Berlin-Mitte", "One Canary Square"])
-            )
+            select(Project).where(Project.name.in_(["Wohnanlage Berlin-Mitte", "One Canary Square"]))
         )
         projects = list(result.scalars().all())
 
@@ -115,9 +113,9 @@ async def main() -> None:
                 act = Activity(
                     id=_id(),
                     schedule_id=schedule.id,
-                    name=sec.description or f"Phase {i+1}",
+                    name=sec.description or f"Phase {i + 1}",
                     description=f"{len(sec_items)} pos, {sec_total:,.0f} {project.currency}",
-                    wbs_code=sec.ordinal or str(i+1),
+                    wbs_code=sec.ordinal or str(i + 1),
                     start_date=current_start.strftime("%Y-%m-%d"),
                     end_date=end_date.strftime("%Y-%m-%d"),
                     duration_days=dur,
@@ -154,7 +152,7 @@ async def main() -> None:
                 bl = BudgetLine(
                     id=_id(),
                     project_id=project.id,
-                    category=sec.description or f"Category {i+1}",
+                    category=sec.description or f"Category {i + 1}",
                     description=f"From BOQ section {sec.ordinal}",
                     planned_amount=str(round(planned, 2)),
                     committed_amount=str(round(committed, 2)),
@@ -164,7 +162,9 @@ async def main() -> None:
                     metadata_={},
                 )
                 session.add(bl)
-                print(f"    {(sec.description or '')[:30]:<30s} P:{planned:>11,.0f}  A:{actual:>11,.0f}  F:{forecast:>11,.0f}")
+                print(
+                    f"    {(sec.description or '')[:30]:<30s} P:{planned:>11,.0f}  A:{actual:>11,.0f}  F:{forecast:>11,.0f}"
+                )
 
             # ── 5D CASH FLOW ───────────────────────────────────────────
             print(f"\n  5D Cash Flow — {total_months} periods")
@@ -219,7 +219,7 @@ async def main() -> None:
             print(f"\n  5D Snapshot: BAC={grand_total:,.0f} | SPI={spi} | CPI={cpi} | EAC={eac:,.0f}")
 
             # ── TENDERING ──────────────────────────────────────────────
-            print(f"\n  Tendering")
+            print("\n  Tendering")
             pkg = TenderPackage(
                 id=_id(),
                 project_id=project.id,
@@ -233,15 +233,19 @@ async def main() -> None:
             session.add(pkg)
             await session.flush()
 
-            companies = [
-                ("Hochtief AG", "tender@hochtief.de", 0.98),
-                ("Strabag SE", "bids@strabag.com", 1.05),
-                ("Zublin GmbH", "vergabe@zueblin.de", 1.02),
-            ] if is_berlin else [
-                ("Laing O'Rourke", "tenders@lor.com", 0.96),
-                ("Balfour Beatty", "bids@bb.com", 1.08),
-                ("Mace Group", "proc@mace.com", 1.01),
-            ]
+            companies = (
+                [
+                    ("Hochtief AG", "tender@hochtief.de", 0.98),
+                    ("Strabag SE", "bids@strabag.com", 1.05),
+                    ("Zublin GmbH", "vergabe@zueblin.de", 1.02),
+                ]
+                if is_berlin
+                else [
+                    ("Laing O'Rourke", "tenders@lor.com", 0.96),
+                    ("Balfour Beatty", "bids@bb.com", 1.08),
+                    ("Mace Group", "proc@mace.com", 1.01),
+                ]
+            )
 
             for co, email, factor in companies:
                 total = round(grand_total * factor, 2)
@@ -265,7 +269,7 @@ async def main() -> None:
         await session.commit()
 
     print(f"\n{'=' * 70}")
-    print(f"  DONE — 4D Schedule + 5D Budget + Tendering seeded")
+    print("  DONE — 4D Schedule + 5D Budget + Tendering seeded")
     print(f"{'=' * 70}")
 
 

@@ -73,9 +73,7 @@ class MarkupRepository:
 
         return items, total
 
-    async def summary_for_project(
-        self, project_id: uuid.UUID
-    ) -> dict[str, dict[str, int]]:
+    async def summary_for_project(self, project_id: uuid.UUID) -> dict[str, dict[str, int]]:
         """Get markup counts grouped by type and status for a project."""
         items = await self.all_for_project(project_id)
 
@@ -207,11 +205,7 @@ class StampTemplateRepository:
 
     async def list_predefined(self) -> list[StampTemplate]:
         """List all predefined stamp templates."""
-        stmt = (
-            select(StampTemplate)
-            .where(StampTemplate.category == "predefined")
-            .order_by(StampTemplate.name.asc())
-        )
+        stmt = select(StampTemplate).where(StampTemplate.category == "predefined").order_by(StampTemplate.name.asc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -223,11 +217,7 @@ class StampTemplateRepository:
 
     async def update_fields(self, template_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on a stamp template."""
-        stmt = (
-            update(StampTemplate)
-            .where(StampTemplate.id == template_id)
-            .values(**fields)
-        )
+        stmt = update(StampTemplate).where(StampTemplate.id == template_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         self.session.expire_all()

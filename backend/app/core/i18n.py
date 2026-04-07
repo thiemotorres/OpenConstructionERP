@@ -3218,4 +3218,3 @@ def _generate_default_locales(locales_dir: Path) -> None:
         path = locales_dir / f"{locale_code}.json"
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-

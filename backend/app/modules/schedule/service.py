@@ -21,13 +21,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
 
 
 def _normalize_deps(deps: list | None) -> list[dict]:
@@ -47,6 +48,8 @@ def _normalize_deps(deps: list | None) -> list[dict]:
         else:
             result.append({"activity_id": str(dep), "type": "FS", "lag_days": 0})
     return result
+
+
 from app.modules.schedule.models import Activity, Schedule, WorkOrder
 from app.modules.schedule.repository import (
     ActivityRepository,
@@ -55,7 +58,6 @@ from app.modules.schedule.repository import (
 )
 from app.modules.schedule.schemas import (
     ActivityCreate,
-    ActivityResponse,
     ActivityUpdate,
     CPMActivityResult,
     CriticalPathResponse,
@@ -66,7 +68,6 @@ from app.modules.schedule.schemas import (
     ScheduleCreate,
     ScheduleUpdate,
     WorkOrderCreate,
-    WorkOrderResponse,
     WorkOrderUpdate,
 )
 
@@ -176,21 +177,38 @@ def get_work_calendar(region: str | None = None) -> dict:
         # Try matching region prefix (e.g., "DE_BERLIN" → "DACH")
         region_map = {
             # CWICR db_id prefixes → calendar keys
-            "USA": "US", "US": "US",
-            "UK": "UK", "GB": "UK",
-            "DE": "DACH", "AT": "DACH", "CH": "DACH",
+            "USA": "US",
+            "US": "US",
+            "UK": "UK",
+            "GB": "UK",
+            "DE": "DACH",
+            "AT": "DACH",
+            "CH": "DACH",
             "ENG": "CANADA",  # ENG_TORONTO
             "FR": "FRANCE",
-            "SP": "SPAIN", "ES": "SPAIN",
-            "PT": "BRAZIL", "BR": "BRAZIL",
+            "SP": "SPAIN",
+            "ES": "SPAIN",
+            "PT": "BRAZIL",
+            "BR": "BRAZIL",
             "RU": "RU",
-            "AR": "GULF", "AE": "GULF", "SA": "GULF", "QA": "GULF",
-            "ZH": "CHINA", "CN": "CHINA",
-            "HI": "INDIA", "IN": "INDIA",
+            "AR": "GULF",
+            "AE": "GULF",
+            "SA": "GULF",
+            "QA": "GULF",
+            "ZH": "CHINA",
+            "CN": "CHINA",
+            "HI": "INDIA",
+            "IN": "INDIA",
             # Project region values
-            "DACH": "DACH", "GULF": "GULF", "NORDIC": "DACH",
-            "CANADA": "CANADA", "FRANCE": "FRANCE", "SPAIN": "SPAIN",
-            "BRAZIL": "BRAZIL", "CHINA": "CHINA", "INDIA": "INDIA",
+            "DACH": "DACH",
+            "GULF": "GULF",
+            "NORDIC": "DACH",
+            "CANADA": "CANADA",
+            "FRANCE": "FRANCE",
+            "SPAIN": "SPAIN",
+            "BRAZIL": "BRAZIL",
+            "CHINA": "CHINA",
+            "INDIA": "INDIA",
         }
         prefix = region.split("_")[0].upper()
         mapped = region_map.get(prefix)
@@ -292,13 +310,9 @@ class ScheduleService:
         limit: int = 50,
     ) -> tuple[list[Schedule], int]:
         """List schedules for a given project with pagination."""
-        return await self.schedule_repo.list_for_project(
-            project_id, offset=offset, limit=limit
-        )
+        return await self.schedule_repo.list_for_project(project_id, offset=offset, limit=limit)
 
-    async def update_schedule(
-        self, schedule_id: uuid.UUID, data: ScheduleUpdate
-    ) -> Schedule:
+    async def update_schedule(self, schedule_id: uuid.UUID, data: ScheduleUpdate) -> Schedule:
         """Update schedule metadata fields.
 
         Args:
@@ -417,9 +431,7 @@ class ScheduleService:
             source_module="oe_schedule",
         )
 
-        logger.info(
-            "Activity added: %s to schedule %s", data.name, data.schedule_id
-        )
+        logger.info("Activity added: %s to schedule %s", data.name, data.schedule_id)
         return activity
 
     async def get_activity(self, activity_id: uuid.UUID) -> Activity:
@@ -440,13 +452,9 @@ class ScheduleService:
         limit: int = 1000,
     ) -> tuple[list[Activity], int]:
         """List activities for a schedule ordered by sort_order."""
-        return await self.activity_repo.list_for_schedule(
-            schedule_id, offset=offset, limit=limit
-        )
+        return await self.activity_repo.list_for_schedule(schedule_id, offset=offset, limit=limit)
 
-    async def update_activity(
-        self, activity_id: uuid.UUID, data: ActivityUpdate
-    ) -> Activity:
+    async def update_activity(self, activity_id: uuid.UUID, data: ActivityUpdate) -> Activity:
         """Update an activity and recalculate duration if dates changed.
 
         Args:
@@ -484,9 +492,7 @@ class ScheduleService:
 
         if "resources" in fields and fields["resources"] is not None:
             res_list = fields["resources"]
-            fields["resources"] = [
-                r.model_dump() if hasattr(r, "model_dump") else r for r in res_list
-            ]
+            fields["resources"] = [r.model_dump() if hasattr(r, "model_dump") else r for r in res_list]
 
         if "boq_position_ids" in fields and fields["boq_position_ids"] is not None:
             fields["boq_position_ids"] = [str(pid) for pid in fields["boq_position_ids"]]
@@ -535,9 +541,7 @@ class ScheduleService:
 
         logger.info("Activity deleted: %s from schedule %s", activity_id, schedule_id)
 
-    async def link_boq_position(
-        self, activity_id: uuid.UUID, boq_position_id: uuid.UUID
-    ) -> Activity:
+    async def link_boq_position(self, activity_id: uuid.UUID, boq_position_id: uuid.UUID) -> Activity:
         """Link a BOQ position to an activity.
 
         Args:
@@ -574,14 +578,10 @@ class ScheduleService:
             source_module="oe_schedule",
         )
 
-        logger.info(
-            "BOQ position %s linked to activity %s", boq_position_id, activity_id
-        )
+        logger.info("BOQ position %s linked to activity %s", boq_position_id, activity_id)
         return await self.get_activity(activity_id)
 
-    async def unlink_boq_position(
-        self, activity_id: uuid.UUID, boq_position_id: uuid.UUID
-    ) -> Activity:
+    async def unlink_boq_position(self, activity_id: uuid.UUID, boq_position_id: uuid.UUID) -> Activity:
         """Unlink a BOQ position from an activity.
 
         Args:
@@ -617,14 +617,10 @@ class ScheduleService:
             source_module="oe_schedule",
         )
 
-        logger.info(
-            "BOQ position %s unlinked from activity %s", boq_position_id, activity_id
-        )
+        logger.info("BOQ position %s unlinked from activity %s", boq_position_id, activity_id)
         return await self.get_activity(activity_id)
 
-    async def update_progress(
-        self, activity_id: uuid.UUID, progress_pct: float
-    ) -> Activity:
+    async def update_progress(self, activity_id: uuid.UUID, progress_pct: float) -> Activity:
         """Update activity progress and auto-adjust status.
 
         Args:
@@ -711,9 +707,7 @@ class ScheduleService:
             source_module="oe_schedule",
         )
 
-        logger.info(
-            "Work order created: %s for activity %s", data.code, data.activity_id
-        )
+        logger.info("Work order created: %s for activity %s", data.code, data.activity_id)
         return work_order
 
     async def get_work_order(self, work_order_id: uuid.UUID) -> WorkOrder:
@@ -734,9 +728,7 @@ class ScheduleService:
         limit: int = 100,
     ) -> tuple[list[WorkOrder], int]:
         """List work orders for an activity."""
-        return await self.work_order_repo.list_for_activity(
-            activity_id, offset=offset, limit=limit
-        )
+        return await self.work_order_repo.list_for_activity(activity_id, offset=offset, limit=limit)
 
     async def list_work_orders_for_schedule(
         self,
@@ -746,13 +738,9 @@ class ScheduleService:
         limit: int = 500,
     ) -> tuple[list[WorkOrder], int]:
         """List all work orders across all activities in a schedule."""
-        return await self.work_order_repo.list_for_schedule(
-            schedule_id, offset=offset, limit=limit
-        )
+        return await self.work_order_repo.list_for_schedule(schedule_id, offset=offset, limit=limit)
 
-    async def update_work_order(
-        self, work_order_id: uuid.UUID, data: WorkOrderUpdate
-    ) -> WorkOrder:
+    async def update_work_order(self, work_order_id: uuid.UUID, data: WorkOrderUpdate) -> WorkOrder:
         """Update a work order.
 
         Args:
@@ -801,9 +789,7 @@ class ScheduleService:
         # Re-fetch to return fresh data
         return await self.get_work_order(work_order_id)
 
-    async def update_work_order_status(
-        self, work_order_id: uuid.UUID, new_status: str
-    ) -> WorkOrder:
+    async def update_work_order_status(self, work_order_id: uuid.UUID, new_status: str) -> WorkOrder:
         """Update work order status.
 
         Args:
@@ -872,6 +858,7 @@ class ScheduleService:
             duration = 0
             try:
                 from datetime import datetime as _dt
+
                 d1 = _dt.fromisoformat(str(act.start_date))
                 d2 = _dt.fromisoformat(str(act.end_date))
                 duration = (d2 - d1).days
@@ -990,17 +977,19 @@ class ScheduleService:
                 meta = dict(p.metadata_) if p.metadata_ else {}
             except Exception:
                 meta = {}
-            positions.append({
-                "id": p.id,
-                "parent_id": p.parent_id,
-                "ordinal": p.ordinal or "",
-                "description": p.description or "",
-                "unit": p.unit or "",
-                "quantity": p.quantity or "0",
-                "unit_rate": p.unit_rate or "0",
-                "total": p.total or "0",
-                "metadata_": meta,
-            })
+            positions.append(
+                {
+                    "id": p.id,
+                    "parent_id": p.parent_id,
+                    "ordinal": p.ordinal or "",
+                    "description": p.description or "",
+                    "unit": p.unit or "",
+                    "quantity": p.quantity or "0",
+                    "unit_rate": p.unit_rate or "0",
+                    "total": p.total or "0",
+                    "metadata_": meta,
+                }
+            )
 
         # Determine project duration
         if total_project_days is None:
@@ -1011,6 +1000,7 @@ class ScheduleService:
         # ── Get regional work calendar from project ──────────────────────
         # Fetch project to get region for work calendar
         from app.modules.projects.repository import ProjectRepository
+
         proj_repo = ProjectRepository(self.session)
         project = await proj_repo.get_by_id(schedule_project_id)
         project_region = project.region if project else None
@@ -1018,8 +1008,9 @@ class ScheduleService:
         hours_per_day = cal["hours_per_day"]
         work_days_set = cal["work_days"]
         work_days_per_week = len(work_days_set)
-        logger.info("Using work calendar: %s (%.1fh/day, %d days/week)",
-                     cal["label"], hours_per_day, work_days_per_week)
+        logger.info(
+            "Using work calendar: %s (%.1fh/day, %d days/week)", cal["label"], hours_per_day, work_days_per_week
+        )
 
         # ── Duration calculation from real labor data ──────────────────
         # Priority:
@@ -1028,8 +1019,11 @@ class ScheduleService:
         #   3. Cost-proportional fallback
 
         def _calc_duration_from_resources(
-            pos_meta: dict, quantity: float, total_cost: float,
-            grand_total: float, total_days: int,
+            pos_meta: dict,
+            quantity: float,
+            total_cost: float,
+            grand_total: float,
+            total_days: int,
         ) -> int:
             """Calculate calendar days from labor_hours and workers.
 
@@ -1061,8 +1055,7 @@ class ScheduleService:
                 if labor_hrs_per_unit > 0:
                     total_hours = quantity * labor_hrs_per_unit
                     crew_size = max(
-                        sum(1 for r in resources
-                            if (r.get("type") or "").lower() in ("labor", "operator")),
+                        sum(1 for r in resources if (r.get("type") or "").lower() in ("labor", "operator")),
                         1,
                     )
                     crew_hours_per_day = crew_size * hours_per_day
@@ -1119,13 +1112,15 @@ class ScheduleService:
             else:
                 section_total = _str_to_float(pos["total"])
 
-            sections.append({
-                "name": pos["description"][:255] if pos["description"] else f"Section {pos['ordinal']}",
-                "ordinal": pos["ordinal"],
-                "total": section_total,
-                "parent_position": pos,
-                "children": children if children else [pos],
-            })
+            sections.append(
+                {
+                    "name": pos["description"][:255] if pos["description"] else f"Section {pos['ordinal']}",
+                    "ordinal": pos["ordinal"],
+                    "total": section_total,
+                    "parent_position": pos,
+                    "children": children if children else [pos],
+                }
+            )
 
         if not sections:
             raise HTTPException(
@@ -1186,21 +1181,28 @@ class ScheduleService:
             )
             summary = await self.activity_repo.create(summary)
             summary_id = summary.id  # Save ID before any expire_all
-            created_activities.append({
-                "activity_type": "summary", "end_date": summary.end_date, "id": summary_id,
-            })
+            created_activities.append(
+                {
+                    "activity_type": "summary",
+                    "end_date": summary.end_date,
+                    "id": summary_id,
+                }
+            )
             summary_activity_map[summary_id] = []
 
             # Inter-section dependency: SS with lag = 50% of previous section
             if prev_section_summary_id is not None:
                 lag = max(3, prev_section_duration_work_days // 2)
-                summary_deps = [{
-                    "activity_id": str(prev_section_summary_id),
-                    "type": "SS",
-                    "lag_days": lag,
-                }]
+                summary_deps = [
+                    {
+                        "activity_id": str(prev_section_summary_id),
+                        "type": "SS",
+                        "lag_days": lag,
+                    }
+                ]
                 await self.activity_repo.update_fields(
-                    summary_id, dependencies=summary_deps,
+                    summary_id,
+                    dependencies=summary_deps,
                 )
 
             # ── Create TASK activities for each child position ───────────
@@ -1215,8 +1217,11 @@ class ScheduleService:
                 child_meta = child_pos.get("metadata_", {}) or {}
 
                 duration_cal = _calc_duration_from_resources(
-                    child_meta, child_quantity, child_total,
-                    grand_total, total_project_days,
+                    child_meta,
+                    child_quantity,
+                    child_total,
+                    grand_total,
+                    total_project_days,
                 )
                 # Convert calendar days to working days for date arithmetic
                 work_days = max(1, math.ceil(duration_cal * 5 / 7))
@@ -1227,25 +1232,24 @@ class ScheduleService:
                 # Within-section dependency: sequential FS
                 child_deps: list[dict] = []
                 if prev_child_id is not None:
-                    child_deps = [{
-                        "activity_id": str(prev_child_id),
-                        "type": "FS",
-                        "lag_days": 0,
-                    }]
+                    child_deps = [
+                        {
+                            "activity_id": str(prev_child_id),
+                            "type": "FS",
+                            "lag_days": 0,
+                        }
+                    ]
 
                 sort_counter += 1
                 child_name = (
-                    child_pos["description"][:255]
-                    if child_pos["description"]
-                    else f"Position {child_pos['ordinal']}"
+                    child_pos["description"][:255] if child_pos["description"] else f"Position {child_pos['ordinal']}"
                 )
                 child_activity = Activity(
                     schedule_id=schedule_id,
                     parent_id=summary_id,
                     name=child_name,
                     description=(
-                        f"Auto-generated from BOQ position {child_pos['ordinal']} "
-                        f"({child_quantity} {child_unit})"
+                        f"Auto-generated from BOQ position {child_pos['ordinal']} ({child_quantity} {child_unit})"
                     ),
                     wbs_code=child_pos["ordinal"] or f"{section['ordinal']}.{child_idx + 1:03d}",
                     start_date=child_start.isoformat(),
@@ -1269,11 +1273,7 @@ class ScheduleService:
                         "duration_method": (
                             "labor_hours"
                             if child_meta.get("labor_hours", 0) > 0
-                            else (
-                                "resource_sum"
-                                if child_meta.get("resources")
-                                else "cost_proportional"
-                            )
+                            else ("resource_sum" if child_meta.get("resources") else "cost_proportional")
                         ),
                     },
                 )
@@ -1281,15 +1281,21 @@ class ScheduleService:
                 child_activity_id = child_activity.id  # Save before expire
                 child_activity_start = child_activity.start_date
                 child_activity_end = child_activity.end_date
-                created_activities.append({
-                    "activity_type": "task", "end_date": child_activity_end, "id": child_activity_id,
-                })
+                created_activities.append(
+                    {
+                        "activity_type": "task",
+                        "end_date": child_activity_end,
+                        "id": child_activity_id,
+                    }
+                )
                 # Store as dict to avoid ORM lazy-loading issues
-                summary_activity_map[summary_id].append({
-                    "id": child_activity_id,
-                    "start_date": child_activity_start,
-                    "end_date": child_activity_end,
-                })
+                summary_activity_map[summary_id].append(
+                    {
+                        "id": child_activity_id,
+                        "start_date": child_activity_start,
+                        "end_date": child_activity_end,
+                    }
+                )
 
                 prev_child_id = child_activity_id
                 child_start = child_end  # next child starts after this one ends
@@ -1297,12 +1303,8 @@ class ScheduleService:
             # ── Update SUMMARY dates from children (rollup) ─────────────
             children_data = summary_activity_map[summary_id]
             if children_data:
-                earliest_start = min(
-                    date.fromisoformat(a["start_date"]) for a in children_data
-                )
-                latest_end = max(
-                    date.fromisoformat(a["end_date"]) for a in children_data
-                )
+                earliest_start = min(date.fromisoformat(a["start_date"]) for a in children_data)
+                latest_end = max(date.fromisoformat(a["end_date"]) for a in children_data)
                 summary_duration = (latest_end - earliest_start).days
                 await self.activity_repo.update_fields(
                     summary_id,
@@ -1318,9 +1320,7 @@ class ScheduleService:
             # Next section start: overlap via SS — section_start advances by
             # half the previous section's working days for partial overlap
             if children_data:
-                latest_end = max(
-                    date.fromisoformat(a["end_date"]) for a in children_data
-                )
+                latest_end = max(date.fromisoformat(a["end_date"]) for a in children_data)
                 half_work_days = max(3, section_work_days_total // 2)
                 section_start = _add_working_days(section_start, half_work_days)
             else:
@@ -1350,9 +1350,12 @@ class ScheduleService:
         )
         ms_start = await self.activity_repo.create(ms_start)
         ms_start_end = ms_start.end_date
-        created_activities.append({
-            "activity_type": "milestone", "end_date": ms_start_end,
-        })
+        created_activities.append(
+            {
+                "activity_type": "milestone",
+                "end_date": ms_start_end,
+            }
+        )
 
         # Milestone: Project Completion (depends on last section finishing)
         if prev_section_summary_id is not None:
@@ -1381,11 +1384,13 @@ class ScheduleService:
                 progress_pct="0",
                 status="not_started",
                 activity_type="milestone",
-                dependencies=[{
-                    "activity_id": str(prev_section_summary_id),
-                    "type": "FS",
-                    "lag_days": 0,
-                }],
+                dependencies=[
+                    {
+                        "activity_id": str(prev_section_summary_id),
+                        "type": "FS",
+                        "lag_days": 0,
+                    }
+                ],
                 resources=[],
                 boq_position_ids=[],
                 color="#f59e0b",
@@ -1410,9 +1415,7 @@ class ScheduleService:
                 final_end = max(all_end_dates).isoformat()
                 await self.schedule_repo.update_fields(schedule_id, end_date=final_end)
             # Always set start_date (schedule object may be expired by now)
-            await self.schedule_repo.update_fields(
-                schedule_id, start_date=schedule_start.isoformat()
-            )
+            await self.schedule_repo.update_fields(schedule_id, start_date=schedule_start.isoformat())
 
         await _safe_publish(
             "schedule.generated_from_boq",
@@ -1434,9 +1437,7 @@ class ScheduleService:
 
     # ── Critical Path Method ──────────────────────────────────────────────
 
-    async def calculate_critical_path(
-        self, schedule_id: uuid.UUID
-    ) -> CriticalPathResponse:
+    async def calculate_critical_path(self, schedule_id: uuid.UUID) -> CriticalPathResponse:
         """Calculate the critical path using forward/backward pass CPM.
 
         Algorithm adapted from DDC_Toolkit _compute_cpm:
@@ -1469,23 +1470,23 @@ class ScheduleService:
         # Snapshot all activity data to avoid MissingGreenlet after expire_all
         act_data: list[dict] = []
         for a in activities:
-            act_data.append({
-                "id": str(a.id),
-                "name": a.name or "",
-                "duration_days": a.duration_days or 0,
-                "activity_type": a.activity_type or "task",
-                "dependencies": _normalize_deps(a.dependencies),
-                "color": a.color or "#0071e3",
-            })
+            act_data.append(
+                {
+                    "id": str(a.id),
+                    "name": a.name or "",
+                    "duration_days": a.duration_days or 0,
+                    "activity_type": a.activity_type or "task",
+                    "dependencies": _normalize_deps(a.dependencies),
+                    "color": a.color or "#0071e3",
+                }
+            )
 
         # Build activity index and dependency map
         idx: dict[str, dict] = {d["id"]: d for d in act_data}
         active_ids = set(idx.keys())
 
         # Parse dependencies: map activity_id -> list of (predecessor_id, type, lag)
-        deps: dict[str, list[tuple[str, str, int]]] = {
-            d["id"]: [] for d in act_data
-        }
+        deps: dict[str, list[tuple[str, str, int]]] = {d["id"]: [] for d in act_data}
         for ad in act_data:
             act_id = ad["id"]
             for dep in ad["dependencies"]:
@@ -1518,9 +1519,7 @@ class ScheduleService:
         project_duration = max(ef.values()) if ef else 0
 
         # --- Backward pass: compute LS, LF ---
-        successors: dict[str, list[tuple[str, str, int]]] = {
-            d["id"]: [] for d in act_data
-        }
+        successors: dict[str, list[tuple[str, str, int]]] = {d["id"]: [] for d in act_data}
         for ad in act_data:
             act_id = ad["id"]
             for pred_id, dep_type, lag in deps[act_id]:
@@ -1568,13 +1567,17 @@ class ScheduleService:
 
             # Update activity color + CPM metadata
             cpm_meta = {
-                "es": es[act_id], "ef": ef[act_id],
-                "ls": ls[act_id], "lf": lf[act_id],
-                "total_float": total_float, "is_critical": is_critical,
+                "es": es[act_id],
+                "ef": ef[act_id],
+                "ls": ls[act_id],
+                "lf": lf[act_id],
+                "total_float": total_float,
+                "is_critical": is_critical,
             }
             new_color = "#ef4444" if is_critical else "#0071e3"
             await self.activity_repo.update_fields(
-                uuid.UUID(act_id), color=new_color,
+                uuid.UUID(act_id),
+                color=new_color,
             )
 
         await _safe_publish(
@@ -1604,9 +1607,7 @@ class ScheduleService:
 
     # ── Risk Analysis (PERT) ──────────────────────────────────────────────
 
-    async def get_risk_analysis(
-        self, schedule_id: uuid.UUID
-    ) -> RiskAnalysisResponse:
+    async def get_risk_analysis(self, schedule_id: uuid.UUID) -> RiskAnalysisResponse:
         """Compute PERT-based risk analysis for the schedule.
 
         Uses the three-point estimation:
@@ -1645,19 +1646,21 @@ class ScheduleService:
             pessimistic = max(duration + 2, int(duration * _PERT_PESSIMISTIC))
             expected = (optimistic + 4 * duration + pessimistic) / 6.0
             std_dev = (pessimistic - optimistic) / 6.0
-            variance = std_dev ** 2
+            variance = std_dev**2
 
-            activity_risks.append({
-                "activity_id": str(act_cpm.activity_id),
-                "name": act_cpm.name,
-                "duration_days": duration,
-                "optimistic": optimistic,
-                "most_likely": duration,
-                "pessimistic": pessimistic,
-                "expected": round(expected, 1),
-                "std_dev": round(std_dev, 2),
-                "is_critical": act_cpm.is_critical,
-            })
+            activity_risks.append(
+                {
+                    "activity_id": str(act_cpm.activity_id),
+                    "name": act_cpm.name,
+                    "duration_days": duration,
+                    "optimistic": optimistic,
+                    "most_likely": duration,
+                    "pessimistic": pessimistic,
+                    "expected": round(expected, 1),
+                    "std_dev": round(std_dev, 2),
+                    "is_critical": act_cpm.is_critical,
+                }
+            )
 
             if act_cpm.is_critical:
                 critical_variance_sum += variance
@@ -1670,11 +1673,7 @@ class ScheduleService:
         p80_days = int(det_days + 0.84 * project_std)
         p95_days = int(det_days + 1.645 * project_std)
         mean_days = round(
-            sum(
-                r["expected"]
-                for r in activity_risks
-                if r["is_critical"]
-            ),
+            sum(r["expected"] for r in activity_risks if r["is_critical"]),
             1,
         )
         risk_buffer = p80_days - det_days

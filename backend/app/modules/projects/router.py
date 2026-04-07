@@ -139,6 +139,7 @@ async def delete_project(
 ) -> None:
     """Archive a project (soft delete). Verifies ownership."""
     import logging as _log
+
     try:
         await _verify_project_owner(service, project_id, user_id, payload)
         await service.delete_project(project_id)
@@ -186,15 +187,9 @@ async def project_dashboard(
     await _verify_project_owner(service, project_id, user_id, payload)
 
     # ── BOQ ──────────────────────────────────────────────────────────
-    boq_count = (
-        await session.execute(
-            select(func.count(BOQ.id)).where(BOQ.project_id == project_id)
-        )
-    ).scalar_one()
+    boq_count = (await session.execute(select(func.count(BOQ.id)).where(BOQ.project_id == project_id))).scalar_one()
 
-    boq_ids_result = await session.execute(
-        select(BOQ.id).where(BOQ.project_id == project_id)
-    )
+    boq_ids_result = await session.execute(select(BOQ.id).where(BOQ.project_id == project_id))
     boq_ids = [row[0] for row in boq_ids_result.all()]
 
     position_count = 0
@@ -202,40 +197,24 @@ async def project_dashboard(
     markups_from_boq = 0
     if boq_ids:
         position_count = (
-            await session.execute(
-                select(func.count(Position.id)).where(Position.boq_id.in_(boq_ids))
-            )
+            await session.execute(select(func.count(Position.id)).where(Position.boq_id.in_(boq_ids)))
         ).scalar_one()
 
         total_result = (
-            await session.execute(
-                select(func.sum(cast(Position.total, Float))).where(
-                    Position.boq_id.in_(boq_ids)
-                )
-            )
+            await session.execute(select(func.sum(cast(Position.total, Float))).where(Position.boq_id.in_(boq_ids)))
         ).scalar_one()
         boq_total_value = round(total_result or 0.0, 2)
 
         markups_from_boq = (
-            await session.execute(
-                select(func.count(BOQMarkup.id)).where(
-                    BOQMarkup.boq_id.in_(boq_ids)
-                )
-            )
+            await session.execute(select(func.count(BOQMarkup.id)).where(BOQMarkup.boq_id.in_(boq_ids)))
         ).scalar_one()
 
     # ── Requirements ─────────────────────────────────────────────────
     requirement_sets = (
-        await session.execute(
-            select(func.count(RequirementSet.id)).where(
-                RequirementSet.project_id == project_id
-            )
-        )
+        await session.execute(select(func.count(RequirementSet.id)).where(RequirementSet.project_id == project_id))
     ).scalar_one()
 
-    req_set_ids_result = await session.execute(
-        select(RequirementSet.id).where(RequirementSet.project_id == project_id)
-    )
+    req_set_ids_result = await session.execute(select(RequirementSet.id).where(RequirementSet.project_id == project_id))
     req_set_ids = [row[0] for row in req_set_ids_result.all()]
 
     requirements_total = 0
@@ -243,9 +222,7 @@ async def project_dashboard(
     if req_set_ids:
         requirements_total = (
             await session.execute(
-                select(func.count(Requirement.id)).where(
-                    Requirement.requirement_set_id.in_(req_set_ids)
-                )
+                select(func.count(Requirement.id)).where(Requirement.requirement_set_id.in_(req_set_ids))
             )
         ).scalar_one()
 
@@ -257,17 +234,11 @@ async def project_dashboard(
                 )
             )
         ).scalar_one()
-        requirements_coverage = (
-            round(linked_count / requirements_total * 100)
-            if requirements_total > 0
-            else 0
-        )
+        requirements_coverage = round(linked_count / requirements_total * 100) if requirements_total > 0 else 0
 
     # ── Markups (drawing annotations) ────────────────────────────────
     markups_count = (
-        await session.execute(
-            select(func.count(Markup.id)).where(Markup.project_id == project_id)
-        )
+        await session.execute(select(func.count(Markup.id)).where(Markup.project_id == project_id))
     ).scalar_one()
 
     # ── Punch List ───────────────────────────────────────────────────
@@ -291,11 +262,7 @@ async def project_dashboard(
 
     # ── Field Reports ────────────────────────────────────────────────
     field_reports_total = (
-        await session.execute(
-            select(func.count(FieldReport.id)).where(
-                FieldReport.project_id == project_id
-            )
-        )
+        await session.execute(select(func.count(FieldReport.id)).where(FieldReport.project_id == project_id))
     ).scalar_one()
 
     week_ago = date.today() - timedelta(days=7)
@@ -310,54 +277,34 @@ async def project_dashboard(
 
     # ── Photos ───────────────────────────────────────────────────────
     photos_count = (
-        await session.execute(
-            select(func.count(ProjectPhoto.id)).where(
-                ProjectPhoto.project_id == project_id
-            )
-        )
+        await session.execute(select(func.count(ProjectPhoto.id)).where(ProjectPhoto.project_id == project_id))
     ).scalar_one()
 
     # ── Measurements ─────────────────────────────────────────────────
     measurements_count = (
         await session.execute(
-            select(func.count(TakeoffMeasurement.id)).where(
-                TakeoffMeasurement.project_id == project_id
-            )
+            select(func.count(TakeoffMeasurement.id)).where(TakeoffMeasurement.project_id == project_id)
         )
     ).scalar_one()
 
     # ── Documents ────────────────────────────────────────────────────
     documents_count = (
-        await session.execute(
-            select(func.count(Document.id)).where(
-                Document.project_id == project_id
-            )
-        )
+        await session.execute(select(func.count(Document.id)).where(Document.project_id == project_id))
     ).scalar_one()
 
     # ── Schedule ─────────────────────────────────────────────────────
-    sched_ids_result = await session.execute(
-        select(Schedule.id).where(Schedule.project_id == project_id)
-    )
+    sched_ids_result = await session.execute(select(Schedule.id).where(Schedule.project_id == project_id))
     sched_ids = [row[0] for row in sched_ids_result.all()]
 
     schedule_activities = 0
     if sched_ids:
         schedule_activities = (
-            await session.execute(
-                select(func.count(Activity.id)).where(
-                    Activity.schedule_id.in_(sched_ids)
-                )
-            )
+            await session.execute(select(func.count(Activity.id)).where(Activity.schedule_id.in_(sched_ids)))
         ).scalar_one()
 
     # ── Risk ─────────────────────────────────────────────────────────
     risk_total = (
-        await session.execute(
-            select(func.count(RiskItem.id)).where(
-                RiskItem.project_id == project_id
-            )
-        )
+        await session.execute(select(func.count(RiskItem.id)).where(RiskItem.project_id == project_id))
     ).scalar_one()
 
     risk_high = (
@@ -371,11 +318,7 @@ async def project_dashboard(
 
     # ── Change Orders ────────────────────────────────────────────────
     co_total = (
-        await session.execute(
-            select(func.count(ChangeOrder.id)).where(
-                ChangeOrder.project_id == project_id
-            )
-        )
+        await session.execute(select(func.count(ChangeOrder.id)).where(ChangeOrder.project_id == project_id))
     ).scalar_one()
 
     co_approved = (

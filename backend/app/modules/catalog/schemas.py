@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Create ────────────────────────────────────────────────────────────────
 
 
@@ -15,9 +14,7 @@ class CatalogResourceCreate(BaseModel):
 
     resource_code: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=500)
-    resource_type: str = Field(
-        ..., min_length=1, max_length=20, description="material, equipment, labor, operator"
-    )
+    resource_type: str = Field(..., min_length=1, max_length=20, description="material, equipment, labor, operator")
     category: str = Field(..., min_length=1, max_length=100)
     unit: str = Field(..., min_length=1, max_length=20)
     base_price: float = Field(..., ge=0)
@@ -65,9 +62,7 @@ class CatalogSearchQuery(BaseModel):
     """Query parameters for catalog resource search."""
 
     q: str | None = Field(default=None, description="Text search on code and name")
-    resource_type: str | None = Field(
-        default=None, description="Filter by type: material, equipment, labor, operator"
-    )
+    resource_type: str | None = Field(default=None, description="Filter by type: material, equipment, labor, operator")
     category: str | None = Field(default=None, description="Filter by category")
     region: str | None = Field(default=None, description="Filter by region")
     unit: str | None = Field(default=None, description="Filter by unit")

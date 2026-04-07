@@ -12,7 +12,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Component schemas ────────────────────────────────────────────────────────
 
 
@@ -22,7 +21,7 @@ class ComponentCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     cost_item_id: UUID | None = None
-    description: str = Field(default='', max_length=500)
+    description: str = Field(default="", max_length=500)
     factor: float = Field(default=1.0)
     quantity: float = Field(default=1.0)
     unit: str = Field(..., min_length=1, max_length=20)

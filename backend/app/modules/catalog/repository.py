@@ -61,10 +61,7 @@ class CatalogResourceRepository:
 
         if q:
             pattern = f"%{q}%"
-            base = base.where(
-                CatalogResource.resource_code.ilike(pattern)
-                | CatalogResource.name.ilike(pattern)
-            )
+            base = base.where(CatalogResource.resource_code.ilike(pattern) | CatalogResource.name.ilike(pattern))
 
         if resource_type:
             base = base.where(CatalogResource.resource_type == resource_type)
@@ -109,11 +106,7 @@ class CatalogResourceRepository:
 
     async def update_fields(self, resource_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on a catalog resource."""
-        stmt = (
-            update(CatalogResource)
-            .where(CatalogResource.id == resource_id)
-            .values(**fields)
-        )
+        stmt = update(CatalogResource).where(CatalogResource.id == resource_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         # Expire cached ORM instances so the next get_by_id re-reads from DB
@@ -166,11 +159,7 @@ class CatalogResourceRepository:
         """Hard-delete all resources for a given region. Returns count deleted."""
         from sqlalchemy import delete as sa_delete
 
-        count_stmt = (
-            select(func.count())
-            .select_from(CatalogResource)
-            .where(CatalogResource.region == region)
-        )
+        count_stmt = select(func.count()).select_from(CatalogResource).where(CatalogResource.region == region)
         count = (await self.session.execute(count_stmt)).scalar_one()
 
         if count > 0:
@@ -181,19 +170,11 @@ class CatalogResourceRepository:
 
     async def delete_by_source(self, source: str) -> int:
         """Delete all resources from a given source. Returns count deleted."""
-        stmt = (
-            select(func.count())
-            .select_from(CatalogResource)
-            .where(CatalogResource.source == source)
-        )
+        stmt = select(func.count()).select_from(CatalogResource).where(CatalogResource.source == source)
         count = (await self.session.execute(stmt)).scalar_one()
 
         if count > 0:
-            del_stmt = (
-                update(CatalogResource)
-                .where(CatalogResource.source == source)
-                .values(is_active=False)
-            )
+            del_stmt = update(CatalogResource).where(CatalogResource.source == source).values(is_active=False)
             await self.session.execute(del_stmt)
 
         return count

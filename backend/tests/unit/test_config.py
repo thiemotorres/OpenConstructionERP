@@ -4,8 +4,6 @@ Validates that Settings has all required fields, correct defaults,
 and computed fields work as expected. No database required.
 """
 
-import os
-
 import pytest
 
 from app.config import Settings

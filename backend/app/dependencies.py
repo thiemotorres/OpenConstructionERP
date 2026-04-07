@@ -113,6 +113,7 @@ async def get_current_user_payload(
     if iat is not None and user_sub:
         try:
             from uuid import UUID
+
             from app.modules.users.models import User as _UserModel
 
             async with async_session_factory() as session:
@@ -183,9 +184,7 @@ class RequirePermission:
         # Superadmin bypasses all checks
         if role == "admin":
             user_id = payload.get("sub", "unknown")
-            logger.info(
-                "Admin bypass: permission=%s user=%s", self.permission, user_id
-            )
+            logger.info("Admin bypass: permission=%s user=%s", self.permission, user_id)
             return
 
         if self.permission not in permissions:

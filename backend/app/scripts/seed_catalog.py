@@ -8,7 +8,6 @@ Usage: cd backend && python -m app.scripts.seed_catalog
 
 import asyncio
 import logging
-import sys
 from collections import defaultdict
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -144,9 +143,7 @@ async def main() -> None:
         }
 
         # Clean up previously extracted resources
-        del_stmt = select(CatalogResource).where(
-            CatalogResource.source == "cwicr_extraction"
-        )
+        del_stmt = select(CatalogResource).where(CatalogResource.source == "cwicr_extraction")
         old_result = await session.execute(del_stmt)
         old_resources = list(old_result.scalars().all())
         for old_res in old_resources:
@@ -159,9 +156,7 @@ async def main() -> None:
         counts: dict[str, int] = defaultdict(int)
 
         for resource_type, limit in type_limits.items():
-            typed_components = [
-                v for v in component_data.values() if v["type"] == resource_type
-            ]
+            typed_components = [v for v in component_data.values() if v["type"] == resource_type]
             typed_components.sort(key=lambda x: x["count"], reverse=True)
 
             print(f"\n{'─' * 50}")
@@ -210,7 +205,7 @@ async def main() -> None:
         # 5. Print summary
         total = sum(counts.values())
         print(f"\n{'=' * 70}")
-        print(f"  SUMMARY")
+        print("  SUMMARY")
         print(f"{'=' * 70}")
         print(f"  Total resources created: {total}")
         for rt, c in counts.items():

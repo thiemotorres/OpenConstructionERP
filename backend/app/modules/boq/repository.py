@@ -68,7 +68,7 @@ class BOQRepository:
 
         from decimal import Decimal
 
-        from sqlalchemy import cast, Float
+        from sqlalchemy import Float, cast
 
         # Step 1: sum direct cost (position totals) per BOQ
         pos_stmt = (
@@ -80,9 +80,7 @@ class BOQRepository:
             .group_by(Position.boq_id)
         )
         pos_result = await self.session.execute(pos_stmt)
-        direct_costs: dict[uuid.UUID, float] = {
-            row.boq_id: float(row.direct_cost or 0) for row in pos_result
-        }
+        direct_costs: dict[uuid.UUID, float] = {row.boq_id: float(row.direct_cost or 0) for row in pos_result}
 
         # Step 2: fetch active markups for all requested BOQs
         markup_stmt = (
@@ -156,11 +154,7 @@ class PositionRepository:
         total = (await self.session.execute(count_stmt)).scalar_one()
 
         # Fetch ordered by sort_order, then ordinal
-        stmt = (
-            base.order_by(Position.sort_order, Position.ordinal)
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = base.order_by(Position.sort_order, Position.ordinal).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         positions = list(result.scalars().all())
 
@@ -206,9 +200,7 @@ class PositionRepository:
 
     async def get_max_sort_order(self, boq_id: uuid.UUID) -> int:
         """Get the highest sort_order for positions in a BOQ."""
-        stmt = select(func.coalesce(func.max(Position.sort_order), -1)).where(
-            Position.boq_id == boq_id
-        )
+        stmt = select(func.coalesce(func.max(Position.sort_order), -1)).where(Position.boq_id == boq_id)
         result = (await self.session.execute(stmt)).scalar_one()
         return int(result)
 
@@ -225,11 +217,7 @@ class MarkupRepository:
 
     async def list_for_boq(self, boq_id: uuid.UUID) -> list[BOQMarkup]:
         """List all markups for a BOQ ordered by sort_order."""
-        stmt = (
-            select(BOQMarkup)
-            .where(BOQMarkup.boq_id == boq_id)
-            .order_by(BOQMarkup.sort_order, BOQMarkup.created_at)
-        )
+        stmt = select(BOQMarkup).where(BOQMarkup.boq_id == boq_id).order_by(BOQMarkup.sort_order, BOQMarkup.created_at)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -270,9 +258,7 @@ class MarkupRepository:
 
     async def get_max_sort_order(self, boq_id: uuid.UUID) -> int:
         """Get the highest sort_order for markups in a BOQ."""
-        stmt = select(func.coalesce(func.max(BOQMarkup.sort_order), -1)).where(
-            BOQMarkup.boq_id == boq_id
-        )
+        stmt = select(func.coalesce(func.max(BOQMarkup.sort_order), -1)).where(BOQMarkup.boq_id == boq_id)
         result = (await self.session.execute(stmt)).scalar_one()
         return int(result)
 
@@ -305,11 +291,7 @@ class ActivityLogRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        stmt = (
-            base.order_by(BOQActivityLog.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = base.order_by(BOQActivityLog.created_at.desc()).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         entries = list(result.scalars().all())
 
@@ -331,11 +313,7 @@ class ActivityLogRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        stmt = (
-            base.order_by(BOQActivityLog.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        stmt = base.order_by(BOQActivityLog.created_at.desc()).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         entries = list(result.scalars().all())
 

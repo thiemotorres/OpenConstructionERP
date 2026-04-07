@@ -42,9 +42,7 @@ class PositionHasQuantity(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} has zero/missing quantity",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} has zero/missing quantity",
                     element_ref=pos.get("id"),
                     suggestion="Set a quantity greater than 0" if not passed else None,
                 )
@@ -72,9 +70,7 @@ class PositionHasUnitRate(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} has no unit rate",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} has no unit rate",
                     element_ref=pos.get("id"),
                     suggestion="Assign a rate from the cost database" if not passed else None,
                 )
@@ -102,9 +98,7 @@ class PositionHasDescription(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing description",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing description",
                     element_ref=pos.get("id"),
                 )
             )
@@ -137,9 +131,7 @@ class NoDuplicateOrdinals(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Duplicate ordinal '{ordinal}' found in {len(ids)} positions",
+                    message="OK" if passed else f"Duplicate ordinal '{ordinal}' found in {len(ids)} positions",
                     element_ref=ids[0] if len(ids) == 1 else None,
                     details={"duplicate_ids": ids} if not passed else {},
                 )
@@ -180,15 +172,10 @@ class UnitRateInRange(ValidationRule):
                     passed=passed,
                     message="OK"
                     if passed
-                    else (
-                        f"Position {pos.get('ordinal', '?')}: rate {rate:.2f} "
-                        f"is >{threshold:.2f} (5x median)"
-                    ),
+                    else (f"Position {pos.get('ordinal', '?')}: rate {rate:.2f} is >{threshold:.2f} (5x median)"),
                     element_ref=pos.get("id"),
                     details={"rate": rate, "median": median, "threshold": threshold},
-                    suggestion="Verify this unit rate — it's unusually high"
-                    if not passed
-                    else None,
+                    suggestion="Verify this unit rate — it's unusually high" if not passed else None,
                 )
             )
         return results
@@ -217,13 +204,9 @@ class DIN276CostGroupRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing DIN 276 KG",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing DIN 276 KG",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a 3-digit DIN 276 Kostengruppe (e.g., 330 for walls)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a 3-digit DIN 276 Kostengruppe (e.g., 330 for walls)" if not passed else None,
                 )
             )
         return results
@@ -254,9 +237,7 @@ class DIN276ValidCostGroup(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Invalid DIN 276 code '{kg}' in position {pos.get('ordinal', '?')}",
+                    message="OK" if passed else f"Invalid DIN 276 code '{kg}' in position {pos.get('ordinal', '?')}",
                     element_ref=pos.get("id"),
                     details={"given_code": kg},
                 )
@@ -292,9 +273,7 @@ class GAEBOrdinalFormat(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Ordinal '{ordinal}' doesn't match GAEB format XX.XX.XXXX",
+                    message="OK" if passed else f"Ordinal '{ordinal}' doesn't match GAEB format XX.XX.XXXX",
                     element_ref=pos.get("id"),
                     suggestion="Use format like 01.02.0030" if not passed else None,
                 )
@@ -327,10 +306,7 @@ class NegativeValues(ValidationRule):
                     parts.append(f"quantity={qty_val}")
                 if rate_val < 0:
                     parts.append(f"unit_rate={rate_val}")
-                msg = (
-                    f"Position {pos.get('ordinal', '?')} has negative "
-                    f"{', '.join(parts)}"
-                )
+                msg = f"Position {pos.get('ordinal', '?')} has negative {', '.join(parts)}"
             else:
                 msg = "OK"
             results.append(
@@ -342,9 +318,7 @@ class NegativeValues(ValidationRule):
                     passed=passed,
                     message=msg,
                     element_ref=pos.get("id"),
-                    suggestion="Correct negative values — use positive numbers"
-                    if not passed
-                    else None,
+                    suggestion="Correct negative values — use positive numbers" if not passed else None,
                 )
             )
         return results
@@ -375,10 +349,7 @@ class UnrealisticRate(ValidationRule):
                     parts.append(f"unit_rate {rate:,.2f} > {self.RATE_THRESHOLD:,}")
                 if not total_ok:
                     parts.append(f"total {total:,.2f} > {self.TOTAL_THRESHOLD:,}")
-                msg = (
-                    f"Position {pos.get('ordinal', '?')}: "
-                    f"{'; '.join(parts)}"
-                )
+                msg = f"Position {pos.get('ordinal', '?')}: {'; '.join(parts)}"
             else:
                 msg = "OK"
             results.append(
@@ -391,9 +362,7 @@ class UnrealisticRate(ValidationRule):
                     message=msg,
                     element_ref=pos.get("id"),
                     details={"unit_rate": rate, "total": total},
-                    suggestion="Verify this value — it seems unrealistically high"
-                    if not passed
-                    else None,
+                    suggestion="Verify this value — it seems unrealistically high" if not passed else None,
                 )
             )
         return results
@@ -446,9 +415,7 @@ class TotalMismatch(ValidationRule):
                         "stored_total": stored_val,
                         "difference": diff,
                     },
-                    suggestion="Recalculate total = quantity × unit_rate"
-                    if not passed
-                    else None,
+                    suggestion="Recalculate total = quantity × unit_rate" if not passed else None,
                 )
             )
         return results
@@ -474,13 +441,9 @@ class EmptyUnit(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} has empty or missing unit",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} has empty or missing unit",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a measurement unit (m, m2, m3, kg, pcs, lsum, etc.)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a measurement unit (m, m2, m3, kg, pcs, lsum, etc.)" if not passed else None,
                 )
             )
         return results
@@ -520,8 +483,7 @@ class SectionWithoutItems(ValidationRule):
                     message="OK"
                     if has_children
                     else (
-                        f"Section {pos.get('ordinal', '?')} "
-                        f"({pos.get('description', 'untitled')}) has no child items"
+                        f"Section {pos.get('ordinal', '?')} ({pos.get('description', 'untitled')}) has no child items"
                     ),
                     element_ref=pos_id,
                     suggestion="Add positions under this section or remove the empty section"
@@ -548,8 +510,8 @@ class RateVsBenchmark(ValidationRule):
 
     # Simple heuristic thresholds per unit (upper bound for typical rates)
     UNIT_THRESHOLDS: dict[str, float] = {
-        "m2": 10_000,   # > 10,000 per m2 is suspicious
-        "m3": 50_000,   # > 50,000 per m3 is suspicious
+        "m2": 10_000,  # > 10,000 per m2 is suspicious
+        "m3": 50_000,  # > 50,000 per m3 is suspicious
     }
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
@@ -604,8 +566,7 @@ class LumpSumRatio(ValidationRule):
     severity = Severity.INFO
     category = RuleCategory.QUALITY
     description = (
-        "Flags BOQs where more than 30% of positions use lump sum (lsum) unit — "
-        "indicates poor estimation granularity"
+        "Flags BOQs where more than 30% of positions use lump sum (lsum) unit — indicates poor estimation granularity"
     )
 
     THRESHOLD = 0.30  # 30%
@@ -616,11 +577,7 @@ class LumpSumRatio(ValidationRule):
             return []
 
         total_count = len(positions)
-        lsum_count = sum(
-            1
-            for pos in positions
-            if (pos.get("unit") or "").strip().lower() == "lsum"
-        )
+        lsum_count = sum(1 for pos in positions if (pos.get("unit") or "").strip().lower() == "lsum")
         ratio = lsum_count / total_count
         passed = ratio <= self.THRESHOLD
 
@@ -751,10 +708,7 @@ class DIN276Hierarchy(ValidationRule):
     standard = "din276"
     severity = Severity.WARNING
     category = RuleCategory.COMPLIANCE
-    description = (
-        "Child KG code should be nested under the correct parent "
-        "(e.g., 331 under 330 under 300)"
-    )
+    description = "Child KG code should be nested under the correct parent (e.g., 331 under 330 under 300)"
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
         positions = _get_positions(context)
@@ -852,17 +806,13 @@ class DIN276Completeness(ValidationRule):
                     passed=passed,
                     message="OK"
                     if passed
-                    else (
-                        f"KG group {group} — {group_names.get(group, '')} "
-                        f"is missing from BOQ"
-                    ),
+                    else (f"KG group {group} — {group_names.get(group, '')} is missing from BOQ"),
                     details={
                         "required_group": group,
                         "present_groups": sorted(present_groups),
                     },
                     suggestion=(
-                        f"Add positions for KG {group} "
-                        f"({group_names.get(group, '')}) to ensure complete coverage"
+                        f"Add positions for KG {group} ({group_names.get(group, '')}) to ensure complete coverage"
                     )
                     if not passed
                     else None,
@@ -894,9 +844,7 @@ class NRMClassificationRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing NRM element code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing NRM element code",
                     element_ref=pos.get("id"),
                     suggestion="Assign an NRM 1/2 element code (e.g., 2.6.1 for external walls)"
                     if not passed
@@ -934,9 +882,7 @@ class NRMValidElement(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Invalid NRM code '{nrm}' in position {pos.get('ordinal', '?')}",
+                    message="OK" if passed else f"Invalid NRM code '{nrm}' in position {pos.get('ordinal', '?')}",
                     element_ref=pos.get("id"),
                     details={"given_code": nrm},
                 )
@@ -977,9 +923,7 @@ class NRMCompleteness(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"NRM group {group} — {group_names.get(group, '')} missing from BOQ",
+                    message="OK" if passed else f"NRM group {group} — {group_names.get(group, '')} missing from BOQ",
                     details={"required_group": group, "present_groups": sorted(present_groups)},
                     suggestion=f"Add positions for NRM group {group} ({group_names.get(group, '')})"
                     if not passed
@@ -1012,9 +956,7 @@ class MasterFormatClassificationRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing MasterFormat code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing MasterFormat code",
                     element_ref=pos.get("id"),
                     suggestion="Assign a MasterFormat code (e.g., 03 30 00 for Cast-in-Place Concrete)"
                     if not passed
@@ -1056,9 +998,7 @@ class MasterFormatValidDivision(ValidationRule):
                     else f"Invalid MasterFormat code '{mf}' in position {pos.get('ordinal', '?')}",
                     element_ref=pos.get("id"),
                     details={"given_code": mf},
-                    suggestion="Use 6-digit MasterFormat format: XX XX XX (e.g., 03 30 00)"
-                    if not passed
-                    else None,
+                    suggestion="Use 6-digit MasterFormat format: XX XX XX (e.g., 03 30 00)" if not passed else None,
                 )
             )
         return results
@@ -1097,13 +1037,9 @@ class MasterFormatCompleteness(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Division {div} — {div_names.get(div, '')} missing from BOQ",
+                    message="OK" if passed else f"Division {div} — {div_names.get(div, '')} missing from BOQ",
                     details={"required_div": div, "present_divs": sorted(present_divs)},
-                    suggestion=f"Add positions for Division {div} ({div_names.get(div, '')})"
-                    if not passed
-                    else None,
+                    suggestion=f"Add positions for Division {div} ({div_names.get(div, '')})" if not passed else None,
                 )
             )
         return results
@@ -1132,9 +1068,7 @@ class SINAPICodeRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing SINAPI code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing SINAPI code",
                     element_ref=pos.get("id"),
                     suggestion="Assign a SINAPI composition code (e.g., 87878 for concrete C30)"
                     if not passed
@@ -1166,9 +1100,7 @@ class SINAPIValidCode(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Invalid SINAPI code '{code}' in position {pos.get('ordinal', '?')}",
+                    message="OK" if passed else f"Invalid SINAPI code '{code}' in position {pos.get('ordinal', '?')}",
                     element_ref=pos.get("id"),
                     details={"given_code": code},
                 )
@@ -1199,13 +1131,9 @@ class GESNCodeRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing ГЭСН/ФЕР code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing ГЭСН/ФЕР code",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a ГЭСН code (e.g., 06-01-001-01 for concrete)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a ГЭСН code (e.g., 06-01-001-01 for concrete)" if not passed else None,
                 )
             )
         return results
@@ -1236,14 +1164,10 @@ class GESNValidCode(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"ГЭСН code '{code}' doesn't match format XX-XX-XXX-XX",
+                    message="OK" if passed else f"ГЭСН code '{code}' doesn't match format XX-XX-XXX-XX",
                     element_ref=pos.get("id"),
                     details={"given_code": code},
-                    suggestion="Use format: NN-NN-NNN-NN (e.g., 06-01-001-01)"
-                    if not passed
-                    else None,
+                    suggestion="Use format: NN-NN-NNN-NN (e.g., 06-01-001-01)" if not passed else None,
                 )
             )
         return results
@@ -1272,13 +1196,9 @@ class DPGFLotRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} not assigned to any Lot technique",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} not assigned to any Lot technique",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a Lot technique (e.g., Lot 01 Gros Œuvre)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a Lot technique (e.g., Lot 01 Gros Œuvre)" if not passed else None,
                 )
             )
         return results
@@ -1311,9 +1231,7 @@ class DPGFPricingComplete(ValidationRule):
                 if passed
                 else f"Only {priced}/{total} positions ({ratio:.0%}) have pricing — below 80% threshold",
                 details={"priced": priced, "total": total, "ratio": round(ratio, 3)},
-                suggestion="Complete pricing for all positions before DPGF submission"
-                if not passed
-                else None,
+                suggestion="Complete pricing for all positions before DPGF submission" if not passed else None,
             )
         ]
 
@@ -1346,13 +1264,9 @@ class ONORMPositionFormat(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Ordinal '{ordinal}' doesn't match ÖNORM format XX.XX.XXXXA",
+                    message="OK" if passed else f"Ordinal '{ordinal}' doesn't match ÖNORM format XX.XX.XXXXA",
                     element_ref=pos.get("id"),
-                    suggestion="Use ÖNORM B 2063 format (e.g., 01.02.01A)"
-                    if not passed
-                    else None,
+                    suggestion="Use ÖNORM B 2063 format (e.g., 01.02.01A)" if not passed else None,
                 )
             )
         return results
@@ -1380,14 +1294,9 @@ class ONORMDescriptionLength(ValidationRule):
                     passed=passed,
                     message="OK"
                     if passed
-                    else (
-                        f"Position {pos.get('ordinal', '?')}: description too short "
-                        f"({len(desc)} chars, min 20)"
-                    ),
+                    else (f"Position {pos.get('ordinal', '?')}: description too short ({len(desc)} chars, min 20)"),
                     element_ref=pos.get("id"),
-                    suggestion="Add more detail to the position description per ÖNORM B 2063"
-                    if not passed
-                    else None,
+                    suggestion="Add more detail to the position description per ÖNORM B 2063" if not passed else None,
                 )
             )
         return results
@@ -1416,13 +1325,9 @@ class GBT50500CodeRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing GB/T 50500 code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing GB/T 50500 code",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a 9-digit GB/T 50500 code (e.g., 010101001)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a 9-digit GB/T 50500 code (e.g., 010101001)" if not passed else None,
                 )
             )
         return results
@@ -1450,9 +1355,7 @@ class GBT50500ValidCode(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Invalid GB/T 50500 code '{code}' — expected 9 or 12 digits",
+                    message="OK" if passed else f"Invalid GB/T 50500 code '{code}' — expected 9 or 12 digits",
                     element_ref=pos.get("id"),
                     details={"given_code": code},
                 )
@@ -1483,13 +1386,9 @@ class CPWDCodeRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing CPWD/DSR code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing CPWD/DSR code",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a CPWD DSR item reference (e.g., 4.1.1)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a CPWD DSR item reference (e.g., 4.1.1)" if not passed else None,
                 )
             )
         return results
@@ -1504,8 +1403,24 @@ class CPWDMeasurementUnits(ValidationRule):
     description = "Units must follow IS 1200 measurement standards (metric only)"
 
     VALID_UNITS = {
-        "m", "m2", "m3", "kg", "t", "nos", "pcs", "rm", "rmt",
-        "sqm", "cum", "each", "lsum", "ls", "set", "pair", "litre", "kl",
+        "m",
+        "m2",
+        "m3",
+        "kg",
+        "t",
+        "nos",
+        "pcs",
+        "rm",
+        "rmt",
+        "sqm",
+        "cum",
+        "each",
+        "lsum",
+        "ls",
+        "set",
+        "pair",
+        "litre",
+        "kl",
     }
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
@@ -1526,9 +1441,7 @@ class CPWDMeasurementUnits(ValidationRule):
                     if passed
                     else f"Unit '{unit}' in position {pos.get('ordinal', '?')} not standard IS 1200",
                     element_ref=pos.get("id"),
-                    suggestion="Use standard IS 1200 units: m, m2, m3, kg, nos, rm, etc."
-                    if not passed
-                    else None,
+                    suggestion="Use standard IS 1200 units: m, m2, m3, kg, nos, rm, etc." if not passed else None,
                 )
             )
         return results
@@ -1557,13 +1470,9 @@ class BirimFiyatCodeRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing birim fiyat poz number",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing birim fiyat poz number",
                     element_ref=pos.get("id"),
-                    suggestion="Assign a Bayındırlık poz number (e.g., 04.013/1)"
-                    if not passed
-                    else None,
+                    suggestion="Assign a Bayındırlık poz number (e.g., 04.013/1)" if not passed else None,
                 )
             )
         return results
@@ -1594,14 +1503,10 @@ class BirimFiyatValidPoz(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Poz '{code}' doesn't match format XX.XXX/X",
+                    message="OK" if passed else f"Poz '{code}' doesn't match format XX.XXX/X",
                     element_ref=pos.get("id"),
                     details={"given_code": code},
-                    suggestion="Use format: NN.NNN or NN.NNN/N (e.g., 04.013/1)"
-                    if not passed
-                    else None,
+                    suggestion="Use format: NN.NNN or NN.NNN/N (e.g., 04.013/1)" if not passed else None,
                 )
             )
         return results
@@ -1630,9 +1535,7 @@ class SekisanCodeRequired(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Position {pos.get('ordinal', '?')} missing 積算 code",
+                    message="OK" if passed else f"Position {pos.get('ordinal', '?')} missing 積算 code",
                     element_ref=pos.get("id"),
                     suggestion="Assign a 積算基準 item code" if not passed else None,
                 )
@@ -1649,8 +1552,23 @@ class SekisanMetricUnits(ValidationRule):
     description = "Units must be metric per Japanese construction standards"
 
     VALID_UNITS = {
-        "m", "m2", "m3", "kg", "t", "本", "枚", "箇所", "式",
-        "台", "セット", "個", "組", "m2/回", "pcs", "set", "lsum",
+        "m",
+        "m2",
+        "m3",
+        "kg",
+        "t",
+        "本",
+        "枚",
+        "箇所",
+        "式",
+        "台",
+        "セット",
+        "個",
+        "組",
+        "m2/回",
+        "pcs",
+        "set",
+        "lsum",
     }
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
@@ -1667,13 +1585,9 @@ class SekisanMetricUnits(ValidationRule):
                     severity=self.severity,
                     category=self.category,
                     passed=passed,
-                    message="OK"
-                    if passed
-                    else f"Unit '{unit}' in position {pos.get('ordinal', '?')} not standard",
+                    message="OK" if passed else f"Unit '{unit}' in position {pos.get('ordinal', '?')} not standard",
                     element_ref=pos.get("id"),
-                    suggestion="Use standard metric units: m, m2, m3, kg, t, 式, etc."
-                    if not passed
-                    else None,
+                    suggestion="Use standard metric units: m, m2, m3, kg, t, 式, etc." if not passed else None,
                 )
             )
         return results

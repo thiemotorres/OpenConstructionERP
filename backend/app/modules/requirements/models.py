@@ -8,7 +8,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import GUID, Base
@@ -27,9 +27,7 @@ class RequirementSet(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    source_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="manual"
-    )
+    source_type: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
     source_filename: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft")
     gate_status: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -83,9 +81,7 @@ class Requirement(Base):
     )
     entity: Mapped[str] = mapped_column(String(255), nullable=False)
     attribute: Mapped[str] = mapped_column(String(255), nullable=False)
-    constraint_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="equals"
-    )
+    constraint_type: Mapped[str] = mapped_column(String(50), nullable=False, default="equals")
     constraint_value: Mapped[str] = mapped_column(String(500), nullable=False)
     unit: Mapped[str] = mapped_column(String(50), nullable=False, default="")
     category: Mapped[str] = mapped_column(String(100), nullable=False, default="general")

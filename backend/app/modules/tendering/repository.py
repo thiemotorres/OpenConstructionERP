@@ -23,11 +23,7 @@ class TenderingRepository:
 
     async def get_package_by_id(self, package_id: uuid.UUID) -> TenderPackage | None:
         """Get a package by ID with bids eagerly loaded."""
-        stmt = (
-            select(TenderPackage)
-            .where(TenderPackage.id == package_id)
-            .options(selectinload(TenderPackage.bids))
-        )
+        stmt = select(TenderPackage).where(TenderPackage.id == package_id).options(selectinload(TenderPackage.bids))
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -65,15 +61,9 @@ class TenderingRepository:
         await self.session.flush()
         return package
 
-    async def update_package_fields(
-        self, package_id: uuid.UUID, **fields: object
-    ) -> None:
+    async def update_package_fields(self, package_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on a package."""
-        stmt = (
-            update(TenderPackage)
-            .where(TenderPackage.id == package_id)
-            .values(**fields)
-        )
+        stmt = update(TenderPackage).where(TenderPackage.id == package_id).values(**fields)
         await self.session.execute(stmt)
 
     async def delete_package(self, package_id: uuid.UUID) -> None:
@@ -89,15 +79,9 @@ class TenderingRepository:
         """Get a bid by ID."""
         return await self.session.get(TenderBid, bid_id)
 
-    async def list_bids_for_package(
-        self, package_id: uuid.UUID
-    ) -> list[TenderBid]:
+    async def list_bids_for_package(self, package_id: uuid.UUID) -> list[TenderBid]:
         """List all bids for a package."""
-        stmt = (
-            select(TenderBid)
-            .where(TenderBid.package_id == package_id)
-            .order_by(TenderBid.created_at.desc())
-        )
+        stmt = select(TenderBid).where(TenderBid.package_id == package_id).order_by(TenderBid.created_at.desc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

@@ -4,7 +4,6 @@ Serves translations to the frontend.
 Module translations are merged with core translations.
 """
 
-
 from fastapi import APIRouter
 
 from app.core.i18n import get_all_translations, get_available_locales

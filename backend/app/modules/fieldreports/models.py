@@ -6,7 +6,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -24,14 +24,10 @@ class FieldReport(Base):
         index=True,
     )
     report_date: Mapped[str] = mapped_column(Date, nullable=False, index=True)
-    report_type: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="daily"
-    )
+    report_type: Mapped[str] = mapped_column(String(30), nullable=False, default="daily")
 
     # Weather conditions
-    weather_condition: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="clear"
-    )
+    weather_condition: Mapped[str] = mapped_column(String(30), nullable=False, default="clear")
     temperature_c: Mapped[float | None] = mapped_column(Float, nullable=True)
     wind_speed: Mapped[str | None] = mapped_column(String(50), nullable=True)
     precipitation: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -81,13 +77,9 @@ class FieldReport(Base):
     signature_data: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Status & approval
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="draft"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     approved_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    approved_at: Mapped[str | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    approved_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Linked documents (cross-module references to oe_documents_document)
     document_ids: Mapped[list] = mapped_column(  # type: ignore[assignment]

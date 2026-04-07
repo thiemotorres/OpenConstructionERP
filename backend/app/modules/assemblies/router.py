@@ -163,14 +163,42 @@ def _guess_component_type(item: object) -> str:
     item_type = str(meta.get("type", "")).lower()
 
     labor_keywords = (
-        "labor", "labour", "worker", "crew", "mason", "carpenter", "plumber",
-        "electrician", "fitter", "welder", "helper", "operator", "plasterer",
-        "roofer", "driver", "arbeit", "lohn", "monteur", "arbeiter",
+        "labor",
+        "labour",
+        "worker",
+        "crew",
+        "mason",
+        "carpenter",
+        "plumber",
+        "electrician",
+        "fitter",
+        "welder",
+        "helper",
+        "operator",
+        "plasterer",
+        "roofer",
+        "driver",
+        "arbeit",
+        "lohn",
+        "monteur",
+        "arbeiter",
     )
     equipment_keywords = (
-        "equip", "machine", "crane", "excavator", "pump", "mixer", "truck",
-        "scaffold", "vibrator", "compressor", "generator", "maschine",
-        "bagger", "kran", "gerät",
+        "equip",
+        "machine",
+        "crane",
+        "excavator",
+        "pump",
+        "mixer",
+        "truck",
+        "scaffold",
+        "vibrator",
+        "compressor",
+        "generator",
+        "maschine",
+        "bagger",
+        "kran",
+        "gerät",
     )
 
     if item_type in ("labor", "labour"):
@@ -219,11 +247,7 @@ async def ai_generate_assembly(
 
     # Strategy 1: Try ILIKE search with full description
     pattern = f"%{description}%"
-    stmt = (
-        select(CostItem)
-        .where(CostItem.is_active.is_(True), CostItem.description.ilike(pattern))
-        .limit(15)
-    )
+    stmt = select(CostItem).where(CostItem.is_active.is_(True), CostItem.description.ilike(pattern)).limit(15)
     result = await session.execute(stmt)
     found_items = list(result.scalars().all())
 
@@ -232,9 +256,7 @@ async def ai_generate_assembly(
         for term in search_terms[:5]:
             kw_pattern = f"%{term}%"
             kw_stmt = (
-                select(CostItem)
-                .where(CostItem.is_active.is_(True), CostItem.description.ilike(kw_pattern))
-                .limit(8)
+                select(CostItem).where(CostItem.is_active.is_(True), CostItem.description.ilike(kw_pattern)).limit(8)
             )
             kw_result = await session.execute(kw_stmt)
             for item in kw_result.scalars().all():
@@ -246,8 +268,7 @@ async def ai_generate_assembly(
     # Optionally filter by region
     if data.region and found_items:
         region_items = [
-            i for i in found_items
-            if getattr(i, "region", None) is None or getattr(i, "region", "") == data.region
+            i for i in found_items if getattr(i, "region", None) is None or getattr(i, "region", "") == data.region
         ]
         if region_items:
             found_items = region_items
@@ -272,17 +293,19 @@ async def ai_generate_assembly(
         comp_total = rate * 1.0  # quantity=1.0 by default
         total_rate += comp_total
 
-        components.append({
-            "name": item_desc,
-            "code": item_code,
-            "unit": item_unit,
-            "quantity": 1.0,
-            "unit_rate": round(rate, 2),
-            "total": round(comp_total, 2),
-            "type": comp_type,
-            "sort_order": idx,
-            "cost_item_id": str(getattr(item, "id", "")),
-        })
+        components.append(
+            {
+                "name": item_desc,
+                "code": item_code,
+                "unit": item_unit,
+                "quantity": 1.0,
+                "unit_rate": round(rate, 2),
+                "total": round(comp_total, 2),
+                "type": comp_type,
+                "sort_order": idx,
+                "cost_item_id": str(getattr(item, "id", "")),
+            }
+        )
 
     # Determine confidence based on number of results found
     if len(components) >= 5:

@@ -201,9 +201,7 @@ async def test_boq_full_workflow(client, auth_headers):
     assert len(full["positions"]) >= 2  # section + position
 
     # Duplicate
-    resp = await client.post(
-        f"/api/v1/boq/boqs/{bid}/duplicate", json={}, headers=headers
-    )
+    resp = await client.post(f"/api/v1/boq/boqs/{bid}/duplicate", json={}, headers=headers)
     assert resp.status_code == 201
     dup = resp.json()
     assert dup["id"] != bid

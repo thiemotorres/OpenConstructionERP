@@ -20,7 +20,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies import CurrentUserId, CurrentUserPayload, RequirePermission, SessionDep
+from app.dependencies import CurrentUserId, RequirePermission, SessionDep
 from app.modules.changeorders.schemas import (
     ChangeOrderCreate,
     ChangeOrderItemCreate,
@@ -187,9 +187,7 @@ async def list_change_orders(
     service: ChangeOrderService = Depends(_get_service),
 ) -> list[ChangeOrderResponse]:
     """List change orders for a project."""
-    orders, _ = await service.list_orders(
-        project_id, offset=offset, limit=limit, status_filter=status_filter
-    )
+    orders, _ = await service.list_orders(project_id, offset=offset, limit=limit, status_filter=status_filter)
     return [_order_to_response(o) for o in orders]
 
 
@@ -253,9 +251,7 @@ async def add_item(
     return _item_to_response(item)
 
 
-@router.patch(
-    "/{order_id}/items/{item_id}", response_model=ChangeOrderItemResponse
-)
+@router.patch("/{order_id}/items/{item_id}", response_model=ChangeOrderItemResponse)
 async def update_item(
     order_id: uuid.UUID,
     item_id: uuid.UUID,

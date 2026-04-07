@@ -22,6 +22,7 @@ def with_locale(system_prompt: str, locale: str = "en") -> str:
         f"JSON keys must remain in English."
     )
 
+
 # ── Enhance Description ──────────────────────────────────────────────────────
 
 ENHANCE_DESCRIPTION_SYSTEM = """\

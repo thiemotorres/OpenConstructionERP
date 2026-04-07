@@ -5,7 +5,6 @@ import pytest
 from app.core.events import EventBus
 from app.core.hooks import HookRegistry
 
-
 # ── Event Bus tests ────────────────────────────────────────────────────────
 
 

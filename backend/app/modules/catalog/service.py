@@ -10,7 +10,6 @@ Stateless service layer. Handles:
 import logging
 import uuid
 from collections import defaultdict
-from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -18,21 +17,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 
-_logger_ev = __import__('logging').getLogger(__name__ + '.events')
+_logger_ev = __import__("logging").getLogger(__name__ + ".events")
 
-async def _safe_publish(name: str, data: dict, source_module: str = '') -> None:
+
+async def _safe_publish(name: str, data: dict, source_module: str = "") -> None:
     try:
         await event_bus.publish(name, data, source_module=source_module)
     except Exception:
-        _logger_ev.debug('Event publish skipped: %s', name)
+        _logger_ev.debug("Event publish skipped: %s", name)
+
+
 from app.modules.catalog.models import CatalogResource
 from app.modules.catalog.repository import CatalogResourceRepository
 from app.modules.catalog.schemas import (
+    CatalogCategoryStat,
     CatalogResourceCreate,
     CatalogSearchQuery,
     CatalogStatsResponse,
     CatalogTypeStat,
-    CatalogCategoryStat,
 )
 from app.modules.costs.models import CostItem
 
@@ -156,9 +158,7 @@ class CatalogResourceService:
             )
         return resource
 
-    async def search_resources(
-        self, query: CatalogSearchQuery
-    ) -> tuple[list[CatalogResource], int]:
+    async def search_resources(self, query: CatalogSearchQuery) -> tuple[list[CatalogResource], int]:
         """Search catalog resources with filters and pagination."""
         return await self.repo.search(
             q=query.q,
@@ -180,12 +180,8 @@ class CatalogResourceService:
 
         return CatalogStatsResponse(
             total=total,
-            by_type=[
-                CatalogTypeStat(resource_type=rt, count=c) for rt, c in by_type_raw
-            ],
-            by_category=[
-                CatalogCategoryStat(category=cat, count=c) for cat, c in by_category_raw
-            ],
+            by_type=[CatalogTypeStat(resource_type=rt, count=c) for rt, c in by_type_raw],
+            by_category=[CatalogCategoryStat(category=cat, count=c) for cat, c in by_category_raw],
         )
 
     # ── Regions ─────────────────────────────────────────────────────────
@@ -234,11 +230,7 @@ class CatalogResourceService:
         await self.repo.delete_by_region(region)
 
         # Query cost items for this region
-        stmt = (
-            select(CostItem)
-            .where(CostItem.is_active.is_(True))
-            .where(CostItem.region == region)
-        )
+        stmt = select(CostItem).where(CostItem.is_active.is_(True)).where(CostItem.region == region)
         result = await self.session.execute(stmt)
         cost_items = list(result.scalars().all())
 
@@ -407,9 +399,7 @@ class CatalogResourceService:
         counts: dict[str, int] = defaultdict(int)
 
         for resource_type, limit in type_limits.items():
-            typed_components = [
-                v for v in component_data.values() if v["type"] == resource_type
-            ]
+            typed_components = [v for v in component_data.values() if v["type"] == resource_type]
             typed_components.sort(key=lambda x: x["count"], reverse=True)
 
             for comp in typed_components[:limit]:

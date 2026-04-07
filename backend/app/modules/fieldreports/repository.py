@@ -54,9 +54,7 @@ class FieldReportRepository:
 
         return items, total
 
-    async def get_by_date(
-        self, project_id: uuid.UUID, report_date: date
-    ) -> FieldReport | None:
+    async def get_by_date(self, project_id: uuid.UUID, report_date: date) -> FieldReport | None:
         """Get a field report for a specific project and date."""
         stmt = select(FieldReport).where(
             FieldReport.project_id == project_id,
@@ -65,9 +63,7 @@ class FieldReportRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_for_month(
-        self, project_id: uuid.UUID, year: int, month: int
-    ) -> list[FieldReport]:
+    async def get_for_month(self, project_id: uuid.UUID, year: int, month: int) -> list[FieldReport]:
         """Get all reports for a project within a given month (calendar view)."""
         from datetime import date as date_cls
 

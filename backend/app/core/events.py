@@ -160,9 +160,7 @@ class EventBus:
         if event_name:
             handlers = self._handlers.get(event_name, [])
             return {event_name: [h.__qualname__ for h in handlers]}
-        return {
-            name: [h.__qualname__ for h in handlers] for name, handlers in self._handlers.items()
-        }
+        return {name: [h.__qualname__ for h in handlers] for name, handlers in self._handlers.items()}
 
     def clear(self) -> None:
         """Remove all handlers. Used in testing."""

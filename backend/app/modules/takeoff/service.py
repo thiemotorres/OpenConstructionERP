@@ -3,9 +3,8 @@
 import io
 import logging
 import uuid
-from typing import Any
-
 from pathlib import Path
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,9 +36,7 @@ def _extract_pdf_pages(content: bytes) -> list[dict]:
                 tables = page.extract_tables()
                 if tables:
                     for table in tables:
-                        cleaned = [
-                            [str(cell or "") for cell in row] for row in table
-                        ]
+                        cleaned = [[str(cell or "") for cell in row] for row in table]
                         page_tables.append(cleaned)
                         for row in cleaned:
                             page_text += "\t".join(row) + "\n"
@@ -48,11 +45,13 @@ def _extract_pdf_pages(content: bytes) -> list[dict]:
                     if text:
                         page_text = text
 
-                pages.append({
-                    "page": i,
-                    "text": page_text.strip(),
-                    "tables": page_tables,
-                })
+                pages.append(
+                    {
+                        "page": i,
+                        "text": page_text.strip(),
+                        "tables": page_tables,
+                    }
+                )
     except Exception:
         # If pdfplumber fails, try pymupdf as fallback
         try:
@@ -156,7 +155,7 @@ class TakeoffService:
 
         elements = []
         idx = 0
-        for page in (doc.page_data or []):
+        for page in doc.page_data or []:
             for table in page.get("tables", []):
                 if len(table) < 2:
                     continue
@@ -181,7 +180,12 @@ class TakeoffService:
                     # Compute confidence based on data quality
                     has_real_qty = qty_str.strip() != "" and qty > 0
                     has_description = bool(clean_desc) and clean_desc.lower() not in (
-                        "item", "position", "pos", "n/a", "-", "",
+                        "item",
+                        "position",
+                        "pos",
+                        "n/a",
+                        "-",
+                        "",
                     )
 
                     if not has_description:
@@ -193,14 +197,16 @@ class TakeoffService:
                     else:
                         confidence = 0.6
 
-                    elements.append({
-                        "id": f"ext_{idx}",
-                        "category": "general",
-                        "description": clean_desc or f"Item {idx}",
-                        "quantity": qty,
-                        "unit": clean_unit,
-                        "confidence": confidence,
-                    })
+                    elements.append(
+                        {
+                            "id": f"ext_{idx}",
+                            "category": "general",
+                            "description": clean_desc or f"Item {idx}",
+                            "quantity": qty,
+                            "unit": clean_unit,
+                            "confidence": confidence,
+                        }
+                    )
 
         categories: dict = {}
         for el in elements:
@@ -308,9 +314,7 @@ class TakeoffService:
         await self.measurement_repo.update_fields(measurement_id, **fields)
         await self.session.refresh(item)
 
-        logger.info(
-            "Measurement updated: %s (fields=%s)", measurement_id, list(fields.keys())
-        )
+        logger.info("Measurement updated: %s (fields=%s)", measurement_id, list(fields.keys()))
         return item
 
     async def delete_measurement(self, measurement_id: uuid.UUID) -> None:
@@ -353,9 +357,7 @@ class TakeoffService:
         logger.info("Bulk created %d measurements", len(result))
         return result
 
-    async def get_measurement_summary(
-        self, project_id: uuid.UUID
-    ) -> dict[str, Any]:
+    async def get_measurement_summary(self, project_id: uuid.UUID) -> dict[str, Any]:
         """Get aggregated stats for a project's measurements."""
         items = await self.measurement_repo.all_for_project(project_id)
 
@@ -389,26 +391,28 @@ class TakeoffService:
         items = await self.measurement_repo.all_for_project(project_id)
         rows: list[dict[str, Any]] = []
         for m in items:
-            rows.append({
-                "id": str(m.id),
-                "project_id": str(m.project_id),
-                "document_id": m.document_id or "",
-                "page": m.page,
-                "type": m.type,
-                "group_name": m.group_name,
-                "group_color": m.group_color,
-                "annotation": m.annotation or "",
-                "measurement_value": m.measurement_value,
-                "measurement_unit": m.measurement_unit,
-                "depth": m.depth,
-                "volume": m.volume,
-                "perimeter": m.perimeter,
-                "count_value": m.count_value,
-                "scale_pixels_per_unit": m.scale_pixels_per_unit,
-                "linked_boq_position_id": m.linked_boq_position_id or "",
-                "created_by": m.created_by,
-                "created_at": m.created_at.isoformat() if m.created_at else "",
-            })
+            rows.append(
+                {
+                    "id": str(m.id),
+                    "project_id": str(m.project_id),
+                    "document_id": m.document_id or "",
+                    "page": m.page,
+                    "type": m.type,
+                    "group_name": m.group_name,
+                    "group_color": m.group_color,
+                    "annotation": m.annotation or "",
+                    "measurement_value": m.measurement_value,
+                    "measurement_unit": m.measurement_unit,
+                    "depth": m.depth,
+                    "volume": m.volume,
+                    "perimeter": m.perimeter,
+                    "count_value": m.count_value,
+                    "scale_pixels_per_unit": m.scale_pixels_per_unit,
+                    "linked_boq_position_id": m.linked_boq_position_id or "",
+                    "created_by": m.created_by,
+                    "created_at": m.created_at.isoformat() if m.created_at else "",
+                }
+            )
         return rows
 
     async def link_measurement_to_boq(
@@ -418,9 +422,7 @@ class TakeoffService:
     ) -> TakeoffMeasurement:
         """Link a measurement to a BOQ position."""
         item = await self.get_measurement(measurement_id)
-        await self.measurement_repo.update_fields(
-            measurement_id, linked_boq_position_id=boq_position_id
-        )
+        await self.measurement_repo.update_fields(measurement_id, linked_boq_position_id=boq_position_id)
         await self.session.refresh(item)
         logger.info(
             "Measurement %s linked to BOQ position %s",

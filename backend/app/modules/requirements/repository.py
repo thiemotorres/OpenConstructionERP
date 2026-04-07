@@ -38,9 +38,7 @@ class RequirementSetRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        stmt = (
-            base.order_by(RequirementSet.created_at.desc()).offset(offset).limit(limit)
-        )
+        stmt = base.order_by(RequirementSet.created_at.desc()).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         items = list(result.scalars().all())
 
@@ -54,11 +52,7 @@ class RequirementSetRepository:
 
     async def update_fields(self, set_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on a requirement set."""
-        stmt = (
-            update(RequirementSet)
-            .where(RequirementSet.id == set_id)
-            .values(**fields)
-        )
+        stmt = update(RequirementSet).where(RequirementSet.id == set_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         self.session.expire_all()
@@ -73,9 +67,7 @@ class RequirementSetRepository:
     async def count_for_project(self, project_id: uuid.UUID) -> int:
         """Count requirement sets for a project."""
         stmt = select(func.count()).select_from(
-            select(RequirementSet)
-            .where(RequirementSet.project_id == project_id)
-            .subquery()
+            select(RequirementSet).where(RequirementSet.project_id == project_id).subquery()
         )
         return (await self.session.execute(stmt)).scalar_one()
 
@@ -111,11 +103,7 @@ class RequirementRepository:
 
     async def all_for_set(self, set_id: uuid.UUID) -> list[Requirement]:
         """Return all requirements for a set (used for gate validation)."""
-        stmt = (
-            select(Requirement)
-            .where(Requirement.requirement_set_id == set_id)
-            .order_by(Requirement.created_at)
-        )
+        stmt = select(Requirement).where(Requirement.requirement_set_id == set_id).order_by(Requirement.created_at)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -144,11 +132,7 @@ class RequirementRepository:
 
     async def update_fields(self, req_id: uuid.UUID, **fields: object) -> None:
         """Update specific fields on a requirement."""
-        stmt = (
-            update(Requirement)
-            .where(Requirement.id == req_id)
-            .values(**fields)
-        )
+        stmt = update(Requirement).where(Requirement.id == req_id).values(**fields)
         await self.session.execute(stmt)
         await self.session.flush()
         self.session.expire_all()
@@ -195,10 +179,7 @@ class RequirementRepository:
     async def count_for_project(self, project_id: uuid.UUID) -> int:
         """Count all requirements across all sets for a project."""
         stmt = select(func.count()).select_from(
-            select(Requirement)
-            .join(RequirementSet)
-            .where(RequirementSet.project_id == project_id)
-            .subquery()
+            select(Requirement).join(RequirementSet).where(RequirementSet.project_id == project_id).subquery()
         )
         return (await self.session.execute(stmt)).scalar_one()
 
@@ -215,11 +196,7 @@ class GateResultRepository:
 
     async def list_for_set(self, set_id: uuid.UUID) -> list[GateResult]:
         """List all gate results for a requirement set."""
-        stmt = (
-            select(GateResult)
-            .where(GateResult.requirement_set_id == set_id)
-            .order_by(GateResult.gate_number)
-        )
+        stmt = select(GateResult).where(GateResult.requirement_set_id == set_id).order_by(GateResult.gate_number)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

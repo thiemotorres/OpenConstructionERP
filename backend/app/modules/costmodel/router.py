@@ -27,7 +27,6 @@ from app.modules.costmodel.schemas import (
     BudgetLineResponse,
     BudgetLineUpdate,
     BudgetSummary,
-    CashFlowCreate,
     CashFlowData,
     CashFlowResponse,
     DashboardResponse,
@@ -181,9 +180,7 @@ async def list_budget_lines(
     service: CostModelService = Depends(_get_service),
 ) -> list[BudgetLineResponse]:
     """List detailed budget lines for a project."""
-    lines, _ = await service.list_budget_lines(
-        project_id, category=category, offset=offset, limit=limit
-    )
+    lines, _ = await service.list_budget_lines(project_id, category=category, offset=offset, limit=limit)
     return [_budget_line_to_response(line) for line in lines]
 
 
@@ -427,8 +424,12 @@ async def run_monte_carlo(
 
     # Uncertainty by category (standard deviation as fraction of planned)
     uncertainty = {
-        "material": 0.12, "labor": 0.08, "equipment": 0.10,
-        "subcontractor": 0.15, "overhead": 0.05, "contingency": 0.20,
+        "material": 0.12,
+        "labor": 0.08,
+        "equipment": 0.10,
+        "subcontractor": 0.15,
+        "overhead": 0.05,
+        "contingency": 0.20,
     }
 
     results: list[float] = []

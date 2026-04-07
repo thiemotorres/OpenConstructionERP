@@ -15,21 +15,21 @@ Idempotent: skips creation if demo projects already exist (matched by name).
 
 import asyncio
 import uuid
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
 
-from app.database import Base, engine, async_session_factory
+from app.database import Base, async_session_factory, engine
+from app.modules.boq.models import BOQ, BOQMarkup, Position  # noqa: F401
+from app.modules.projects.models import Project  # noqa: F401
 
 # Import all models so Base.metadata knows about every table
 from app.modules.users.models import User  # noqa: F401
-from app.modules.projects.models import Project  # noqa: F401
-from app.modules.boq.models import BOQ, BOQMarkup, Position  # noqa: F401
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _money(value: float) -> str:
     """Format a float to 2-decimal string (SQLite-compatible storage)."""
@@ -130,6 +130,7 @@ def _make_markup(
 # Demo 1 — Wohnanlage Berlin-Mitte (DACH / DIN 276 / EUR)
 # ---------------------------------------------------------------------------
 
+
 def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
     """Return all sections + positions for the Berlin residential complex."""
     positions: list[Position] = []
@@ -204,7 +205,14 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
             {"din276": "360"},
             [
                 ("360.1", "Flachdachabdichtung 2-lagig (Flat roof membrane)", "m2", 1400, 85.00, {"din276": "360"}),
-                ("360.2", "Gef\u00e4lled\u00e4mmung EPS 120-200mm (Tapered insulation)", "m2", 1400, 55.00, {"din276": "360"}),
+                (
+                    "360.2",
+                    "Gef\u00e4lled\u00e4mmung EPS 120-200mm (Tapered insulation)",
+                    "m2",
+                    1400,
+                    55.00,
+                    {"din276": "360"},
+                ),
                 ("360.3", "Attika Verblechung (Parapet capping)", "m", 260, 95.00, {"din276": "360"}),
                 ("360.4", "Extensivbegr\u00fcnung (Green roof)", "m2", 800, 48.00, {"din276": "360"}),
                 ("360.5", "Dachentwässerung (Roof drainage)", "pcs", 24, 380.00, {"din276": "360"}),
@@ -339,6 +347,7 @@ def _build_berlin_markups(boq_id: uuid.UUID) -> list[BOQMarkup]:
 # ---------------------------------------------------------------------------
 # Demo 2 — One Canary Square (UK / NRM 1 / GBP)
 # ---------------------------------------------------------------------------
+
 
 def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
     """Return all sections + positions for the Canary Wharf office tower."""
@@ -536,6 +545,7 @@ def _build_canary_markups(boq_id: uuid.UUID) -> list[BOQMarkup]:
 # Reporting helpers
 # ---------------------------------------------------------------------------
 
+
 def _sum_positions(positions: list[Position]) -> float:
     """Return the sum of all leaf position totals (sections have total='0')."""
     return sum(float(p.total) for p in positions if p.unit != "")
@@ -576,16 +586,14 @@ def _print_markups(
         pct = float(m.percentage)
         amount = direct_cost * pct / 100.0
         running += amount
-        print(
-            f"    + {m.name:<50s}  {pct:>5.1f}%  "
-            f"{amount:>14,.2f} {currency}"
-        )
+        print(f"    + {m.name:<50s}  {pct:>5.1f}%  {amount:>14,.2f} {currency}")
     return running
 
 
 # ---------------------------------------------------------------------------
 # Main async entry
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     """Create demo tables (if needed) and seed two professional estimates."""
@@ -599,15 +607,11 @@ async def main() -> None:
         # 0. Idempotency: skip if demo projects already exist
         # ------------------------------------------------------------------
         existing_berlin = (
-            await session.execute(
-                select(Project).where(Project.name == "Wohnanlage Berlin-Mitte")
-            )
+            await session.execute(select(Project).where(Project.name == "Wohnanlage Berlin-Mitte"))
         ).scalar_one_or_none()
 
         existing_canary = (
-            await session.execute(
-                select(Project).where(Project.name == "One Canary Square")
-            )
+            await session.execute(select(Project).where(Project.name == "One Canary Square"))
         ).scalar_one_or_none()
 
         if existing_berlin and existing_canary:
@@ -622,18 +626,10 @@ async def main() -> None:
         print("  OpenConstructionERP  —  Demo Estimate Seeder")
         print("=" * 78)
 
-        user = (
-            await session.execute(
-                select(User).where(User.role == "admin").limit(1)
-            )
-        ).scalar_one_or_none()
+        user = (await session.execute(select(User).where(User.role == "admin").limit(1))).scalar_one_or_none()
 
         if user is None:
-            user = (
-                await session.execute(
-                    select(User).limit(1)
-                )
-            ).scalar_one_or_none()
+            user = (await session.execute(select(User).limit(1))).scalar_one_or_none()
 
         if user is None:
             # Create a minimal demo user (password hash for "OpenEstimate2026")
@@ -840,9 +836,7 @@ async def main() -> None:
         print("\n" + "=" * 78)
         print("  SEED COMPLETE")
         print("=" * 78)
-        projects_created = sum(
-            1 for x in [existing_berlin, existing_canary] if x is None
-        )
+        projects_created = sum(1 for x in [existing_berlin, existing_canary] if x is None)
         print(f"  Projects created : {projects_created}")
         print(f"  Sections         : {total_sections}")
         print(f"  Positions        : {total_positions}")
