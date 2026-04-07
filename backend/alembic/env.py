@@ -19,6 +19,7 @@ from app.modules.costmodel import models as _cm  # noqa: F401
 from app.modules.costs import models as _costs  # noqa: F401
 from app.modules.documents import models as _documents  # noqa: F401
 from app.modules.fieldreports import models as _fieldreports  # noqa: F401
+from app.modules.i18n_foundation import models as _i18n  # noqa: F401
 from app.modules.markups import models as _markups  # noqa: F401
 from app.modules.projects import models as _projects  # noqa: F401
 from app.modules.punchlist import models as _punchlist  # noqa: F401

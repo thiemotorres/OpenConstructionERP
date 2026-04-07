@@ -237,6 +237,11 @@ def create_app() -> FastAPI:
 
     app.add_middleware(SecurityHeadersMiddleware)
 
+    # ── Accept-Language (sets i18n context locale per request) ────────────
+    from app.middleware.accept_language import AcceptLanguageMiddleware
+
+    app.add_middleware(AcceptLanguageMiddleware)
+
     # ── Global exception handler — return JSON for unhandled errors ────
     from fastapi import Request
     from fastapi.responses import JSONResponse
@@ -661,6 +666,7 @@ def create_app() -> FastAPI:
             from app.modules.costs import models as _costs_models  # noqa: F401
             from app.modules.documents import models as _documents_models  # noqa: F401
             from app.modules.fieldreports import models as _fieldreports_models  # noqa: F401
+            from app.modules.i18n_foundation import models as _i18n_models  # noqa: F401
             from app.modules.markups import models as _markups_models  # noqa: F401
             from app.modules.projects import models as _projects_models  # noqa: F401
             from app.modules.punchlist import models as _punchlist_models  # noqa: F401
