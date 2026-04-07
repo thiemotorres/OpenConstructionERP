@@ -14,6 +14,36 @@ interface ChangelogEntry {
 
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-04-07',
+    changes: [
+      'New: Custom Columns dialog with 7 professional presets — Procurement, Notes, Quality Control, Sustainability, GAEB/iTWO Style (Lohn/Material/Geräte/Sonstiges-EP + Wagnis%), ÖNORM/BRZ Style, BIM Integration (IFC GUID, Element ID, Storey, Phase)',
+      'New: Renumber positions with gap-of-10 scheme (01, 01.10, 01.20, 02, 02.10) — matches RIB iTWO and BRZ professional output, lets you insert 01.15 later without renumbering everything',
+      'New: Excel round-trip with custom columns — supplier, notes and procurement fields are now exported to .xlsx and survive a full import → edit → export cycle',
+      'New: Project Health bar on Project Detail — circular progress with 5 checkpoints (BOQ created → positions added → all priced → validation run → no errors) and a single "Next step" button that always points at the first incomplete item',
+      'New: Strong password policy on registration and reset — 8+ chars, ≥1 letter, ≥1 digit, blacklist of 24 common passwords; rejects "password", "12345678" and friends',
+      'New: Login rate limit (10/min per IP) with 429 + Retry-After header to slow credential stuffing',
+      'New: JWT freshness check — old tokens are invalidated automatically when the user changes password',
+      'New: Security headers middleware — X-Frame-Options, X-Content-Type-Options, CSP, HSTS, Referrer-Policy, Permissions-Policy on every API response',
+      'New: Schedule date validation — start_date > end_date is now rejected with a clear 422',
+      'New: Role-aware UI — ChangeOrders Approve button is hidden for editors, who see an "Awaiting approval" badge instead of a 403 error',
+      'New: Soft-deleted projects properly disappear — GET, list and BOQ list now return 404 for archived projects (was leaking stale data)',
+      'New: User-friendly API error messages — ApiError now extracts the actual FastAPI detail string instead of "API 500"; covers network, timeout, 422 validation arrays, and status fallbacks across 21 locales',
+      'New: PDF upload magic-byte check — rejects JPG/HTML/etc. renamed to .pdf',
+      'Fix: ChangeOrders POST /items returned 500 for every payload — MissingGreenlet on order.code after recalc; now captures fields before expire_all',
+      'Fix: 5D generate-budget returned 500 on missing boq_id — now validates 422 + auto-picks the most recently updated BOQ when omitted',
+      'Fix: Custom Columns SQLAlchemy JSON persistence — only the FIRST added column was being saved due to in-place dict mutation; now uses flag_modified() with a fresh dict',
+      'Fix: Editing a custom column on a resource-priced position rewrote total/unit_rate — service.update_position now only re-derives pricing when quantity or resources actually changed',
+      'Fix: Requirements module tables were never created on fresh installs — module models are now imported in main.py + alembic env.py',
+      'Fix: Cross-user permission boundary verified end-to-end — User B gets 403 on every attempt to read/modify/delete User A\'s data',
+      'Fix: Single source-of-truth for app version — bumping package.json now updates Sidebar, About, error reports and update checker automatically',
+      'Polish: a11y — added h1 (sr-only) on /login and /register, name and id attributes on all auth inputs, aria-label on password show/hide buttons',
+      'Polish: highlight unpriced positions in BOQ grid with a subtle amber background and left border',
+      'Polish: warn before creating a project with a duplicate name (two-click confirmation)',
+      'Polish: keyboard shortcuts dialog now lists only shortcuts that actually work; added g r → Reports and g t → Tendering navigation sequences',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-04-07',
     changes: [
@@ -150,7 +180,7 @@ export function Changelog() {
   const { t } = useTranslation();
 
   return (
-    <div>
+    <div id="changelog">
       <h2 className="text-lg font-semibold text-content-primary mb-4">
         {t('about.changelog_title', { defaultValue: 'Changelog' })}
       </h2>
