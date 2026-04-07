@@ -169,7 +169,11 @@ class WorkflowService:
         user_id: str,
         decision_notes: str | None = None,
     ) -> ApprovalRequest:
-        """Approve an approval request."""
+        """Approve an approval request at the current step.
+
+        If the workflow has more steps, advances to the next step.
+        If this is the final step, marks the request as approved.
+        """
         request = await self.get_request(request_id)
         if request.status != "pending":
             raise HTTPException(
@@ -177,13 +181,27 @@ class WorkflowService:
                 detail=f"Cannot approve request in status '{request.status}'",
             )
 
-        await self.requests.update(
-            request_id,
-            status="approved",
-            decided_by=uuid.UUID(user_id),
-            decided_at=datetime.now(UTC).isoformat(),
-            decision_notes=decision_notes,
-        )
+        # Load workflow to check total steps
+        workflow = await self.get_workflow(request.workflow_id)
+        total_steps = len(workflow.steps) if workflow.steps else 1
+        current_step = request.current_step
+
+        if current_step < total_steps:
+            # Advance to next step — not fully approved yet
+            await self.requests.update(
+                request_id,
+                current_step=current_step + 1,
+                decision_notes=decision_notes,
+            )
+        else:
+            # Final step — fully approved
+            await self.requests.update(
+                request_id,
+                status="approved",
+                decided_by=uuid.UUID(user_id),
+                decided_at=datetime.now(UTC).isoformat(),
+                decision_notes=decision_notes,
+            )
 
         updated = await self.requests.get(request_id)
         if updated is None:
@@ -191,7 +209,7 @@ class WorkflowService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Approval request not found",
             )
-        logger.info("Approval request approved: %s", request_id)
+        logger.info("Approval request approved at step %d/%d: %s", current_step, total_steps, request_id)
         return updated
 
     async def reject_request(

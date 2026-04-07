@@ -196,10 +196,8 @@ class I18nFoundationService:
 
         # Collect all unique years spanned by the date range
         years = set()
-        current = start
-        while current <= end:
-            years.add(str(current.year))
-            current = current.replace(month=12, day=31) + timedelta(days=1) if current.month < 12 or current.day < 31 else current + timedelta(days=1)
+        for yr in range(start.year, end.year + 1):
+            years.add(str(yr))
 
         # Load calendars for each year
         holiday_dates: set[date] = set()

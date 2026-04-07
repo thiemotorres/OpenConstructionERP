@@ -508,33 +508,34 @@ class BIMHubService:
             old_e = old_by_sid[sid]
             new_e = new_by_sid[sid]
 
+            changes: list[dict[str, Any]] = []
+            # Detect what changed across all tracked fields
             if old_e.geometry_hash != new_e.geometry_hash:
-                changes: list[dict[str, Any]] = []
-                # Detect what changed
-                if old_e.geometry_hash != new_e.geometry_hash:
-                    changes.append({
-                        "field": "geometry_hash",
-                        "old": old_e.geometry_hash,
-                        "new": new_e.geometry_hash,
-                    })
-                if old_e.element_type != new_e.element_type:
-                    changes.append({
-                        "field": "element_type",
-                        "old": old_e.element_type,
-                        "new": new_e.element_type,
-                    })
-                if old_e.quantities != new_e.quantities:
-                    changes.append({
-                        "field": "quantities",
-                        "old": old_e.quantities,
-                        "new": new_e.quantities,
-                    })
-                if old_e.properties != new_e.properties:
-                    changes.append({
-                        "field": "properties",
-                        "old": old_e.properties,
-                        "new": new_e.properties,
-                    })
+                changes.append({
+                    "field": "geometry_hash",
+                    "old": old_e.geometry_hash,
+                    "new": new_e.geometry_hash,
+                })
+            if old_e.element_type != new_e.element_type:
+                changes.append({
+                    "field": "element_type",
+                    "old": old_e.element_type,
+                    "new": new_e.element_type,
+                })
+            if old_e.quantities != new_e.quantities:
+                changes.append({
+                    "field": "quantities",
+                    "old": old_e.quantities,
+                    "new": new_e.quantities,
+                })
+            if old_e.properties != new_e.properties:
+                changes.append({
+                    "field": "properties",
+                    "old": old_e.properties,
+                    "new": new_e.properties,
+                })
+
+            if changes:
                 modified.append({
                     "stable_id": sid,
                     "element_type": new_e.element_type,

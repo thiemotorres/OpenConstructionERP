@@ -243,16 +243,26 @@ class ReportingService:
     # ── Seed system templates ─────────────────────────────────────────────
 
     async def seed_system_templates(self) -> int:
-        """Seed the 6 system report templates. Idempotent.
+        """Seed the 6 system report templates. Truly idempotent.
 
-        Returns the number of templates created (0 if already seeded).
+        Checks each template by name+report_type to avoid duplicates even
+        when some templates were manually deleted and re-seeded.
+        Returns the number of templates created (0 if all already exist).
         """
-        existing = await self.template_repo.count_system()
-        if existing >= len(SYSTEM_TEMPLATES):
-            return 0
+        from sqlalchemy import select
 
         created = 0
         for tmpl_data in SYSTEM_TEMPLATES:
+            # Check if this specific template already exists by name + report_type
+            stmt = select(ReportTemplate).where(
+                ReportTemplate.name == tmpl_data["name"],
+                ReportTemplate.report_type == tmpl_data["report_type"],
+                ReportTemplate.is_system.is_(True),
+            )
+            result = await self.session.execute(stmt)
+            if result.scalar_one_or_none() is not None:
+                continue
+
             template = ReportTemplate(
                 name=tmpl_data["name"],
                 report_type=tmpl_data["report_type"],
@@ -264,6 +274,7 @@ class ReportingService:
             self.session.add(template)
             created += 1
 
-        await self.session.flush()
-        logger.info("Seeded %d system report templates", created)
+        if created:
+            await self.session.flush()
+            logger.info("Seeded %d system report templates", created)
         return created

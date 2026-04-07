@@ -187,8 +187,28 @@ class RFQService:
         bid_id: uuid.UUID,
         data: BidEvaluation,
     ) -> RFQBid:
-        """Score a bid (technical + commercial evaluation)."""
+        """Score a bid (technical + commercial evaluation).
+
+        Scores must be between 0 and 100 if provided.
+        """
         await self.get_bid(bid_id)  # 404 check
+
+        # Validate score ranges (0-100)
+        for field_name in ("technical_score", "commercial_score"):
+            value = getattr(data, field_name, None)
+            if value is not None:
+                try:
+                    score = float(value)
+                    if score < 0 or score > 100:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"{field_name} must be between 0 and 100, got {value}",
+                        )
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"{field_name} must be a valid number, got '{value}'",
+                    )
 
         fields = data.model_dump(exclude_unset=True)
         if fields:
@@ -204,8 +224,27 @@ class RFQService:
         return updated
 
     async def award_bid(self, bid_id: uuid.UUID) -> RFQBid:
-        """Award a bid and transition the RFQ to awarded status."""
+        """Award a bid and transition the RFQ to awarded status.
+
+        Only one bid can be awarded per RFQ. Attempting to award a second
+        bid raises a 409 Conflict.
+        """
         bid = await self.get_bid(bid_id)
+
+        if bid.is_awarded:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This bid has already been awarded",
+            )
+
+        # Check if another bid for the same RFQ has already been awarded
+        rfq = await self.get_rfq(bid.rfq_id)
+        for existing_bid in rfq.bids:
+            if existing_bid.is_awarded and existing_bid.id != bid_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Another bid has already been awarded for this RFQ",
+                )
 
         # Mark the bid as awarded
         await self.bids_repo.update(bid_id, is_awarded=True)

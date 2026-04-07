@@ -196,8 +196,13 @@ class TransmittalService:
         recipient_id: uuid.UUID,
     ) -> TransmittalRecipient:
         """Mark a recipient as having acknowledged the transmittal."""
-        # Verify transmittal exists
-        await self.get_transmittal(transmittal_id)
+        # Verify transmittal exists and is in a valid state for acknowledgement
+        transmittal = await self.get_transmittal(transmittal_id)
+        if transmittal.status not in ("issued", "responded"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot acknowledge transmittal in status '{transmittal.status}'",
+            )
 
         recipient = await self.repo.get_recipient(recipient_id)
         if recipient is None or recipient.transmittal_id != transmittal_id:
@@ -228,8 +233,13 @@ class TransmittalService:
         response_text: str,
     ) -> TransmittalRecipient:
         """Submit a response from a recipient."""
-        # Verify transmittal exists
-        await self.get_transmittal(transmittal_id)
+        # Verify transmittal exists and is in a valid state for responses
+        transmittal = await self.get_transmittal(transmittal_id)
+        if transmittal.status not in ("issued", "responded"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot respond to transmittal in status '{transmittal.status}'",
+            )
 
         recipient = await self.repo.get_recipient(recipient_id)
         if recipient is None or recipient.transmittal_id != transmittal_id:

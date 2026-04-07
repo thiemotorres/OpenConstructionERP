@@ -50,6 +50,17 @@ class CollaborationService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Parent comment not found",
                 )
+            # Ensure parent belongs to the same entity (prevent cross-entity threading)
+            if parent.entity_type != data.entity_type or parent.entity_id != data.entity_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Parent comment belongs to a different entity",
+                )
+            if parent.is_deleted:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot reply to a deleted comment",
+                )
 
         comment = Comment(
             entity_type=data.entity_type,

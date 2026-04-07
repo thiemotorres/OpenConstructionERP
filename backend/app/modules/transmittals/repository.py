@@ -68,14 +68,23 @@ class TransmittalRepository:
         self.session.expire_all()
 
     async def next_number(self, project_id: uuid.UUID) -> str:
-        """Generate the next transmittal number for a project (TR-001, TR-002, ...)."""
+        """Generate the next transmittal number for a project (TR-001, TR-002, ...).
+
+        Uses MAX-based extraction to avoid collisions after deletions.
+        """
         stmt = (
-            select(func.count())
-            .select_from(Transmittal)
+            select(func.max(Transmittal.transmittal_number))
             .where(Transmittal.project_id == project_id)
         )
-        count = (await self.session.execute(stmt)).scalar_one()
-        return f"TR-{count + 1:03d}"
+        max_number = (await self.session.execute(stmt)).scalar_one()
+        if max_number is None:
+            return "TR-001"
+        # Extract numeric part from e.g. "TR-007"
+        try:
+            numeric = int(max_number.split("-", 1)[1])
+        except (IndexError, ValueError):
+            numeric = 0
+        return f"TR-{numeric + 1:03d}"
 
     # ── Recipient operations ─────────────────────────────────────────────
 

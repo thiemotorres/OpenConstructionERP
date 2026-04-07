@@ -68,14 +68,19 @@ class RFQRepository:
             await self.session.flush()
 
     async def next_rfq_number(self, project_id: uuid.UUID) -> str:
-        """Generate the next RFQ number for a project."""
+        """Generate the next RFQ number using MAX to avoid collisions after deletions."""
         stmt = (
-            select(func.count())
-            .select_from(RFQ)
+            select(func.max(RFQ.rfq_number))
             .where(RFQ.project_id == project_id)
         )
-        count = (await self.session.execute(stmt)).scalar_one()
-        return f"RFQ-{count + 1:03d}"
+        max_number = (await self.session.execute(stmt)).scalar_one()
+        if max_number is None:
+            return "RFQ-001"
+        try:
+            numeric = int(max_number.split("-", 1)[1])
+        except (IndexError, ValueError):
+            numeric = 0
+        return f"RFQ-{numeric + 1:03d}"
 
 
 class RFQBidRepository:

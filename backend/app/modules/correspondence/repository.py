@@ -40,13 +40,19 @@ class CorrespondenceRepository:
         return list(result.scalars().all()), total
 
     async def next_reference_number(self, project_id: uuid.UUID) -> str:
+        """Generate the next reference number using MAX to avoid collisions after deletions."""
         stmt = (
-            select(func.count())
-            .select_from(Correspondence)
+            select(func.max(Correspondence.reference_number))
             .where(Correspondence.project_id == project_id)
         )
-        count = (await self.session.execute(stmt)).scalar_one()
-        return f"COR-{count + 1:03d}"
+        max_number = (await self.session.execute(stmt)).scalar_one()
+        if max_number is None:
+            return "COR-001"
+        try:
+            numeric = int(max_number.split("-", 1)[1])
+        except (IndexError, ValueError):
+            numeric = 0
+        return f"COR-{numeric + 1:03d}"
 
     async def create(self, correspondence: Correspondence) -> Correspondence:
         self.session.add(correspondence)
