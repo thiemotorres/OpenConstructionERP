@@ -1065,7 +1065,7 @@ async def lock_boq(
 
     boq = await service.get_boq(boq_id)
     now_iso = datetime.now(UTC).isoformat()
-    await service.repo.update_fields(
+    await service.boq_repo.update_fields(
         boq_id,
         is_locked=True,
         approved_by=user_id,
@@ -1093,7 +1093,7 @@ async def create_revision(
     """
     new_boq = await service.duplicate_boq(boq_id)
     # Link the new BOQ to the original as its revision parent
-    await service.repo.update_fields(
+    await service.boq_repo.update_fields(
         new_boq.id,
         parent_estimate_id=boq_id,
         status="draft",
@@ -3407,7 +3407,7 @@ async def enrich_resources(
                 resources.append(res)
 
             meta["resources"] = resources
-            await service.repo.update(pos.id, {"metadata_": meta})
+            await service.position_repo.update_fields(pos.id, metadata_=meta)
             enriched_count += 1
 
     await session.commit()
@@ -3488,7 +3488,7 @@ async def enrich_co2(
             "stages": epd["stages"],
             "data_source": epd["source"],
         }
-        await service.repo.update(pos.id, {"metadata_": meta})
+        await service.position_repo.update_fields(pos.id, metadata_=meta)
         enriched += 1
 
     await session.commit()
@@ -3518,7 +3518,7 @@ async def assign_position_co2(
             detail=f"EPD material '{payload.epd_id}' not found. Use GET /epd-materials to list available materials.",
         )
 
-    pos = await service.repo.get(position_id)
+    pos = await service.position_repo.get_by_id(position_id)
     if not pos:
         raise HTTPException(status_code=404, detail="Position not found")
 
@@ -3537,7 +3537,7 @@ async def assign_position_co2(
         "stages": epd["stages"],
         "data_source": epd["source"],
     }
-    await service.repo.update(position_id, {"metadata_": meta})
+    await service.position_repo.update_fields(position_id, metadata_=meta)
     await session.commit()
 
     return {"status": "ok", "co2": meta["co2"]}

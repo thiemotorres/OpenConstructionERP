@@ -82,3 +82,31 @@ class ProjectRepository:
         """Total number of projects for a user."""
         stmt = select(func.count()).select_from(select(Project).where(Project.owner_id == owner_id).subquery())
         return (await self.session.execute(stmt)).scalar_one()
+
+    async def max_project_code_seq(self, prefix: str) -> int | None:
+        """Find the maximum sequence number for project codes with the given prefix.
+
+        Scans codes like ``PRJ-2026-0001`` and extracts the numeric suffix.
+        Returns ``None`` if no matching codes exist.
+        """
+        stmt = select(Project.project_code).where(
+            Project.project_code.isnot(None),
+            Project.project_code.startswith(prefix),
+        )
+        result = await self.session.execute(stmt)
+        codes = [row[0] for row in result.all()]
+
+        if not codes:
+            return None
+
+        max_seq = 0
+        prefix_len = len(prefix)
+        for code in codes:
+            try:
+                seq = int(code[prefix_len:])
+                if seq > max_seq:
+                    max_seq = seq
+            except (ValueError, IndexError):
+                continue
+
+        return max_seq if max_seq > 0 else None

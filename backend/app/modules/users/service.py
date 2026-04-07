@@ -363,18 +363,22 @@ class UserService:
                 detail="User not found or inactive",
             )
 
+        # Eagerly read email before update_fields (which calls expire_all)
+        user_email = user.email
+
         await self.user_repo.update_fields(
             user.id,
             hashed_password=hash_password(data.new_password),
+            password_changed_at=datetime.now(UTC),
         )
 
         await _safe_publish(
             "users.password_reset.completed",
-            {"user_id": str(user.id), "email": user.email},
+            {"user_id": str(user.id), "email": user_email},
             source_module="oe_users",
         )
 
-        logger.info("Password reset completed for user %s", user.email)
+        logger.info("Password reset completed for user %s", user_email)
         return ResetPasswordResponse(message="Password updated successfully")
 
     # ── User management ────────────────────────────────────────────────

@@ -812,9 +812,14 @@ async def list_categories(
 
     from sqlalchemy import distinct, func, select
 
+    from app.database import engine as _engine
     from app.modules.costs.models import CostItem
 
-    collection_expr = func.json_extract(CostItem.classification, "$.collection")
+    _url = str(_engine.url)
+    if "sqlite" in _url:
+        collection_expr = func.json_extract(CostItem.classification, "$.collection")
+    else:
+        collection_expr = CostItem.classification["collection"].as_string()
 
     stmt = (
         select(distinct(collection_expr))
@@ -2019,36 +2024,55 @@ async def export_cost_database(
     session: SessionDep,
     _user_id: CurrentUserId,
 ) -> StreamingResponse:
-    """Export all cost items as Excel file."""
+    """Export all cost items as Excel file.
+
+    Uses openpyxl write_only mode and batched DB fetching (1000 rows)
+    to keep memory usage constant regardless of dataset size.
+    """
     from openpyxl import Workbook
-    from openpyxl.styles import Font
     from sqlalchemy import select
 
     from app.modules.costs.models import CostItem
 
-    result = await session.execute(select(CostItem).where(CostItem.is_active.is_(True)).limit(50000))
-    items = result.scalars().all()
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet(title="Cost Database")
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Cost Database"
+    # Header row
+    ws.append(["Code", "Description", "Unit", "Rate", "Currency", "Source", "Region"])
 
-    headers = ["Code", "Description", "Unit", "Rate", "Currency", "Source", "Region"]
-    for i, h in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=i, value=h)
-        cell.font = Font(bold=True)
+    # Fetch in batches to avoid loading 50K+ rows into memory at once
+    batch_size = 1000
+    offset = 0
+    base_stmt = (
+        select(CostItem)
+        .where(CostItem.is_active.is_(True))
+        .order_by(CostItem.code)
+    )
 
-    for row_idx, item in enumerate(items, 2):
-        ws.cell(row=row_idx, column=1, value=item.code)
-        ws.cell(row=row_idx, column=2, value=item.description)
-        ws.cell(row=row_idx, column=3, value=item.unit)
-        try:
-            ws.cell(row=row_idx, column=4, value=float(item.rate))
-        except (ValueError, TypeError):
-            ws.cell(row=row_idx, column=4, value=0)
-        ws.cell(row=row_idx, column=5, value=item.currency)
-        ws.cell(row=row_idx, column=6, value=item.source)
-        ws.cell(row=row_idx, column=7, value=getattr(item, "region", ""))
+    while True:
+        result = await session.execute(base_stmt.offset(offset).limit(batch_size))
+        items = result.scalars().all()
+        if not items:
+            break
+
+        for item in items:
+            try:
+                rate_val = float(item.rate)
+            except (ValueError, TypeError):
+                rate_val = 0
+            ws.append([
+                item.code,
+                item.description,
+                item.unit,
+                rate_val,
+                item.currency,
+                item.source,
+                getattr(item, "region", ""),
+            ])
+
+        if len(items) < batch_size:
+            break
+        offset += batch_size
 
     output = io.BytesIO()
     wb.save(output)

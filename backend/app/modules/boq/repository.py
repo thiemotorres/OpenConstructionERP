@@ -204,6 +204,23 @@ class PositionRepository:
         result = (await self.session.execute(stmt)).scalar_one()
         return int(result)
 
+    async def ordinal_exists(self, boq_id: uuid.UUID, ordinal: str, exclude_id: uuid.UUID | None = None) -> bool:
+        """Check if a position with the given ordinal already exists in the BOQ.
+
+        Args:
+            boq_id: The BOQ to check in.
+            ordinal: The ordinal string to check for duplicates.
+            exclude_id: Optional position ID to exclude (for update checks).
+
+        Returns:
+            True if a position with this ordinal already exists.
+        """
+        stmt = select(func.count()).where(Position.boq_id == boq_id, Position.ordinal == ordinal)
+        if exclude_id is not None:
+            stmt = stmt.where(Position.id != exclude_id)
+        result = (await self.session.execute(stmt)).scalar_one()
+        return int(result) > 0
+
 
 class MarkupRepository:
     """Data access for BOQMarkup model."""

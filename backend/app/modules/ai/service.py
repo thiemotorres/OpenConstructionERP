@@ -246,36 +246,43 @@ class AIService:
         uid = uuid.UUID(user_id)
         settings = await self.settings_repo.get_by_user_id(uid)
 
+        # All API key field names that can be saved
+        _API_KEY_FIELDS = [
+            "anthropic_api_key",
+            "openai_api_key",
+            "gemini_api_key",
+            "openrouter_api_key",
+            "mistral_api_key",
+            "groq_api_key",
+            "deepseek_api_key",
+            "together_api_key",
+            "fireworks_api_key",
+            "perplexity_api_key",
+            "cohere_api_key",
+            "ai21_api_key",
+            "xai_api_key",
+            "zhipu_api_key",
+            "baidu_api_key",
+            "yandex_api_key",
+            "gigachat_api_key",
+        ]
+
         if settings is None:
             # Create with provided values
-            settings = AISettings(
-                user_id=uid,
-                anthropic_api_key=data.anthropic_api_key,
-                openai_api_key=data.openai_api_key,
-                gemini_api_key=data.gemini_api_key,
-                openrouter_api_key=data.openrouter_api_key,
-                mistral_api_key=data.mistral_api_key,
-                groq_api_key=data.groq_api_key,
-                deepseek_api_key=data.deepseek_api_key,
-                preferred_model=data.preferred_model or "claude-sonnet",
-            )
+            create_kwargs: dict[str, Any] = {"user_id": uid}
+            for key_field in _API_KEY_FIELDS:
+                val = getattr(data, key_field, None)
+                if val is not None:
+                    create_kwargs[key_field] = val
+            create_kwargs["preferred_model"] = data.preferred_model or "claude-sonnet"
+            settings = AISettings(**create_kwargs)
             settings = await self.settings_repo.create(settings)
         else:
             fields: dict[str, Any] = {}
-            if data.anthropic_api_key is not None:
-                fields["anthropic_api_key"] = data.anthropic_api_key
-            if data.openai_api_key is not None:
-                fields["openai_api_key"] = data.openai_api_key
-            if data.gemini_api_key is not None:
-                fields["gemini_api_key"] = data.gemini_api_key
-            if data.openrouter_api_key is not None:
-                fields["openrouter_api_key"] = data.openrouter_api_key
-            if data.mistral_api_key is not None:
-                fields["mistral_api_key"] = data.mistral_api_key
-            if data.groq_api_key is not None:
-                fields["groq_api_key"] = data.groq_api_key
-            if data.deepseek_api_key is not None:
-                fields["deepseek_api_key"] = data.deepseek_api_key
+            for key_field in _API_KEY_FIELDS:
+                val = getattr(data, key_field, None)
+                if val is not None:
+                    fields[key_field] = val
             if data.preferred_model is not None:
                 fields["preferred_model"] = data.preferred_model
 

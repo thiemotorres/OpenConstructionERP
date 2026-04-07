@@ -46,11 +46,12 @@ class CostItemService:
 
         Raises HTTPException 409 if code already exists.
         """
-        existing = await self.repo.get_by_code(data.code)
+        existing = await self.repo.get_by_code(data.code, region=data.region)
         if existing is not None:
+            region_label = data.region or "global"
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Cost item with code '{data.code}' already exists",
+                detail=f"Cost item with code '{data.code}' already exists for region '{region_label}'",
             )
 
         item = CostItem(
@@ -129,13 +130,16 @@ class CostItemService:
         if "metadata" in fields:
             fields["metadata_"] = fields.pop("metadata")
 
-        # Check code uniqueness if code is being changed
-        if "code" in fields and fields["code"] != item.code:
-            existing = await self.repo.get_by_code(fields["code"])
-            if existing is not None:
+        # Check code uniqueness if code or region is being changed
+        new_code = fields.get("code", item.code)
+        new_region = fields.get("region", item.region)
+        if new_code != item.code or new_region != item.region:
+            existing = await self.repo.get_by_code(new_code, region=new_region)
+            if existing is not None and existing.id != item_id:
+                region_label = new_region or "global"
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Cost item with code '{fields['code']}' already exists",
+                    detail=f"Cost item with code '{new_code}' already exists for region '{region_label}'",
                 )
 
         if fields:
@@ -192,7 +196,7 @@ class CostItemService:
         skipped_codes: list[str] = []
 
         for data in items_data:
-            existing = await self.repo.get_by_code(data.code)
+            existing = await self.repo.get_by_code(data.code, region=data.region)
             if existing is not None:
                 skipped_codes.append(data.code)
                 continue

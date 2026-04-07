@@ -532,8 +532,60 @@ async def create_relationship(
     data: RelationshipCreate,
     session: SessionDep,
 ) -> RelationshipResponse:
-    """Create a CPM dependency relationship between two activities."""
+    """Create a CPM dependency relationship between two activities.
+
+    Validates:
+    - predecessor and successor are not the same activity
+    - no circular dependency would be created
+    """
+    from sqlalchemy import select
+
     from app.modules.schedule.models import ScheduleRelationship
+
+    # ── Reject self-referencing dependency ────────────────────────────────
+    if data.predecessor_id == data.successor_id:
+        raise HTTPException(
+            status_code=400,
+            detail="An activity cannot depend on itself.",
+        )
+
+    # ── Reject circular dependencies ─────────────────────────────────────
+    # Build adjacency from existing relationships, then check if adding the
+    # new edge (predecessor -> successor) would create a cycle by testing
+    # reachability from successor back to predecessor.
+    stmt = select(ScheduleRelationship).where(
+        ScheduleRelationship.schedule_id == schedule_id
+    )
+    result = await session.execute(stmt)
+    existing_rels = list(result.scalars().all())
+
+    # adjacency: predecessor_id -> set of successor_ids
+    adjacency: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for r in existing_rels:
+        adjacency.setdefault(r.predecessor_id, set()).add(r.successor_id)
+
+    # Temporarily add the proposed edge
+    adjacency.setdefault(data.predecessor_id, set()).add(data.successor_id)
+
+    # BFS from successor to see if we can reach predecessor (cycle)
+    visited: set[uuid.UUID] = set()
+    queue: list[uuid.UUID] = [data.successor_id]
+    while queue:
+        current = queue.pop(0)
+        if current == data.predecessor_id:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Adding this dependency would create a circular reference. "
+                    "Check the dependency chain for cycles."
+                ),
+            )
+        if current in visited:
+            continue
+        visited.add(current)
+        for neighbor in adjacency.get(current, set()):
+            if neighbor not in visited:
+                queue.append(neighbor)
 
     rel = ScheduleRelationship(
         schedule_id=schedule_id,

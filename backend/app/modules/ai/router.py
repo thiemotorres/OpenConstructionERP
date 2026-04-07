@@ -134,7 +134,10 @@ async def test_ai_connection(
 
     Returns success status and response latency.
     """
-    _VALID_PROVIDERS = ("anthropic", "openai", "gemini", "openrouter", "mistral", "groq", "deepseek")
+    _VALID_PROVIDERS = (
+        "anthropic", "openai", "gemini", "openrouter", "mistral", "groq", "deepseek",
+        "together", "fireworks", "perplexity", "cohere", "ai21", "xai",
+    )
     provider = body.get("provider", "").strip()
     if provider not in _VALID_PROVIDERS:
         raise HTTPException(
@@ -146,16 +149,8 @@ async def test_ai_connection(
     settings = await service.settings_repo.get_by_user_id(uid)
 
     # Resolve the API key for the requested provider
-    key_map = {
-        "anthropic": settings.anthropic_api_key if settings else None,
-        "openai": settings.openai_api_key if settings else None,
-        "gemini": settings.gemini_api_key if settings else None,
-        "openrouter": settings.openrouter_api_key if settings else None,
-        "mistral": settings.mistral_api_key if settings else None,
-        "groq": settings.groq_api_key if settings else None,
-        "deepseek": settings.deepseek_api_key if settings else None,
-    }
-    api_key = key_map.get(provider)
+    key_attr = f"{provider}_api_key"
+    api_key = getattr(settings, key_attr, None) if settings else None
     if not api_key:
         return {
             "success": False,

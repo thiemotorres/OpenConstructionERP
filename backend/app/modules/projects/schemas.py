@@ -9,6 +9,29 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
+# Valid date formats accepted by the platform (ISO 8601 preferred)
+_DATE_FORMATS = ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%d.%m.%Y", "%m/%d/%Y")
+
+
+def _validate_date_string(value: str | None, field_name: str) -> str | None:
+    """Validate that a date string can be parsed to a real date.
+
+    Accepts ISO 8601 (2026-01-15), European (15.01.2026), US (01/15/2026).
+    Returns the original string unchanged if valid.
+    """
+    if value is None:
+        return None
+    for fmt in _DATE_FORMATS:
+        try:
+            datetime.strptime(value.strip(), fmt)
+            return value.strip()
+        except ValueError:
+            continue
+    raise ValueError(
+        f"{field_name}: '{value}' is not a valid date. "
+        "Expected formats: YYYY-MM-DD, DD.MM.YYYY, or MM/DD/YYYY"
+    )
+
 
 # ── Create / Update ───────────────────────────────────────────────────────
 
@@ -59,6 +82,11 @@ class ProjectCreate(BaseModel):
     contingency_pct: str | None = Field(default=None, max_length=10)
     custom_fields: dict[str, Any] | None = None
 
+    @field_validator("planned_start_date", "planned_end_date", "actual_start_date", "actual_end_date")
+    @classmethod
+    def _validate_dates(cls, v: str | None, info: Any) -> str | None:
+        return _validate_date_string(v, info.field_name)
+
 
 class ProjectUpdate(BaseModel):
     """Update project fields. All optional — only provided fields are updated."""
@@ -89,6 +117,11 @@ class ProjectUpdate(BaseModel):
     custom_fields: dict[str, Any] | None = None
     status: str | None = None
 
+    @field_validator("planned_start_date", "planned_end_date", "actual_start_date", "actual_end_date")
+    @classmethod
+    def _validate_dates(cls, v: str | None, info: Any) -> str | None:
+        return _validate_date_string(v, info.field_name)
+
 
 # ── Response ──────────────────────────────────────────────────────────────
 
@@ -96,7 +129,7 @@ class ProjectUpdate(BaseModel):
 class ProjectResponse(BaseModel):
     """Project in API responses."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     name: str
@@ -108,7 +141,7 @@ class ProjectResponse(BaseModel):
     validation_rule_sets: list[str]
     status: str
     owner_id: UUID
-    metadata_: dict[str, Any] = Field(alias="metadata_")
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
 
@@ -190,6 +223,17 @@ class WBSResponse(BaseModel):
 # ── Milestone schemas ────────────────────────────────────────────────────
 
 
+_MILESTONE_STATUSES = ("pending", "in_progress", "completed", "cancelled")
+
+# Allowed status transitions: from_status -> set of valid to_statuses
+_MILESTONE_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"in_progress", "cancelled"},
+    "in_progress": {"completed", "cancelled", "pending"},
+    "completed": {"in_progress"},  # Allow reopening
+    "cancelled": {"pending"},  # Allow reactivation
+}
+
+
 class MilestoneCreate(BaseModel):
     """Create a project milestone."""
 
@@ -202,6 +246,25 @@ class MilestoneCreate(BaseModel):
     status: str = Field(default="pending", max_length=50)
     linked_payment_pct: str | None = Field(default=None, max_length=10)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, v: str) -> str:
+        if v not in _MILESTONE_STATUSES:
+            raise ValueError(
+                f"Invalid status '{v}'. Must be one of: {', '.join(_MILESTONE_STATUSES)}"
+            )
+        return v
+
+    @field_validator("planned_date")
+    @classmethod
+    def _validate_planned_date(cls, v: str | None) -> str | None:
+        return _validate_date_string(v, "planned_date")
+
+    @field_validator("actual_date")
+    @classmethod
+    def _validate_actual_date(cls, v: str | None) -> str | None:
+        return _validate_date_string(v, "actual_date")
 
 
 class MilestoneUpdate(BaseModel):
@@ -216,6 +279,25 @@ class MilestoneUpdate(BaseModel):
     status: str | None = Field(default=None, max_length=50)
     linked_payment_pct: str | None = Field(default=None, max_length=10)
     metadata: dict[str, Any] | None = None
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, v: str | None) -> str | None:
+        if v is not None and v not in _MILESTONE_STATUSES:
+            raise ValueError(
+                f"Invalid status '{v}'. Must be one of: {', '.join(_MILESTONE_STATUSES)}"
+            )
+        return v
+
+    @field_validator("planned_date")
+    @classmethod
+    def _validate_planned_date(cls, v: str | None) -> str | None:
+        return _validate_date_string(v, "planned_date")
+
+    @field_validator("actual_date")
+    @classmethod
+    def _validate_actual_date(cls, v: str | None) -> str | None:
+        return _validate_date_string(v, "actual_date")
 
 
 class MilestoneResponse(BaseModel):

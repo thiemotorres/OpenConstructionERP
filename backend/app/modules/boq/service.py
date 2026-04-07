@@ -928,6 +928,28 @@ class BOQService:
         self.markup_repo = MarkupRepository(session)
         self.activity_repo = ActivityLogRepository(session)
 
+    async def _ensure_not_locked(self, boq_id: uuid.UUID) -> BOQ:
+        """Load a BOQ and raise 409 Conflict if it is locked.
+
+        All mutation methods that modify positions or markups on a BOQ
+        should call this before proceeding.  Read-only methods do not
+        need the guard.
+
+        Returns:
+            The loaded BOQ (so callers can reuse it instead of fetching twice).
+
+        Raises:
+            HTTPException 404: BOQ not found.
+            HTTPException 409: BOQ is locked and cannot be modified.
+        """
+        boq = await self.get_boq(boq_id)
+        if boq.is_locked:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="BOQ is locked and cannot be modified. Create a revision to make changes.",
+            )
+        return boq
+
     # ── BOQ operations ────────────────────────────────────────────────────
 
     async def create_boq(self, data: BOQCreate) -> BOQ:
@@ -1064,9 +1086,16 @@ class BOQService:
 
         Raises:
             HTTPException 404 if the target BOQ doesn't exist.
+            HTTPException 409 if the BOQ is locked.
         """
-        # Verify BOQ exists
-        await self.get_boq(data.boq_id)
+        await self._ensure_not_locked(data.boq_id)
+
+        # Check ordinal uniqueness within the BOQ
+        if await self.position_repo.ordinal_exists(data.boq_id, data.ordinal):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Position with ordinal '{data.ordinal}' already exists in this BOQ",
+            )
 
         total = _compute_total(data.quantity, data.unit_rate)
         max_order = await self.position_repo.get_max_sort_order(data.boq_id)
@@ -1118,8 +1147,16 @@ class BOQService:
 
         Raises:
             HTTPException 404 if the target BOQ doesn't exist.
+            HTTPException 409 if the BOQ is locked.
         """
-        await self.get_boq(boq_id)
+        await self._ensure_not_locked(boq_id)
+
+        # Check ordinal uniqueness within the BOQ
+        if await self.position_repo.ordinal_exists(boq_id, data.ordinal):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Section with ordinal '{data.ordinal}' already exists in this BOQ",
+            )
 
         max_order = await self.position_repo.get_max_sort_order(boq_id)
 
@@ -1166,6 +1203,7 @@ class BOQService:
 
         Raises:
             HTTPException 404 if position not found.
+            HTTPException 409 if the owning BOQ is locked.
         """
         position = await self.position_repo.get_by_id(position_id)
         if position is None:
@@ -1173,8 +1211,19 @@ class BOQService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Position not found",
             )
+        await self._ensure_not_locked(position.boq_id)
 
         fields = data.model_dump(exclude_unset=True)
+
+        # If ordinal is being changed, check uniqueness within the BOQ
+        if "ordinal" in fields and fields["ordinal"] != position.ordinal:
+            if await self.position_repo.ordinal_exists(
+                position.boq_id, fields["ordinal"], exclude_id=position_id
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Position with ordinal '{fields['ordinal']}' already exists in this BOQ",
+                )
 
         # Convert float values to strings for storage
         if "quantity" in fields:
@@ -1248,7 +1297,7 @@ class BOQService:
     async def delete_position(self, position_id: uuid.UUID) -> None:
         """Delete a position.
 
-        Raises HTTPException 404 if not found.
+        Raises HTTPException 404 if not found, 409 if BOQ is locked.
         """
         position = await self.position_repo.get_by_id(position_id)
         if position is None:
@@ -1256,6 +1305,7 @@ class BOQService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Position not found",
             )
+        await self._ensure_not_locked(position.boq_id)
 
         boq_id = str(position.boq_id)
         await self.position_repo.delete(position_id)
@@ -1272,7 +1322,7 @@ class BOQService:
         """Reorder positions within a BOQ.
 
         Assigns sequential sort_order values based on the order of
-        ``position_ids``.  The BOQ is verified to exist first.
+        ``position_ids``.  The BOQ is verified to exist and not locked.
 
         Args:
             boq_id: The BOQ that owns the positions.
@@ -1280,13 +1330,9 @@ class BOQService:
 
         Raises:
             HTTPException 404: If the BOQ does not exist.
+            HTTPException 409: If the BOQ is locked.
         """
-        boq = await self.boq_repo.get_by_id(boq_id)
-        if boq is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="BOQ not found",
-            )
+        await self._ensure_not_locked(boq_id)
         await self.position_repo.reorder(position_ids)
         logger.info("Reordered %d positions in BOQ %s", len(position_ids), boq_id)
 
@@ -1308,8 +1354,9 @@ class BOQService:
 
         Raises:
             HTTPException 404 if the target BOQ doesn't exist.
+            HTTPException 409 if the BOQ is locked.
         """
-        await self.get_boq(boq_id)
+        await self._ensure_not_locked(boq_id)
 
         max_order = await self.markup_repo.get_max_sort_order(boq_id)
 
@@ -1352,6 +1399,7 @@ class BOQService:
 
         Raises:
             HTTPException 404 if markup not found.
+            HTTPException 409 if the owning BOQ is locked.
         """
         markup = await self.markup_repo.get_by_id(markup_id)
         if markup is None:
@@ -1359,6 +1407,7 @@ class BOQService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Markup not found",
             )
+        await self._ensure_not_locked(markup.boq_id)
 
         fields = data.model_dump(exclude_unset=True)
 
@@ -1400,7 +1449,7 @@ class BOQService:
     async def delete_markup(self, markup_id: uuid.UUID) -> None:
         """Delete a markup line.
 
-        Raises HTTPException 404 if not found.
+        Raises HTTPException 404 if not found, 409 if BOQ is locked.
         """
         markup = await self.markup_repo.get_by_id(markup_id)
         if markup is None:
@@ -1408,6 +1457,7 @@ class BOQService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Markup not found",
             )
+        await self._ensure_not_locked(markup.boq_id)
 
         boq_id = str(markup.boq_id)
         await self.markup_repo.delete(markup_id)
@@ -1455,8 +1505,9 @@ class BOQService:
 
         Raises:
             HTTPException 404 if BOQ not found.
+            HTTPException 409 if the BOQ is locked.
         """
-        await self.get_boq(boq_id)
+        await self._ensure_not_locked(boq_id)
 
         # Look up template; fall back to DEFAULT
         region_key = region.upper()
@@ -1513,8 +1564,8 @@ class BOQService:
         Returns:
             Dict with ``updated``, ``skipped``, and ``total`` counts.
         """
-        # Ensure the BOQ exists (raises 404 otherwise)
-        await self.get_boq(boq_id)
+        # Ensure the BOQ exists and is not locked
+        await self._ensure_not_locked(boq_id)
 
         positions, _ = await self.position_repo.list_for_boq(boq_id)
         updated = 0
@@ -1537,7 +1588,7 @@ class BOQService:
                     continue
             skipped += 1
 
-        await self.session.commit()
+        await self.session.flush()
         return {"updated": updated, "skipped": skipped, "total": len(positions)}
 
     # ── Duplicate operations ─────────────────────────────────────────────

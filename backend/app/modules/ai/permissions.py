@@ -12,5 +12,6 @@ def register_ai_permissions() -> None:
             "ai.settings.update": Role.EDITOR,
             "ai.estimate": Role.EDITOR,
             "ai.create_boq": Role.EDITOR,
+            "ai.use": Role.EDITOR,
         },
     )

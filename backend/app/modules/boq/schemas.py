@@ -91,7 +91,10 @@ class PositionCreate(BaseModel):
     quantity: float = Field(default=0.0, ge=0.0)
     unit_rate: float = Field(default=0.0, ge=0.0)
     classification: dict[str, Any] = Field(default_factory=dict)
-    source: str = "manual"
+    source: str = Field(
+        default="manual",
+        pattern=r"^(manual|cad_import|ai_takeoff|gaeb_import|excel_import|takeoff)$",
+    )
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     cad_element_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -125,10 +128,16 @@ class PositionUpdate(BaseModel):
     quantity: float | None = Field(default=None, ge=0.0)
     unit_rate: float | None = Field(default=None, ge=0.0)
     classification: dict[str, Any] | None = None
-    source: str | None = None
+    source: str | None = Field(
+        default=None,
+        pattern=r"^(manual|cad_import|ai_takeoff|gaeb_import|excel_import|takeoff)$",
+    )
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     cad_element_ids: list[str] | None = None
-    validation_status: str | None = None
+    validation_status: str | None = Field(
+        default=None,
+        pattern=r"^(pending|passed|warnings|errors)$",
+    )
     metadata: dict[str, Any] | None = None
     sort_order: int | None = None
     wbs_id: str | None = None

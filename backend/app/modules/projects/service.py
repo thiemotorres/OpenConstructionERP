@@ -2,12 +2,14 @@
 
 Stateless service layer. Handles:
 - Project CRUD with ownership enforcement
+- Project code auto-generation (PRJ-{YEAR}-{SEQ:04d})
 - Soft-delete via status='archived'
 - Event publishing on create/update/delete
 """
 
 import logging
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +42,20 @@ class ProjectService:
         self.settings = settings
         self.repo = ProjectRepository(session)
 
+    # ── Project code generation ───────────────────────────────────────────
+
+    async def _generate_project_code(self) -> str:
+        """Generate the next project code in the format PRJ-{YEAR}-{SEQ:04d}.
+
+        Scans existing codes matching the current year's prefix and increments
+        the sequence number.  Falls back to 0001 if no codes exist yet.
+        """
+        year = datetime.now(UTC).year
+        prefix = f"PRJ-{year}-"
+        max_seq = await self.repo.max_project_code_seq(prefix)
+        next_seq = (max_seq or 0) + 1
+        return f"{prefix}{next_seq:04d}"
+
     # ── Create ────────────────────────────────────────────────────────────
 
     async def create_project(
@@ -48,6 +64,11 @@ class ProjectService:
         owner_id: uuid.UUID,
     ) -> Project:
         """Create a new project owned by the given user."""
+        # Auto-generate project_code if not explicitly provided
+        project_code = data.project_code
+        if not project_code:
+            project_code = await self._generate_project_code()
+
         project = Project(
             name=data.name,
             description=data.description,
@@ -58,7 +79,7 @@ class ProjectService:
             validation_rule_sets=data.validation_rule_sets,
             owner_id=owner_id,
             # Phase 12 expansion fields
-            project_code=data.project_code,
+            project_code=project_code,
             project_type=data.project_type,
             phase=data.phase,
             client_id=data.client_id,
@@ -85,7 +106,7 @@ class ProjectService:
             source_module="oe_projects",
         )
 
-        logger.info("Project created: %s (owner=%s)", project.name, owner_id)
+        logger.info("Project created: %s (owner=%s, code=%s)", project.name, owner_id, project_code)
         return project
 
     # ── Read ──────────────────────────────────────────────────────────────

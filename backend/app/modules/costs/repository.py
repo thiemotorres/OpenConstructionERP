@@ -22,9 +22,18 @@ class CostItemRepository:
         """Get cost item by ID."""
         return await self.session.get(CostItem, item_id)
 
-    async def get_by_code(self, code: str) -> CostItem | None:
-        """Get cost item by unique code."""
+    async def get_by_code(self, code: str, region: str | None = None) -> CostItem | None:
+        """Get cost item by code and optional region.
+
+        The DB unique constraint is on (code, region), so the same code can
+        exist for different regions.  When *region* is None the query matches
+        rows where region IS NULL.
+        """
         stmt = select(CostItem).where(CostItem.code == code)
+        if region is None:
+            stmt = stmt.where(CostItem.region.is_(None))
+        else:
+            stmt = stmt.where(CostItem.region == region)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -142,8 +151,18 @@ class CostItemRepository:
             base = base.where(CostItem.region == region)
 
         if category:
-            collection_expr = func.json_extract(CostItem.classification, "$.collection")
-            base = base.where(collection_expr == category)
+            # Use database-agnostic JSON access: json_extract for SQLite,
+            # ->> operator for PostgreSQL.  Both are handled via SQLAlchemy's
+            # generic JSON subscript when we fall back to text matching.
+            from app.database import engine as _engine
+
+            _url = str(_engine.url)
+            if "sqlite" in _url:
+                collection_expr = func.json_extract(CostItem.classification, "$.collection")
+                base = base.where(collection_expr == category)
+            else:
+                # PostgreSQL: use the ->> operator via SQLAlchemy column subscript
+                base = base.where(CostItem.classification["collection"].as_string() == category)
 
         if min_rate is not None:
             base = base.where(cast(CostItem.rate, Float) >= min_rate)

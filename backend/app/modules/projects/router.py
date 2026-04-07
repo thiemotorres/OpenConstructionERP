@@ -466,6 +466,20 @@ async def create_wbs_node(
 
     from app.modules.projects.models import ProjectWBS
 
+    # Validate parent exists and belongs to same project
+    if data.parent_id is not None:
+        parent = await session.get(ProjectWBS, data.parent_id)
+        if parent is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent WBS node not found",
+            )
+        if parent.project_id != project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent WBS node belongs to a different project",
+            )
+
     node = ProjectWBS(
         project_id=project_id,
         parent_id=data.parent_id,
@@ -529,6 +543,27 @@ async def update_wbs_node(
     fields = data.model_dump(exclude_unset=True)
     if "metadata" in fields:
         fields["metadata_"] = fields.pop("metadata")
+
+    # Validate parent_id if being changed
+    if "parent_id" in fields and fields["parent_id"] is not None:
+        new_parent_id = fields["parent_id"]
+        # Cannot set self as parent
+        if new_parent_id == wbs_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A WBS node cannot be its own parent",
+            )
+        parent = await session.get(ProjectWBS, new_parent_id)
+        if parent is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent WBS node not found",
+            )
+        if parent.project_id != project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Parent WBS node belongs to a different project",
+            )
 
     if fields:
         stmt = update(ProjectWBS).where(
@@ -642,6 +677,24 @@ async def update_milestone(
     from sqlalchemy import update
 
     from app.modules.projects.models import ProjectMilestone
+    from app.modules.projects.schemas import _MILESTONE_TRANSITIONS
+
+    # Validate status transition if status is being changed
+    if data.status is not None:
+        current = await session.get(ProjectMilestone, milestone_id)
+        if current is None or current.project_id != project_id:
+            raise HTTPException(status_code=404, detail="Milestone not found")
+        current_status = current.status
+        if data.status != current_status:
+            allowed = _MILESTONE_TRANSITIONS.get(current_status, set())
+            if data.status not in allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"Invalid status transition: '{current_status}' -> '{data.status}'. "
+                        f"Allowed transitions from '{current_status}': {sorted(allowed)}"
+                    ),
+                )
 
     fields = data.model_dump(exclude_unset=True)
     if "metadata" in fields:

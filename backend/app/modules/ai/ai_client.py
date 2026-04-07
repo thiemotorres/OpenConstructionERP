@@ -252,6 +252,30 @@ _OPENAI_COMPAT_CONFIG = {
         "url": "https://api.deepseek.com/chat/completions",
         "model": DEEPSEEK_MODEL,
     },
+    "together": {
+        "url": "https://api.together.xyz/v1/chat/completions",
+        "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    },
+    "fireworks": {
+        "url": "https://api.fireworks.ai/inference/v1/chat/completions",
+        "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    },
+    "perplexity": {
+        "url": "https://api.perplexity.ai/chat/completions",
+        "model": "sonar-pro",
+    },
+    "cohere": {
+        "url": "https://api.cohere.com/v2/chat",
+        "model": "command-r-plus",
+    },
+    "ai21": {
+        "url": "https://api.ai21.com/studio/v1/chat/completions",
+        "model": "jamba-1.5-large",
+    },
+    "xai": {
+        "url": "https://api.x.ai/v1/chat/completions",
+        "model": "grok-2",
+    },
 }
 
 
@@ -351,9 +375,10 @@ async def call_ai(
         "gemini": call_gemini,
     }
 
-    # OpenAI-compatible providers
+    # Determine the coroutine to call
     if provider in _OPENAI_COMPAT_CONFIG:
-        try:
+
+        async def _call() -> tuple[str, int]:
             return await call_openai_compatible(
                 provider,
                 api_key,
@@ -363,22 +388,27 @@ async def call_ai(
                 image_media_type,
                 max_tokens=max_tokens,
             )
-        except httpx.HTTPStatusError:
-            raise  # Will be caught below
-    caller = callers.get(provider)
-    if caller is None:
+
+    elif provider in callers:
+        caller = callers[provider]
+
+        async def _call() -> tuple[str, int]:
+            return await caller(
+                api_key,
+                system,
+                prompt,
+                image_base64,
+                image_media_type,
+                max_tokens=max_tokens,
+            )
+
+    else:
         msg = f"Unknown AI provider: {provider}"
         raise ValueError(msg)
 
+    # Unified error handling for all providers
     try:
-        return await caller(
-            api_key,
-            system,
-            prompt,
-            image_base64,
-            image_media_type,
-            max_tokens=max_tokens,
-        )
+        return await _call()
     except httpx.HTTPStatusError as exc:
         status_code = exc.response.status_code
         # Try to extract error detail from response body
@@ -471,47 +501,54 @@ def resolve_provider_and_key(
     model = preferred_model or (settings.preferred_model if settings else "claude-sonnet")
 
     # Map model preferences to providers
-    if "claude" in model or "anthropic" in model:
-        if settings and settings.anthropic_api_key:
-            return "anthropic", settings.anthropic_api_key
-    elif "gpt" in model or "openai" in model:
-        if settings and settings.openai_api_key:
-            return "openai", settings.openai_api_key
-    elif "gemini" in model or "google" in model:
-        if settings and settings.gemini_api_key:
-            return "gemini", settings.gemini_api_key
-    elif "openrouter" in model or "router" in model:
-        if settings and settings.openrouter_api_key:
-            return "openrouter", settings.openrouter_api_key
-    elif "mistral" in model:
-        if settings and settings.mistral_api_key:
-            return "mistral", settings.mistral_api_key
-    elif "groq" in model or "llama" in model:
-        if settings and settings.groq_api_key:
-            return "groq", settings.groq_api_key
-    elif "deepseek" in model:
-        if settings and settings.deepseek_api_key:
-            return "deepseek", settings.deepseek_api_key
+    _MODEL_PROVIDER_MAP: list[tuple[list[str], str, str]] = [
+        (["claude", "anthropic"], "anthropic", "anthropic_api_key"),
+        (["gpt", "openai"], "openai", "openai_api_key"),
+        (["gemini", "google"], "gemini", "gemini_api_key"),
+        (["openrouter", "router"], "openrouter", "openrouter_api_key"),
+        (["mistral"], "mistral", "mistral_api_key"),
+        (["groq", "llama"], "groq", "groq_api_key"),
+        (["deepseek"], "deepseek", "deepseek_api_key"),
+        (["together"], "together", "together_api_key"),
+        (["fireworks"], "fireworks", "fireworks_api_key"),
+        (["perplexity", "sonar"], "perplexity", "perplexity_api_key"),
+        (["cohere", "command"], "cohere", "cohere_api_key"),
+        (["ai21", "jamba"], "ai21", "ai21_api_key"),
+        (["xai", "grok"], "xai", "xai_api_key"),
+    ]
+
+    for keywords, provider_name, key_attr in _MODEL_PROVIDER_MAP:
+        if any(kw in model for kw in keywords):
+            if settings and getattr(settings, key_attr, None):
+                return provider_name, getattr(settings, key_attr)
+            break  # matched model but no key -- fall through to fallback
 
     # Fallback: try any available key (in priority order)
+    _FALLBACK_ORDER: list[tuple[str, str]] = [
+        ("anthropic", "anthropic_api_key"),
+        ("openai", "openai_api_key"),
+        ("gemini", "gemini_api_key"),
+        ("openrouter", "openrouter_api_key"),
+        ("mistral", "mistral_api_key"),
+        ("groq", "groq_api_key"),
+        ("deepseek", "deepseek_api_key"),
+        ("together", "together_api_key"),
+        ("fireworks", "fireworks_api_key"),
+        ("perplexity", "perplexity_api_key"),
+        ("cohere", "cohere_api_key"),
+        ("ai21", "ai21_api_key"),
+        ("xai", "xai_api_key"),
+    ]
+
     if settings:
-        if settings.anthropic_api_key:
-            return "anthropic", settings.anthropic_api_key
-        if settings.openai_api_key:
-            return "openai", settings.openai_api_key
-        if settings.gemini_api_key:
-            return "gemini", settings.gemini_api_key
-        if settings.openrouter_api_key:
-            return "openrouter", settings.openrouter_api_key
-        if settings.mistral_api_key:
-            return "mistral", settings.mistral_api_key
-        if settings.groq_api_key:
-            return "groq", settings.groq_api_key
-        if settings.deepseek_api_key:
-            return "deepseek", settings.deepseek_api_key
+        for provider_name, key_attr in _FALLBACK_ORDER:
+            key_val = getattr(settings, key_attr, None)
+            if key_val:
+                return provider_name, key_val
 
     msg = (
         "No AI API key configured. Please add your API key in Settings > AI. "
-        "Supported: Anthropic, OpenAI, Gemini, OpenRouter, Mistral, Groq, DeepSeek."
+        "Supported: Anthropic, OpenAI, Gemini, OpenRouter, Mistral, Groq, DeepSeek, "
+        "Together, Fireworks, Perplexity, Cohere, AI21, xAI."
     )
     raise ValueError(msg)
