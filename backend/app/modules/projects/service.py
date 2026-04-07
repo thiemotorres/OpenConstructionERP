@@ -72,10 +72,22 @@ class ProjectService:
 
     # ── Read ──────────────────────────────────────────────────────────────
 
-    async def get_project(self, project_id: uuid.UUID) -> Project:
-        """Get project by ID. Raises 404 if not found."""
+    async def get_project(
+        self, project_id: uuid.UUID, *, include_archived: bool = False
+    ) -> Project:
+        """Get project by ID. Raises 404 if not found OR archived.
+
+        Pass `include_archived=True` to also accept archived projects (used by
+        admins, restore flows, and the soft-delete itself).
+        """
         project = await self.repo.get_by_id(project_id)
         if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found",
+            )
+        if not include_archived and project.status == "archived":
+            # Soft-deleted projects appear as gone to normal callers.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Project not found",
@@ -91,12 +103,17 @@ class ProjectService:
         status_filter: str | None = None,
         is_admin: bool = False,
     ) -> tuple[list[Project], int]:
-        """List projects for a user with pagination. Admins see all."""
+        """List projects for a user with pagination. Admins see all.
+
+        Archived projects are excluded by default; pass status_filter='archived'
+        explicitly to see soft-deleted ones.
+        """
         return await self.repo.list_for_user(
             owner_id,
             offset=offset,
             limit=limit,
             status=status_filter,
+            exclude_archived=(status_filter is None),
             is_admin=is_admin,
         )
 
@@ -141,9 +158,12 @@ class ProjectService:
     async def delete_project(self, project_id: uuid.UUID) -> None:
         """Soft-delete a project by setting status to 'archived'.
 
-        Raises 404 if not found.
+        Raises 404 if not found. Idempotent — re-archiving an archived
+        project is a no-op (returns 204) so the user gets a clean delete UX.
         """
-        project = await self.get_project(project_id)
+        project = await self.get_project(project_id, include_archived=True)
+        if project.status == "archived":
+            return  # Already archived — silently succeed
         owner_id = str(project.owner_id)  # Save before expire_all()
 
         await self.repo.update_fields(project_id, status="archived")

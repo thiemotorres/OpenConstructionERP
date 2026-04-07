@@ -29,17 +29,22 @@ class ProjectRepository:
         offset: int = 0,
         limit: int = 50,
         status: str | None = None,
+        exclude_archived: bool = True,
         is_admin: bool = False,
     ) -> tuple[list[Project], int]:
         """List projects for a user with pagination. Returns (projects, total_count).
 
         Admins see all projects; regular users see only their own.
+        Archived (soft-deleted) projects are excluded by default; pass an
+        explicit `status` to override.
         """
         base = select(Project)
         if not is_admin:
             base = base.where(Project.owner_id == owner_id)
         if status is not None:
             base = base.where(Project.status == status)
+        elif exclude_archived:
+            base = base.where(Project.status != "archived")
 
         # Count
         count_stmt = select(func.count()).select_from(base.subquery())

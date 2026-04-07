@@ -216,6 +216,11 @@ class ChangeOrderService:
                 detail="Cannot add items to approved/rejected change orders",
             )
 
+        # Capture identifying fields BEFORE the recalculation. update_fields
+        # expires the session, so accessing `order.code` afterwards would
+        # trigger a lazy load and crash with MissingGreenlet in async context.
+        order_code = order.code
+
         cost_delta = (data.new_quantity * data.new_rate) - (
             data.original_quantity * data.original_rate
         )
@@ -237,7 +242,12 @@ class ChangeOrderService:
 
         await self._recalculate_cost_impact(order_id)
 
-        logger.info("Item added to change order %s: %s", order.code, data.description[:40])
+        # _recalculate_cost_impact expires all session objects, so the freshly
+        # created item's attributes are stale — refresh before returning so the
+        # router can build the response without lazy-loading.
+        await self.session.refresh(item)
+
+        logger.info("Item added to change order %s: %s", order_code, data.description[:40])
         return item
 
     async def update_item(
@@ -298,6 +308,9 @@ class ChangeOrderService:
                 detail="Cannot delete items from approved/rejected change orders",
             )
 
+        # Capture the code before recalculation expires the session.
+        order_code = order.code
+
         item = await self.repo.get_item_by_id(item_id)
         if item is None or item.change_order_id != order_id:
             raise HTTPException(
@@ -308,7 +321,7 @@ class ChangeOrderService:
         await self.repo.delete_item(item_id)
         await self._recalculate_cost_impact(order_id)
 
-        logger.info("Item deleted from change order %s: %s", order.code, item_id)
+        logger.info("Item deleted from change order %s: %s", order_code, item_id)
 
     async def _recalculate_cost_impact(self, order_id: uuid.UUID) -> None:
         """Recalculate the total cost impact from all items."""

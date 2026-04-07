@@ -19,7 +19,7 @@ Endpoints:
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep
 from app.modules.costmodel.schemas import (
@@ -248,8 +248,30 @@ async def generate_budget(
     body: dict,
     service: CostModelService = Depends(_get_service),
 ) -> list[BudgetLineResponse]:
-    """Auto-generate budget lines from BOQ positions."""
-    boq_id = uuid.UUID(str(body.get("boq_id", "")))
+    """Auto-generate budget lines from BOQ positions.
+
+    The request body should look like ``{"boq_id": "<uuid>"}``. If `boq_id` is
+    omitted, the project's first/largest BOQ is used automatically.
+    """
+    raw_boq_id = body.get("boq_id") if isinstance(body, dict) else None
+    if raw_boq_id:
+        try:
+            boq_id = uuid.UUID(str(raw_boq_id))
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid boq_id: {e}",
+            )
+    else:
+        # Auto-pick: project's first BOQ (most-positions wins)
+        picked = await service.pick_default_boq(project_id)
+        if picked is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No BOQ found for this project — create one first.",
+            )
+        boq_id = picked
+
     lines = await service.generate_budget_from_boq(project_id, boq_id)
     return [_budget_line_to_response(line) for line in lines]
 

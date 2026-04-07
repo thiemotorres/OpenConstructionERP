@@ -670,6 +670,7 @@ def create_app() -> FastAPI:
             from app.modules.markups import models as _markups_models  # noqa: F401
             from app.modules.punchlist import models as _punchlist_models  # noqa: F401
             from app.modules.fieldreports import models as _fieldreports_models  # noqa: F401
+            from app.modules.requirements import models as _requirements_models  # noqa: F401
 
             # SQLite auto-migration: add missing columns before create_all
             from app.core.sqlite_migrator import sqlite_auto_migrate

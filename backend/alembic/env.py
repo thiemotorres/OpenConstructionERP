@@ -27,6 +27,13 @@ from app.modules.ai import models as _ai  # noqa: F401
 from app.modules.tendering import models as _tender  # noqa: F401
 from app.modules.catalog import models as _catalog  # noqa: F401
 from app.modules.takeoff import models as _takeoff  # noqa: F401
+from app.modules.changeorders import models as _changeorders  # noqa: F401
+from app.modules.risk import models as _risk  # noqa: F401
+from app.modules.documents import models as _documents  # noqa: F401
+from app.modules.markups import models as _markups  # noqa: F401
+from app.modules.punchlist import models as _punchlist  # noqa: F401
+from app.modules.fieldreports import models as _fieldreports  # noqa: F401
+from app.modules.requirements import models as _requirements  # noqa: F401
 
 config = context.config
 settings = get_settings()

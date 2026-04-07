@@ -880,6 +880,24 @@ class CostModelService:
 
     # ── Generation helpers ─────────────────────────────────────────────────
 
+    async def pick_default_boq(self, project_id: uuid.UUID) -> uuid.UUID | None:
+        """Find the largest BOQ for a project (used when caller omits boq_id).
+
+        Returns the BOQ id with the most positions, or None if the project
+        has no BOQs.
+        """
+        from app.modules.boq.repository import BOQRepository
+
+        boq_repo = BOQRepository(self.session)
+        boqs, _ = await boq_repo.list_for_project(project_id, limit=100)
+        if not boqs:
+            return None
+        # Pick the most recently updated BOQ — that's the one the user is
+        # actively working on. position_count is computed lazily so don't
+        # rely on it here.
+        sorted_boqs = sorted(boqs, key=lambda b: b.updated_at, reverse=True)
+        return sorted_boqs[0].id
+
     async def generate_budget_from_boq(
         self, project_id: uuid.UUID, boq_id: uuid.UUID
     ) -> list[BudgetLine]:
