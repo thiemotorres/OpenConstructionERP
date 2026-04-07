@@ -2,11 +2,14 @@
  * API helpers for BIM Hub.
  *
  * Endpoints:
- *   GET /v1/bim_hub?project_id=X         — list models for a project
- *   GET /v1/bim_hub/models/{id}/elements  — list elements for a model
+ *   GET  /v1/bim_hub?project_id=X          — list models for a project
+ *   POST /v1/bim_hub/upload                 — upload BIM data (DataFrame + optional DAE)
+ *   GET  /v1/bim_hub/models/{id}/elements   — list elements for a model
+ *   GET  /v1/bim_hub/models/{id}/geometry   — serve DAE geometry file
  */
 
 import { apiGet } from '@/shared/lib/api';
+import { useAuthStore } from '@/stores/useAuthStore';
 import type { BIMElementData, BIMModelData } from '@/shared/ui/BIMViewer';
 
 /* ── Response Types ────────────────────────────────────────────────────── */
@@ -19,6 +22,14 @@ export interface BIMModelsResponse {
 export interface BIMElementsResponse {
   elements: BIMElementData[];
   total: number;
+}
+
+export interface BIMUploadResponse {
+  model_id: string;
+  element_count: number;
+  storeys: string[];
+  disciplines: string[];
+  has_geometry: boolean;
 }
 
 /* ── API Functions ─────────────────────────────────────────────────────── */
@@ -37,4 +48,58 @@ export async function fetchBIMElements(
   return apiGet<BIMElementsResponse>(
     `/v1/bim_hub/models/${encodeURIComponent(modelId)}/elements?limit=${limit}&offset=${offset}`,
   );
+}
+
+/** Get the geometry file URL for a BIM model. */
+export function getGeometryUrl(modelId: string): string {
+  return `/api/v1/bim_hub/models/${encodeURIComponent(modelId)}/geometry`;
+}
+
+/** Upload BIM data (DataFrame + optional geometry file). */
+export async function uploadBIMData(
+  projectId: string,
+  name: string,
+  discipline: string,
+  dataFile: File,
+  geometryFile?: File | null,
+): Promise<BIMUploadResponse> {
+  const formData = new FormData();
+  formData.append('data_file', dataFile);
+  if (geometryFile) {
+    formData.append('geometry_file', geometryFile);
+  }
+
+  const params = new URLSearchParams({
+    project_id: projectId,
+    name,
+    discipline,
+  });
+
+  const token = useAuthStore.getState().accessToken;
+  const headers: HeadersInit = {
+    Accept: 'application/json',
+    'X-DDC-Client': 'OE/1.0',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`/api/v1/bim_hub/upload?${params.toString()}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = 'Upload failed';
+    try {
+      const body = await response.json();
+      detail = body.detail || detail;
+    } catch {
+      // ignore parse errors
+    }
+    throw new Error(detail);
+  }
+
+  return response.json();
 }

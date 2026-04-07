@@ -7,10 +7,10 @@
  * Route: /projects/:projectId/bim  or  /bim  (uses project context store)
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   ChevronRight,
@@ -21,12 +21,19 @@ import {
   FolderOpen,
   Link2,
   Search,
+  Upload,
+  Database,
+  FileBox,
+  X,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { Button, Badge, EmptyState, Breadcrumb } from '@/shared/ui';
 import { BIMViewer, DisciplineToggle } from '@/shared/ui/BIMViewer';
 import type { BIMElementData, BIMModelData } from '@/shared/ui/BIMViewer';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { fetchBIMModels, fetchBIMElements } from './api';
+import { useToastStore } from '@/stores/useToastStore';
+import { fetchBIMModels, fetchBIMElements, uploadBIMData, getGeometryUrl } from './api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -221,16 +228,291 @@ function ModelCard({
   );
 }
 
+/* ── Upload Card ──────────────────────────────────────────────────────── */
+
+function UploadCard({
+  projectId,
+  onUploadComplete,
+}: {
+  projectId: string;
+  onUploadComplete: (modelId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [dataFile, setDataFile] = useState<File | null>(null);
+  const [geometryFile, setGeometryFile] = useState<File | null>(null);
+  const [modelName, setModelName] = useState('');
+  const [discipline, setDiscipline] = useState('architecture');
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{
+    elementCount: number;
+    storeys: string[];
+    disciplines: string[];
+    hasGeometry: boolean;
+  } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const dataInputRef = useRef<HTMLInputElement>(null);
+  const geoInputRef = useRef<HTMLInputElement>(null);
+  const addToast = useToastStore((s) => s.addToast);
+
+  const handleDataFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setDataFile(file);
+    setUploadResult(null);
+    setUploadError(null);
+    // Auto-fill model name from file name (without extension)
+    if (file && !modelName) {
+      const baseName = file.name.replace(/\.(csv|xlsx|xls)$/i, '');
+      setModelName(baseName);
+    }
+  }, [modelName]);
+
+  const handleGeoFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setGeometryFile(e.target.files?.[0] ?? null);
+    setUploadResult(null);
+    setUploadError(null);
+  }, []);
+
+  const handleUpload = useCallback(async () => {
+    if (!dataFile) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setUploadResult(null);
+
+    try {
+      const result = await uploadBIMData(
+        projectId,
+        modelName || 'Imported Model',
+        discipline,
+        dataFile,
+        geometryFile,
+      );
+      setUploadResult({
+        elementCount: result.element_count,
+        storeys: result.storeys,
+        disciplines: result.disciplines,
+        hasGeometry: result.has_geometry,
+      });
+      addToast({
+        type: 'success',
+        title: t('bim.upload_success', { defaultValue: 'BIM data uploaded' }),
+        message: t('bim.upload_success_desc', {
+          defaultValue: '{{count}} elements imported successfully.',
+          count: result.element_count,
+        }),
+      });
+      onUploadComplete(result.model_id);
+      // Reset form
+      setDataFile(null);
+      setGeometryFile(null);
+      setModelName('');
+      if (dataInputRef.current) dataInputRef.current.value = '';
+      if (geoInputRef.current) geoInputRef.current.value = '';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setUploadError(msg);
+      addToast({
+        type: 'error',
+        title: t('bim.upload_failed', { defaultValue: 'Upload failed' }),
+        message: msg,
+      });
+    } finally {
+      setUploading(false);
+    }
+  }, [projectId, modelName, discipline, dataFile, geometryFile, onUploadComplete, addToast, t]);
+
+  const disciplineOptions = [
+    { value: 'architecture', label: t('bim.disc_architecture', { defaultValue: 'Architecture' }) },
+    { value: 'structural', label: t('bim.disc_structural', { defaultValue: 'Structural' }) },
+    { value: 'mechanical', label: t('bim.disc_mechanical', { defaultValue: 'Mechanical' }) },
+    { value: 'electrical', label: t('bim.disc_electrical', { defaultValue: 'Electrical' }) },
+    { value: 'plumbing', label: t('bim.disc_plumbing', { defaultValue: 'Plumbing' }) },
+    { value: 'fire_protection', label: t('bim.disc_fire', { defaultValue: 'Fire Protection' }) },
+    { value: 'civil', label: t('bim.disc_civil', { defaultValue: 'Civil' }) },
+    { value: 'landscape', label: t('bim.disc_landscape', { defaultValue: 'Landscape' }) },
+    { value: 'mixed', label: t('bim.disc_mixed', { defaultValue: 'Mixed / Multi-discipline' }) },
+  ];
+
+  return (
+    <div className="border border-border-light rounded-lg bg-surface-primary">
+      <div className="p-4 border-b border-border-light">
+        <div className="flex items-center gap-2">
+          <Upload size={18} className="text-oe-blue" />
+          <h2 className="text-sm font-semibold text-content-primary">
+            {t('bim.upload_title', { defaultValue: 'Upload BIM Data' })}
+          </h2>
+        </div>
+        <p className="text-xs text-content-tertiary mt-1">
+          {t('bim.upload_desc', {
+            defaultValue:
+              'Upload element data (CSV/Excel) and optional 3D geometry (DAE/COLLADA) from your CAD converter.',
+          })}
+        </p>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* File drop zones */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Data file (required) */}
+          <label
+            className="flex flex-col items-center gap-2 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors hover:border-oe-blue hover:bg-oe-blue-subtle/30"
+          >
+            <Database size={24} className="text-content-tertiary" />
+            <span className="text-xs font-medium text-content-primary">
+              {t('bim.upload_data_label', { defaultValue: 'Element Data (required)' })}
+            </span>
+            <span className="text-2xs text-content-tertiary">
+              {t('bim.upload_data_hint', { defaultValue: 'CSV or Excel from CAD converter' })}
+            </span>
+            <span className="text-2xs text-content-quaternary">
+              {t('bim.upload_data_columns', {
+                defaultValue: 'Columns: element_id, type, name, storey, area, volume, length',
+              })}
+            </span>
+            {dataFile && (
+              <Badge variant="blue" size="sm">
+                {dataFile.name}
+              </Badge>
+            )}
+            <input
+              ref={dataInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={handleDataFileChange}
+            />
+          </label>
+
+          {/* Geometry file (optional) */}
+          <label
+            className="flex flex-col items-center gap-2 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors hover:border-oe-blue hover:bg-oe-blue-subtle/30"
+          >
+            <FileBox size={24} className="text-content-tertiary" />
+            <span className="text-xs font-medium text-content-primary">
+              {t('bim.upload_geo_label', { defaultValue: '3D Geometry (optional)' })}
+            </span>
+            <span className="text-2xs text-content-tertiary">
+              {t('bim.upload_geo_hint', {
+                defaultValue: 'DAE/COLLADA file with matching element IDs',
+              })}
+            </span>
+            {geometryFile && (
+              <Badge variant="blue" size="sm">
+                {geometryFile.name}
+              </Badge>
+            )}
+            <input
+              ref={geoInputRef}
+              type="file"
+              accept=".dae,.glb,.gltf"
+              className="hidden"
+              onChange={handleGeoFileChange}
+            />
+          </label>
+        </div>
+
+        {/* Options row */}
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs text-content-tertiary mb-1">
+              {t('bim.model_name', { defaultValue: 'Model name' })}
+            </label>
+            <input
+              type="text"
+              className="w-full text-sm py-1.5 px-3 rounded-lg border border-border-light bg-surface-secondary focus:outline-none focus:ring-1 focus:ring-oe-blue"
+              placeholder={t('bim.model_name_placeholder', { defaultValue: 'e.g. Building A — Architecture' })}
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+            />
+          </div>
+
+          <div className="w-44">
+            <label className="block text-xs text-content-tertiary mb-1">
+              {t('bim.discipline_label', { defaultValue: 'Discipline' })}
+            </label>
+            <select
+              className="w-full text-sm py-1.5 px-3 rounded-lg border border-border-light bg-surface-secondary focus:outline-none focus:ring-1 focus:ring-oe-blue"
+              value={discipline}
+              onChange={(e) => setDiscipline(e.target.value)}
+            >
+              {disciplineOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleUpload}
+            disabled={!dataFile || uploading}
+          >
+            {uploading ? (
+              <>
+                <Loader2 size={14} className="me-1.5 animate-spin" />
+                {t('bim.uploading', { defaultValue: 'Uploading...' })}
+              </>
+            ) : (
+              <>
+                <Upload size={14} className="me-1.5" />
+                {t('bim.upload_btn', { defaultValue: 'Upload' })}
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Upload result */}
+        {uploadResult && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+            <CheckCircle2 size={16} className="text-green-600 mt-0.5 shrink-0" />
+            <div className="text-xs text-green-800">
+              <p className="font-medium">
+                {t('bim.upload_result', {
+                  defaultValue: '{{count}} elements imported',
+                  count: uploadResult.elementCount,
+                })}
+                {uploadResult.hasGeometry && (
+                  <span className="ms-1 text-green-600">
+                    {t('bim.upload_with_geometry', { defaultValue: '(with 3D geometry)' })}
+                  </span>
+                )}
+              </p>
+              {uploadResult.storeys.length > 0 && (
+                <p className="mt-0.5">
+                  {t('bim.upload_storeys', { defaultValue: 'Storeys:' })}{' '}
+                  {uploadResult.storeys.join(', ')}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Upload error */}
+        {uploadError && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+            <AlertCircle size={16} className="text-red-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-red-800">{uploadError}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── BIM Page ──────────────────────────────────────────────────────────── */
 
 export function BIMPage() {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const contextProjectId = useProjectContextStore((s) => s.activeProjectId);
   const contextProjectName = useProjectContextStore((s) => s.activeProjectName);
   const projectId = urlProjectId || contextProjectId || '';
 
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
@@ -259,6 +541,13 @@ export function BIMPage() {
   });
 
   const elements: BIMElementData[] = elementsQuery.data?.elements ?? [];
+
+  // Compute geometry URL if any elements have mesh_ref
+  const geometryUrl = useMemo(() => {
+    if (!activeModelId) return null;
+    const hasMeshRef = elements.some((el) => !!el.mesh_ref);
+    return hasMeshRef ? getGeometryUrl(activeModelId) : null;
+  }, [activeModelId, elements]);
 
   // Build tree
   const tree = useMemo(() => buildElementTree(elements), [elements]);
@@ -320,6 +609,18 @@ export function BIMPage() {
     }));
   }, []);
 
+  const handleUploadComplete = useCallback(
+    (modelId: string) => {
+      // Invalidate models query to reload the list
+      queryClient.invalidateQueries({ queryKey: ['bim-models', projectId] });
+      // Activate the newly uploaded model
+      setActiveModelId(modelId);
+      setSelectedElementId(null);
+      setShowUpload(false);
+    },
+    [queryClient, projectId],
+  );
+
   // Breadcrumb
   const breadcrumbItems = useMemo(() => {
     const items = [
@@ -366,20 +667,46 @@ export function BIMPage() {
           <h1 className="text-xl font-bold text-content-primary">
             {t('bim.title', { defaultValue: 'BIM Viewer' })}
           </h1>
-          {selectedElementId && (
+          <div className="flex items-center gap-2">
+            {selectedElementId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  /* Link to BOQ — future implementation */
+                }}
+              >
+                <Link2 size={14} className="me-1.5" />
+                {t('bim.link_to_boq', { defaultValue: 'Link to BOQ' })}
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              variant={showUpload ? 'secondary' : 'primary'}
               size="sm"
-              onClick={() => {
-                /* Link to BOQ — future implementation */
-              }}
+              onClick={() => setShowUpload((prev) => !prev)}
             >
-              <Link2 size={14} className="me-1.5" />
-              {t('bim.link_to_boq', { defaultValue: 'Link to BOQ' })}
+              {showUpload ? (
+                <>
+                  <X size={14} className="me-1.5" />
+                  {t('bim.hide_upload', { defaultValue: 'Close' })}
+                </>
+              ) : (
+                <>
+                  <Upload size={14} className="me-1.5" />
+                  {t('bim.show_upload', { defaultValue: 'Upload BIM Data' })}
+                </>
+              )}
             </Button>
-          )}
+          </div>
         </div>
       </div>
+
+      {/* Upload card (collapsible) */}
+      {showUpload && (
+        <div className="px-6 py-3 border-b border-border-light">
+          <UploadCard projectId={projectId} onUploadComplete={handleUploadComplete} />
+        </div>
+      )}
 
       {/* Split layout */}
       <div className="flex flex-1 min-h-0">
@@ -415,8 +742,19 @@ export function BIMPage() {
                   {t('bim.no_models', { defaultValue: 'No models uploaded yet' })}
                 </p>
                 <p className="text-2xs text-content-quaternary">
-                  {t('bim.no_models_hint', { defaultValue: 'Upload CAD files in the Takeoff module to populate this view.' })}
+                  {t('bim.no_models_hint_upload', {
+                    defaultValue: 'Click "Upload BIM Data" above to import element data and 3D geometry from your CAD converter.',
+                  })}
                 </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowUpload(true)}
+                  className="mt-1"
+                >
+                  <Upload size={12} className="me-1" />
+                  {t('bim.show_upload', { defaultValue: 'Upload BIM Data' })}
+                </Button>
               </div>
             )}
           </div>
@@ -497,6 +835,7 @@ export function BIMPage() {
                   ? t('bim.load_error', { defaultValue: 'Failed to load model elements' })
                   : null
               }
+              geometryUrl={geometryUrl}
               className="h-full"
             />
           ) : (
@@ -511,7 +850,7 @@ export function BIMPage() {
                 description={
                   modelsQuery.data?.models?.length
                     ? t('bim.select_model_desc', { defaultValue: 'Choose a BIM model from the list to visualize it in 3D.' })
-                    : t('bim.getting_started_desc', { defaultValue: 'Upload IFC, RVT, DWG, or DGN files via the Takeoff module to see your building models in 3D. Elements will be extracted automatically and can be linked to BOQ positions for quantity verification.' })
+                    : t('bim.getting_started_desc', { defaultValue: 'Upload element data (CSV/Excel) and optional 3D geometry (DAE) from your CAD converter to visualize building models in 3D. Elements can be linked to BOQ positions for quantity verification.' })
                 }
               />
             </div>

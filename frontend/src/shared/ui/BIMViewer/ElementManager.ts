@@ -2,7 +2,8 @@
  * ElementManager — loads and manages BIM element meshes in the Three.js scene.
  *
  * Loads elements from the BIM Hub API. For each element:
- * - If mesh_ref is available: loads GLB via GLTFLoader (future)
+ * - If DAE geometry is loaded: matches mesh node IDs to element stable_ids
+ * - If mesh_ref is available but no DAE: creates placeholder box geometry
  * - Otherwise: creates placeholder box geometry from bounding_box
  *
  * Elements are colored by discipline:
@@ -11,6 +12,7 @@
  */
 
 import * as THREE from 'three';
+import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
 import type { SceneManager } from './SceneManager';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -72,10 +74,12 @@ function getDisciplineColor(discipline: string): number {
 export class ElementManager {
   private sceneManager: SceneManager;
   private elementGroup: THREE.Group;
+  private daeGroup: THREE.Group | null = null;
   private meshMap = new Map<string, THREE.Mesh>();
   private elementDataMap = new Map<string, BIMElementData>();
   private baseMaterials = new Map<string, THREE.MeshStandardMaterial>();
   private wireframeEnabled = false;
+  private geometryLoaded = false;
 
   constructor(sceneManager: SceneManager) {
     this.sceneManager = sceneManager;
@@ -91,7 +95,8 @@ export class ElementManager {
     for (const el of elements) {
       this.elementDataMap.set(el.id, el);
 
-      if (el.bounding_box) {
+      // Only create box placeholders when DAE geometry is not loaded
+      if (!this.geometryLoaded && el.bounding_box) {
         const mesh = this.createBoxMesh(el);
         this.meshMap.set(el.id, mesh);
         this.elementGroup.add(mesh);
@@ -99,9 +104,109 @@ export class ElementManager {
     }
 
     // Zoom to fit all loaded elements
-    if (this.meshMap.size > 0) {
+    if (this.meshMap.size > 0 || (this.daeGroup && this.daeGroup.children.length > 0)) {
       this.sceneManager.zoomToFit();
     }
+  }
+
+  /**
+   * Load DAE/COLLADA geometry from the server and match mesh nodes
+   * to element IDs stored in elementDataMap.
+   *
+   * After loading, each mesh node whose name matches an element's stable_id
+   * (mesh_ref) gets colored by discipline and wired up for selection.
+   */
+  loadDAEGeometry(geometryUrl: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const loader = new ColladaLoader();
+      loader.load(
+        geometryUrl,
+        (collada) => {
+          if (!collada || !collada.scene) {
+            reject(new Error('ColladaLoader returned empty result'));
+            return;
+          }
+
+          // Remove any existing placeholder meshes for elements that have geometry
+          this.clearPlaceholders();
+
+          this.daeGroup = new THREE.Group();
+          this.daeGroup.name = 'bim_dae_geometry';
+          const scene = collada.scene;
+
+          // Build a lookup from stable_id (mesh_ref) to element data + element DB id
+          const stableIdToElement = new Map<string, BIMElementData>();
+          for (const el of this.elementDataMap.values()) {
+            if (el.mesh_ref) {
+              stableIdToElement.set(el.mesh_ref, el);
+            }
+          }
+
+          // Traverse the loaded DAE scene and match mesh nodes
+          scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const nodeName = child.name || '';
+              // Try matching node name or parent node name to element stable_id
+              const element =
+                stableIdToElement.get(nodeName) ||
+                stableIdToElement.get(child.parent?.name || '');
+
+              if (element) {
+                // Apply discipline-based material
+                const discipline = element.discipline || 'other';
+                const material = this.getMaterial(discipline);
+                child.material = material;
+                child.castShadow = true;
+                child.receiveShadow = true;
+
+                // Store element data for raycasting / picking
+                child.userData = {
+                  elementId: element.id,
+                  elementData: element,
+                };
+
+                this.meshMap.set(element.id, child);
+              } else {
+                // Unmatched mesh — apply default material
+                const material = this.getMaterial('other');
+                child.material = material;
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            }
+          });
+
+          this.daeGroup.add(scene);
+          this.elementGroup.add(this.daeGroup);
+          this.geometryLoaded = true;
+
+          // Zoom to fit
+          this.sceneManager.zoomToFit();
+
+          resolve();
+        },
+        undefined, // onProgress
+        (error) => {
+          console.warn('Failed to load DAE geometry:', error);
+          // On failure, keep existing placeholder boxes
+          reject(error);
+        },
+      );
+    });
+  }
+
+  /** Returns true if DAE geometry was loaded. */
+  hasLoadedGeometry(): boolean {
+    return this.geometryLoaded;
+  }
+
+  /** Remove placeholder box meshes (used when DAE geometry replaces them). */
+  private clearPlaceholders(): void {
+    for (const mesh of this.meshMap.values()) {
+      mesh.geometry.dispose();
+      this.elementGroup.remove(mesh);
+    }
+    this.meshMap.clear();
   }
 
   private createBoxMesh(element: BIMElementData): THREE.Mesh {
@@ -227,6 +332,18 @@ export class ElementManager {
     }
     this.meshMap.clear();
     this.elementDataMap.clear();
+
+    // Remove DAE geometry group if loaded
+    if (this.daeGroup) {
+      this.daeGroup.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry?.dispose();
+        }
+      });
+      this.elementGroup.remove(this.daeGroup);
+      this.daeGroup = null;
+    }
+    this.geometryLoaded = false;
     // Materials are reused — dispose them only on full destroy
   }
 

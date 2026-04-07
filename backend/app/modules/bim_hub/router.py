@@ -4,9 +4,11 @@ Endpoints:
     Models:
         GET    /                                — List models for a project
         POST   /                                — Create model
+        POST   /upload                          — Upload BIM data (DataFrame + optional DAE)
         GET    /{model_id}                      — Get single model
         PATCH  /{model_id}                      — Update model
         DELETE /{model_id}                      — Delete model
+        GET    /models/{model_id}/geometry       — Serve DAE geometry file
 
     Elements:
         GET    /models/{model_id}/elements      — List elements (paginated, filterable)
@@ -29,9 +31,16 @@ Endpoints:
         GET    /diffs/{diff_id}                   — Get diff
 """
 
+import csv
+import io
+import json
+import logging
+import pathlib
 import uuid
+from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.dependencies import CurrentUserId, SessionDep
 from app.modules.bim_hub.schemas import (
@@ -55,11 +64,515 @@ from app.modules.bim_hub.schemas import (
 )
 from app.modules.bim_hub.service import BIMHubService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+# Base directory for storing BIM geometry files
+_BIM_DATA_DIR = pathlib.Path(__file__).resolve().parents[4] / "data" / "bim"
 
 
 def _get_service(session: SessionDep) -> BIMHubService:
     return BIMHubService(session)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DataFrame column alias detection (flexible header matching)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_BIM_COLUMN_ALIASES: dict[str, list[str]] = {
+    "element_id": [
+        "element_id",
+        "elementid",
+        "id",
+        "guid",
+        "ifc_guid",
+        "ifcguid",
+        "global_id",
+        "globalid",
+        "stable_id",
+        "stableid",
+        "unique_id",
+        "uniqueid",
+        "revit_id",
+        "elem_id",
+    ],
+    "element_type": [
+        "element_type",
+        "elementtype",
+        "type",
+        "category",
+        "ifc_type",
+        "ifctype",
+        "object_type",
+        "objecttype",
+        "family",
+        "class",
+    ],
+    "name": [
+        "name",
+        "element_name",
+        "elementname",
+        "description",
+        "bezeichnung",
+        "label",
+        "title",
+        "family_name",
+        "familyname",
+    ],
+    "storey": [
+        "storey",
+        "story",
+        "level",
+        "floor",
+        "etage",
+        "geschoss",
+        "building_storey",
+        "buildingstorey",
+        "ifc_storey",
+    ],
+    "discipline": [
+        "discipline",
+        "disziplin",
+        "trade",
+        "gewerk",
+        "domain",
+        "system",
+    ],
+    "area_m2": [
+        "area_m2",
+        "area",
+        "flaeche",
+        "fläche",
+        "surface_area",
+        "surfacearea",
+        "gross_area",
+        "grossarea",
+        "net_area",
+        "netarea",
+    ],
+    "volume_m3": [
+        "volume_m3",
+        "volume",
+        "volumen",
+        "gross_volume",
+        "grossvolume",
+        "net_volume",
+        "netvolume",
+    ],
+    "length_m": [
+        "length_m",
+        "length",
+        "laenge",
+        "länge",
+        "span",
+    ],
+    "weight_kg": [
+        "weight_kg",
+        "weight",
+        "gewicht",
+        "mass",
+        "masse",
+    ],
+    "properties": [
+        "properties",
+        "props",
+        "attributes",
+        "parameters",
+        "pset",
+    ],
+}
+
+
+def _match_bim_column(header: str) -> str | None:
+    """Match a header string to a canonical BIM column name."""
+    normalised = header.strip().lower().replace(" ", "_").replace("-", "_")
+    for canonical, aliases in _BIM_COLUMN_ALIASES.items():
+        if normalised in aliases:
+            return canonical
+    return normalised if normalised else None
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Parse a value to float, returning *default* on failure."""
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text:
+        return default
+    if "," in text and "." in text:
+        last_comma = text.rfind(",")
+        last_dot = text.rfind(".")
+        if last_comma > last_dot:
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(",", ".")
+    try:
+        return float(text)
+    except (ValueError, TypeError):
+        return default
+
+
+def _parse_bim_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
+    """Parse rows from a CSV file for BIM element import."""
+    for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            text = content_bytes.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        raise ValueError("Unable to decode CSV file — unsupported encoding")
+
+    sniffer = csv.Sniffer()
+    try:
+        dialect = sniffer.sniff(text[:4096], delimiters=",;\t|")
+    except csv.Error:
+        dialect = csv.excel  # type: ignore[assignment]
+
+    reader = csv.reader(io.StringIO(text), dialect)
+    raw_headers = next(reader, None)
+    if not raw_headers:
+        raise ValueError("CSV file is empty or has no header row")
+
+    column_map: dict[int, str] = {}
+    for idx, hdr in enumerate(raw_headers):
+        canonical = _match_bim_column(hdr)
+        if canonical:
+            column_map[idx] = canonical
+
+    rows: list[dict[str, Any]] = []
+    for raw_row in reader:
+        row: dict[str, Any] = {}
+        for idx, val in enumerate(raw_row):
+            canonical = column_map.get(idx)
+            if canonical:
+                row[canonical] = val.strip() if isinstance(val, str) else val
+        if row:
+            rows.append(row)
+
+    return rows
+
+
+def _parse_bim_rows_from_excel(content_bytes: bytes) -> list[dict[str, Any]]:
+    """Parse rows from an Excel (.xlsx) file for BIM element import."""
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(content_bytes), read_only=True, data_only=True)
+    ws = wb.active
+    if ws is None:
+        raise ValueError("Excel file has no worksheets")
+
+    rows_iter = ws.iter_rows(values_only=True)
+    raw_headers = next(rows_iter, None)
+    if not raw_headers:
+        raise ValueError("Excel file is empty or has no header row")
+
+    column_map: dict[int, str] = {}
+    for idx, hdr in enumerate(raw_headers):
+        if hdr is not None:
+            canonical = _match_bim_column(str(hdr))
+            if canonical:
+                column_map[idx] = canonical
+
+    rows: list[dict[str, Any]] = []
+    for raw_row in rows_iter:
+        row: dict[str, Any] = {}
+        for idx, val in enumerate(raw_row):
+            canonical = column_map.get(idx)
+            if canonical and val is not None:
+                row[canonical] = val
+        if row:
+            rows.append(row)
+
+    wb.close()
+    return rows
+
+
+def _rows_to_elements(
+    rows: list[dict[str, Any]],
+    has_geometry: bool,
+) -> list[dict[str, Any]]:
+    """Convert parsed rows into BIMElement-compatible dicts.
+
+    Builds quantities JSON from area_m2, volume_m3, length_m, weight_kg columns.
+    Parses properties column as JSON if present.
+    """
+    elements: list[dict[str, Any]] = []
+    quantity_keys = {"area_m2", "volume_m3", "length_m", "weight_kg"}
+
+    for row in rows:
+        eid = str(row.get("element_id", "")).strip()
+        if not eid:
+            continue
+
+        # Parse quantities
+        quantities: dict[str, float] = {}
+        for qk in quantity_keys:
+            val = row.get(qk)
+            if val is not None:
+                fval = _safe_float(val)
+                if fval != 0.0:
+                    quantities[qk] = fval
+
+        # Parse properties (could be JSON string)
+        raw_props = row.get("properties")
+        props: dict[str, Any] = {}
+        if isinstance(raw_props, str) and raw_props.strip():
+            try:
+                props = json.loads(raw_props)
+            except (json.JSONDecodeError, ValueError):
+                props = {"raw": raw_props}
+        elif isinstance(raw_props, dict):
+            props = raw_props
+
+        # Collect any extra columns not in known canonical keys as properties
+        known_keys = {
+            "element_id", "element_type", "name", "storey",
+            "discipline", "properties",
+        } | quantity_keys
+        for k, v in row.items():
+            if k not in known_keys and v is not None and str(v).strip():
+                props[k] = v
+
+        element: dict[str, Any] = {
+            "stable_id": eid,
+            "element_type": str(row.get("element_type", "")).strip() or None,
+            "name": str(row.get("name", "")).strip() or None,
+            "storey": str(row.get("storey", "")).strip() or None,
+            "discipline": str(row.get("discipline", "")).strip() or None,
+            "quantities": quantities,
+            "properties": props,
+            "mesh_ref": eid if has_geometry else None,
+        }
+        elements.append(element)
+
+    return elements
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Upload (DataFrame + optional DAE geometry)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/upload")
+async def upload_bim_data(
+    project_id: str = Query(..., description="Project UUID"),
+    name: str = Query(default="Imported Model", max_length=255),
+    discipline: str = Query(default="architecture", max_length=50),
+    data_file: UploadFile = File(..., description="CSV or Excel file with element data"),
+    geometry_file: UploadFile | None = File(
+        default=None, description="DAE/COLLADA geometry file"
+    ),
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    service: BIMHubService = Depends(_get_service),
+) -> dict[str, Any]:
+    """Upload BIM data from Cad2Data converter output.
+
+    Accepts a DataFrame file (CSV/Excel) with one row per building element
+    and an optional COLLADA (.dae) geometry file where each mesh node has
+    an ID matching ``element_id`` from the DataFrame.
+
+    Expected DataFrame columns (flexible auto-detection via aliases):
+    - **element_id / id / guid** -- unique element identifier (required)
+    - **element_type / type / category** -- element classification
+    - **name / description** -- human-readable name
+    - **storey / level / floor** -- building storey assignment
+    - **discipline / trade** -- discipline (architecture, structural, ...)
+    - **area_m2 / area** -- area in m2
+    - **volume_m3 / volume** -- volume in m3
+    - **length_m / length** -- length in m
+    - **weight_kg / weight** -- weight in kg
+    - **properties** -- JSON string of additional properties
+
+    Returns:
+        Summary with model_id, element_count, storeys, and disciplines.
+    """
+    # --- Validate data file ---
+    data_filename = (data_file.filename or "").lower()
+    if not data_filename.endswith((".csv", ".xlsx", ".xls")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported data file type. Please upload CSV (.csv) or Excel (.xlsx) file.",
+        )
+
+    data_content = await data_file.read()
+    if not data_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded data file is empty.",
+        )
+
+    # 50 MB limit for data files
+    if len(data_content) > 50 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Data file too large. Maximum size is 50 MB.",
+        )
+
+    # --- Validate geometry file (if provided) ---
+    has_geometry = False
+    geometry_content: bytes | None = None
+    if geometry_file is not None:
+        geo_filename = (geometry_file.filename or "").lower()
+        if not geo_filename.endswith((".dae", ".glb", ".gltf")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported geometry file type. Please upload DAE (.dae), GLB (.glb), or glTF (.gltf) file.",
+            )
+        geometry_content = await geometry_file.read()
+        if geometry_content:
+            # 200 MB limit for geometry files
+            if len(geometry_content) > 200 * 1024 * 1024:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Geometry file too large. Maximum size is 200 MB.",
+                )
+            has_geometry = True
+
+    # --- Parse data file ---
+    try:
+        if data_filename.endswith((".xlsx", ".xls")):
+            rows = _parse_bim_rows_from_excel(data_content)
+        else:
+            rows = _parse_bim_rows_from_csv(data_content)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse data file: {exc}",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error parsing BIM data file")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to parse data file: {exc}",
+        ) from exc
+
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No data rows found in the uploaded file.",
+        )
+
+    # --- Convert rows to element dicts ---
+    element_dicts = _rows_to_elements(rows, has_geometry=has_geometry)
+    if not element_dicts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid elements found. Ensure the file has an 'element_id' column.",
+        )
+
+    # --- Determine format from geometry file extension ---
+    geo_ext = ""
+    if geometry_file and geometry_file.filename:
+        geo_ext = pathlib.Path(geometry_file.filename).suffix.lstrip(".").lower()
+
+    model_format = geo_ext if geo_ext else "csv"
+
+    # --- Create BIM model ---
+    from app.modules.bim_hub.schemas import BIMModelCreate
+
+    model_data = BIMModelCreate(
+        project_id=uuid.UUID(project_id),
+        name=name,
+        discipline=discipline,
+        model_format=model_format,
+        status="processing",
+    )
+    model = await service.create_model(model_data, user_id=user_id)
+    model_id = model.id
+
+    # --- Save geometry file to disk ---
+    if has_geometry and geometry_content:
+        geo_dir = _BIM_DATA_DIR / str(project_id) / str(model_id)
+        geo_dir.mkdir(parents=True, exist_ok=True)
+        ext = pathlib.Path(geometry_file.filename or "geometry.dae").suffix or ".dae"  # type: ignore[union-attr]
+        geo_path = geo_dir / f"geometry{ext}"
+        geo_path.write_bytes(geometry_content)
+        logger.info("Saved BIM geometry: %s (%d bytes)", geo_path, len(geometry_content))
+
+    # --- Import elements ---
+    from app.modules.bim_hub.schemas import BIMElementCreate
+
+    elements_create = [
+        BIMElementCreate(
+            stable_id=ed["stable_id"],
+            element_type=ed.get("element_type"),
+            name=ed.get("name"),
+            storey=ed.get("storey"),
+            discipline=ed.get("discipline") or discipline,
+            quantities=ed.get("quantities", {}),
+            properties=ed.get("properties", {}),
+            mesh_ref=ed.get("mesh_ref"),
+        )
+        for ed in element_dicts
+    ]
+    created_elements = await service.bulk_import_elements(model_id, elements_create)
+
+    # Compute summary
+    storeys = sorted({e.storey for e in created_elements if e.storey})
+    disciplines_found = sorted({e.discipline for e in created_elements if e.discipline})
+
+    logger.info(
+        "BIM upload complete: model=%s, elements=%d, storeys=%d, disciplines=%s",
+        name,
+        len(created_elements),
+        len(storeys),
+        disciplines_found,
+    )
+
+    return {
+        "model_id": str(model_id),
+        "element_count": len(created_elements),
+        "storeys": storeys,
+        "disciplines": disciplines_found,
+        "has_geometry": has_geometry,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Geometry file serving
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.get("/models/{model_id}/geometry")
+async def get_model_geometry(
+    model_id: uuid.UUID,
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    service: BIMHubService = Depends(_get_service),
+) -> FileResponse:
+    """Serve the COLLADA/DAE geometry file for the 3D viewer.
+
+    Looks for geometry files (DAE, GLB, glTF) saved during upload
+    at ``data/bim/{project_id}/{model_id}/geometry.*``.
+    """
+    model = await service.get_model(model_id)
+    project_id = str(model.project_id)
+    geo_dir = _BIM_DATA_DIR / project_id / str(model_id)
+
+    # Try known extensions
+    for ext in (".dae", ".glb", ".gltf"):
+        geo_path = geo_dir / f"geometry{ext}"
+        if geo_path.is_file():
+            media_types = {
+                ".dae": "model/vnd.collada+xml",
+                ".glb": "model/gltf-binary",
+                ".gltf": "model/gltf+json",
+            }
+            return FileResponse(
+                path=str(geo_path),
+                media_type=media_types.get(ext, "application/octet-stream"),
+                filename=f"{model.name}{ext}",
+            )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="No geometry file found for this model.",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

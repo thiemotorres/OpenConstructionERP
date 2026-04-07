@@ -52,6 +52,8 @@ export interface BIMViewerProps {
   isLoading?: boolean;
   /** Error message (from parent). */
   error?: string | null;
+  /** URL to DAE/COLLADA geometry file (served from backend). */
+  geometryUrl?: string | null;
 }
 
 /* ── Properties Table ──────────────────────────────────────────────────── */
@@ -149,6 +151,7 @@ export function BIMViewer({
   elements,
   isLoading = false,
   error = null,
+  geometryUrl = null,
 }: BIMViewerProps) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -212,6 +215,18 @@ export function BIMViewer({
     elementMgrRef.current.loadElements(elements);
     setElementCount(elements.length);
   }, [elements]);
+
+  // Load DAE geometry when URL is available (after elements are loaded)
+  useEffect(() => {
+    if (!elementMgrRef.current || !geometryUrl || !elements?.length) return;
+    const mgr = elementMgrRef.current;
+    // Only load if not already loaded for this URL
+    if (!mgr.hasLoadedGeometry()) {
+      mgr.loadDAEGeometry(geometryUrl).catch(() => {
+        // Silently fall back to placeholder boxes (already rendered by loadElements)
+      });
+    }
+  }, [geometryUrl, elements]);
 
   // Sync selection from parent
   useEffect(() => {
