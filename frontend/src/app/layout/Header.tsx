@@ -434,7 +434,7 @@ function ProjectSwitcher() {
 
   const { data: projects } = useQuery({
     queryKey: ['projects-switcher'],
-    queryFn: () => apiGet<Array<{ id: string; name: string }>>('/v1/projects/?limit=200'),
+    queryFn: () => apiGet<Array<{ id: string; name: string }>>('/v1/projects/?limit=100'),
     staleTime: 60_000,
     enabled: open,
   });
