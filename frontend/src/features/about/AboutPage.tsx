@@ -367,23 +367,23 @@ export function AboutPage() {
         </div>
       </Card>
 
-      {/* Free Book */}
+      {/* Free Guidebook */}
       <Card className="animate-card-in" style={{ animationDelay: '300ms' }}>
         <div className="p-6">
           <div className="flex items-center gap-2 mb-3">
             <BookOpen size={18} className="text-purple-500" />
             <h2 className="text-lg font-semibold text-content-primary">
-              {t('about.book_title', { defaultValue: 'Free Book: Data Driven Construction' })}
+              {t('about.book_title', { defaultValue: 'Free Guidebook: Data Driven Construction' })}
             </h2>
             <Badge variant="success" size="sm">Free Download</Badge>
           </div>
           <p className="text-sm text-content-secondary leading-relaxed mb-4">
-            {t('about.book_desc', { defaultValue: 'A comprehensive guide to digital transformation in the construction industry. Learn about BIM workflows, cost estimation automation, AI in construction, data-driven decision making, and how to build efficient digital pipelines for construction projects.' })}
+            {t('about.book_desc', { defaultValue: 'A comprehensive guide to digital transformation in the construction industry. Learn about project data management, requirements gathering, Data workflows, cost estimation automation, AI in construction, data-driven decision making, and how to build efficient digital pipelines for construction projects.' })}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <div className="rounded-lg border border-border-light bg-surface-secondary/30 p-3 text-center">
-              <div className="text-xs font-semibold text-content-primary">BIM & CAD Pipelines</div>
-              <div className="text-2xs text-content-tertiary mt-1">RVT, IFC, DWG, DGN conversion and data extraction</div>
+              <div className="text-xs font-semibold text-content-primary">Data Management & Requirements</div>
+              <div className="text-2xs text-content-tertiary mt-1">Project data pipelines, requirements gathering, and structured information management</div>
             </div>
             <div className="rounded-lg border border-border-light bg-surface-secondary/30 p-3 text-center">
               <div className="text-xs font-semibold text-content-primary">AI in Construction</div>
@@ -401,7 +401,7 @@ export function AboutPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
           >
             <BookOpen size={16} />
-            {t('about.book_download', { defaultValue: 'Download Free Book' })}
+            {t('about.book_download', { defaultValue: 'Download Free Guidebook' })}
             <ExternalLink size={14} />
           </a>
         </div>
