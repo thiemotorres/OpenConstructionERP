@@ -395,7 +395,13 @@ class UserService:
         user_id: uuid.UUID,
         data: ChangePasswordRequest,
     ) -> None:
-        """Change user password. Verifies current password first."""
+        """Change user password. Verifies current password first.
+
+        Also bumps `password_changed_at` so any JWT issued before this moment
+        will be rejected by `get_current_user`. This invalidates all existing
+        sessions for the user — they need to log in again with the new
+        password.
+        """
         user = await self.get_user(user_id)
 
         if not verify_password(data.current_password, user.hashed_password):
@@ -411,6 +417,7 @@ class UserService:
         await self.user_repo.update_fields(
             user_id,
             hashed_password=hash_password(data.new_password),
+            password_changed_at=datetime.now(UTC),
         )
         logger.info("Password changed for user %s", user_email)
 

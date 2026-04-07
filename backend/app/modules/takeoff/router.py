@@ -1695,6 +1695,15 @@ async def upload_document(
             detail=f"File too large ({len(content) / 1024 / 1024:.1f} MB). Maximum is {MAX_PDF_SIZE / 1024 / 1024:.0f} MB.",
         )
 
+    # Magic byte check — every legitimate PDF starts with "%PDF-".
+    # Block JPGs/HTML/other files that have been renamed to .pdf to bypass
+    # the extension check (security finding from QA report).
+    if not content.startswith(b"%PDF-"):
+        raise HTTPException(
+            status_code=400,
+            detail="File does not appear to be a valid PDF (missing %PDF- header)",
+        )
+
     doc = await service.upload_document(
         filename=file.filename,
         content=content,

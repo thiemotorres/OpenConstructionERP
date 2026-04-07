@@ -22,8 +22,10 @@ Endpoints:
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
+
+from app.core.rate_limiter import login_limiter
 
 from app.dependencies import (
     CurrentUserId,
@@ -75,8 +77,23 @@ async def register(data: UserCreate, service: UserService = Depends(_get_service
 
 
 @router.post("/auth/login", response_model=TokenResponse)
-async def login(data: LoginRequest, service: UserService = Depends(_get_service)) -> TokenResponse:
-    """Authenticate and receive JWT tokens."""
+async def login(
+    data: LoginRequest,
+    request: Request,
+    service: UserService = Depends(_get_service),
+) -> TokenResponse:
+    """Authenticate and receive JWT tokens.
+
+    Rate-limited per source IP to slow down credential stuffing attacks.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    allowed, _remaining = login_limiter.is_allowed(client_ip)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please wait a minute and try again.",
+            headers={"Retry-After": "60"},
+        )
     return await service.login(data)
 
 

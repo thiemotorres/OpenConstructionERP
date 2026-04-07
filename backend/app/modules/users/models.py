@@ -28,6 +28,12 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Tracks when the password was last changed. Tokens issued (`iat`) before
+    # this timestamp are considered invalid — see dependencies.get_current_user.
+    # Used to invalidate existing sessions on password change.
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,

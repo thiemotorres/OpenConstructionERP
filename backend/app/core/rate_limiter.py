@@ -38,3 +38,7 @@ class RateLimiter:
 # Global instances
 ai_limiter = RateLimiter(max_requests=10, window_seconds=60)  # 10 AI requests/min
 api_limiter = RateLimiter(max_requests=100, window_seconds=60)  # 100 API requests/min
+# Login rate limit — protects against brute-force credential stuffing.
+# Keyed per IP. Allows 10 attempts per minute, far above any legitimate use
+# (~1 try/6s avg) but well below what brute-force scripts need to be useful.
+login_limiter = RateLimiter(max_requests=10, window_seconds=60)

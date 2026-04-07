@@ -245,6 +245,11 @@ def create_app() -> FastAPI:
 
     app.add_middleware(DDCFingerprintMiddleware)
 
+    # ── Security headers (X-Frame-Options, CSP, HSTS, etc.) ──────────────
+    from app.middleware.security_headers import SecurityHeadersMiddleware
+
+    app.add_middleware(SecurityHeadersMiddleware)
+
     # ── Global exception handler — return JSON for unhandled errors ────
     from fastapi import Request
     from fastapi.responses import JSONResponse

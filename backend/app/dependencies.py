@@ -91,7 +91,10 @@ async def get_current_user_payload(
 ) -> dict[str, Any]:
     """Extract and validate the current user from the Authorization header.
 
-    Returns the decoded JWT payload as a dict.
+    In addition to the cryptographic JWT check, this also verifies that the
+    token's `iat` (issued-at) is newer than the user's `password_changed_at`
+    timestamp. This invalidates all tokens issued before a password change so
+    a stolen / leaked session cannot survive a password reset.
     """
     if credentials is None:
         raise HTTPException(
@@ -99,7 +102,35 @@ async def get_current_user_payload(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return decode_access_token(credentials.credentials, settings)
+    payload = decode_access_token(credentials.credentials, settings)
+
+    # Check that the token was issued AFTER the user's last password change.
+    # We do a single indexed lookup per request — fast enough for typical use,
+    # and avoids the alternative of revoking refresh tokens by id (which would
+    # need a separate revocation table).
+    iat = payload.get("iat")
+    user_sub = payload.get("sub")
+    if iat is not None and user_sub:
+        try:
+            from uuid import UUID
+            from app.modules.users.models import User as _UserModel
+
+            async with async_session_factory() as session:
+                user = await session.get(_UserModel, UUID(str(user_sub)))
+                if user is not None and user.password_changed_at is not None:
+                    pwd_changed_ts = int(user.password_changed_at.timestamp())
+                    if int(iat) < pwd_changed_ts:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Token has been invalidated by a password change. Please log in again.",
+                        )
+        except HTTPException:
+            raise
+        except Exception:
+            # Don't break auth on a transient DB issue — just log and continue.
+            logger.exception("Failed to verify token freshness against password_changed_at")
+
+    return payload
 
 
 async def get_current_user_id(

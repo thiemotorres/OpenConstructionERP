@@ -9,7 +9,23 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+def _validate_date_range(start: str | None, end: str | None) -> None:
+    """Reject schedules/activities where end_date is before start_date.
+
+    Both fields are stored as ISO strings (YYYY-MM-DD or full datetime). The
+    string comparison only works on lexicographic order, which matches
+    chronological order for ISO 8601. Returns silently if either side is None.
+    """
+    if not start or not end:
+        return
+    # Compare on first 10 chars (YYYY-MM-DD) to ignore time-of-day diffs
+    if start[:10] > end[:10]:
+        raise ValueError(
+            f"end_date ({end[:10]}) must be on or after start_date ({start[:10]})"
+        )
 
 
 # ── Schedule schemas ─────────────────────────────────────────────────────────
@@ -27,6 +43,11 @@ class ScheduleCreate(BaseModel):
     end_date: str | None = Field(default=None, max_length=20)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _check_dates(self) -> "ScheduleCreate":
+        _validate_date_range(self.start_date, self.end_date)
+        return self
+
 
 class ScheduleUpdate(BaseModel):
     """Partial update for a schedule."""
@@ -39,6 +60,11 @@ class ScheduleUpdate(BaseModel):
     end_date: str | None = Field(default=None, max_length=20)
     status: str | None = Field(default=None, pattern=r"^(draft|active|completed)$")
     metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def _check_dates(self) -> "ScheduleUpdate":
+        _validate_date_range(self.start_date, self.end_date)
+        return self
 
 
 class ScheduleResponse(BaseModel):
@@ -103,6 +129,11 @@ class ActivityCreate(BaseModel):
     sort_order: int = Field(default=0, ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _check_dates(self) -> "ActivityCreate":
+        _validate_date_range(self.start_date, self.end_date)
+        return self
+
 
 class ActivityUpdate(BaseModel):
     """Partial update for an activity."""
@@ -128,6 +159,11 @@ class ActivityUpdate(BaseModel):
     color: str | None = Field(default=None, max_length=20)
     sort_order: int | None = Field(default=None, ge=0)
     metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def _check_dates(self) -> "ActivityUpdate":
+        _validate_date_range(self.start_date, self.end_date)
+        return self
 
 
 class ActivityResponse(BaseModel):
