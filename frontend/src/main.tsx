@@ -10,19 +10,27 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
+      staleTime: 30_000, // 30s — data considered fresh for 30s, then refetch on focus/mount
+      gcTime: 5 * 60_000, // 5min — keep in cache for 5 min after unmount
       retry: 1,
+      refetchOnWindowFocus: true, // refetch when user tabs back
     },
     mutations: {
       retry: 0,
     },
   },
   mutationCache: new MutationCache({
+    onSuccess: (_data, _variables, _context, mutation) => {
+      // Global: after ANY successful mutation, invalidate related queries
+      // This ensures lists refresh immediately after create/update/delete
+      const key = mutation.options.mutationKey;
+      if (key && Array.isArray(key) && key.length > 0) {
+        queryClient.invalidateQueries({ queryKey: [key[0]] });
+      }
+    },
     onError: (error) => {
-      // Global error handler — shows toast notification for any unhandled mutation error
       console.error('Mutation error:', error);
       const message = error instanceof Error ? error.message : 'Operation failed';
-      // Only show if not a 401 (which redirects to login)
       if (!message.includes('401')) {
         useToastStore.getState().addToast({
           type: 'error',

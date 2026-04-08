@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -216,6 +216,7 @@ const fmtCurrency = new Intl.NumberFormat(getIntlLocale(), {
 export function TemplatesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
   /* ── State ───────────────────────────────────────────────────────── */
@@ -260,6 +261,8 @@ export function TemplatesPage() {
     mutationFn: (data: CreateFromTemplateData) =>
       apiPost<BOQ>('/v1/boq/boqs/from-template', data),
     onSuccess: (boq) => {
+      queryClient.invalidateQueries({ queryKey: ['boqs'] });
+      queryClient.invalidateQueries({ queryKey: ['all-boqs'] });
       addToast({
         type: 'success',
         title: t('boq.template_created', { defaultValue: 'BOQ created from template' }),

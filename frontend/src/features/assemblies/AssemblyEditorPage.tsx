@@ -638,6 +638,7 @@ function ApplyToBOQModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [projectId, setProjectId] = useState('');
   const [boqId, setBoqId] = useState('');
@@ -662,6 +663,8 @@ function ApplyToBOQModal({
     mutationFn: () =>
       assembliesApi.applyToBoq(assemblyId, boqId, parseFloat(quantity) || 1),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['boq'] });
+      queryClient.invalidateQueries({ queryKey: ['boqs'] });
       addToast({ type: 'success', title: t('toasts.assembly_applied', { defaultValue: 'Assembly applied to BOQ' }) });
       onClose();
     },
