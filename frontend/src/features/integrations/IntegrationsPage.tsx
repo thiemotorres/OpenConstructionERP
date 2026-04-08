@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,6 +23,10 @@ import {
   Sheet,
   BarChart3,
   Code2,
+  Info,
+  Copy,
+  Check,
+  ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
 import { Badge, Button, Input, Breadcrumb } from '@/shared/ui';
@@ -31,7 +35,14 @@ import { useToastStore } from '@/stores/useToastStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
-type IntegrationType = 'teams' | 'slack' | 'telegram' | 'discord' | 'whatsapp' | 'email' | 'webhook';
+type IntegrationType =
+  | 'teams'
+  | 'slack'
+  | 'telegram'
+  | 'discord'
+  | 'whatsapp'
+  | 'email'
+  | 'webhook';
 
 interface IntegrationConfig {
   id: string;
@@ -58,6 +69,17 @@ interface IntegrationConfigListResponse {
 type ConnectorStatus = 'available' | 'coming_soon' | 'info_only';
 type ConnectorCategory = 'notifications' | 'automation' | 'data';
 
+interface ConnectorField {
+  key: string;
+  label: string;
+  placeholder: string;
+  type?: string;
+}
+
+interface SetupStep {
+  text: string;
+}
+
 interface ConnectorDef {
   type: IntegrationType;
   nameKey: string;
@@ -68,10 +90,26 @@ interface ConnectorDef {
   color: string;
   category: ConnectorCategory;
   status: ConnectorStatus;
-  fields: { key: string; label: string; placeholder: string; type?: string }[];
-  setupInstructions: string;
+  fields: ConnectorField[];
+  setupSteps: SetupStep[];
+  infoText?: string;
+  calendarFeedUrl?: boolean;
+  eventOptions?: string[];
   externalUrl?: string;
 }
+
+const AVAILABLE_EVENTS = [
+  'task.created',
+  'task.updated',
+  'task.completed',
+  'rfi.created',
+  'rfi.answered',
+  'invoice.created',
+  'invoice.approved',
+  'document.uploaded',
+  'project.updated',
+  'boq.changed',
+];
 
 const CONNECTORS: ConnectorDef[] = [
   // ── Notifications ──────────────────────────────────────────────────
@@ -92,8 +130,13 @@ const CONNECTORS: ConnectorDef[] = [
         placeholder: 'https://outlook.office.com/webhook/...',
       },
     ],
-    setupInstructions:
-      '1. Open your Teams channel\n2. Click "..." > Connectors > Incoming Webhook\n3. Give it a name, click Create\n4. Copy the webhook URL and paste it here',
+    setupSteps: [
+      { text: 'Open your Teams channel' },
+      { text: 'Click "..." → "Connectors" → "Incoming Webhook"' },
+      { text: 'Name it "OpenConstructionERP" and click "Create"' },
+      { text: 'Copy the webhook URL' },
+      { text: 'Paste it below' },
+    ],
   },
   {
     type: 'slack',
@@ -112,8 +155,13 @@ const CONNECTORS: ConnectorDef[] = [
         placeholder: 'https://hooks.slack.com/services/T.../B.../...',
       },
     ],
-    setupInstructions:
-      '1. Go to api.slack.com/apps > Create New App\n2. Enable Incoming Webhooks\n3. Add New Webhook to Workspace\n4. Copy the webhook URL and paste it here',
+    setupSteps: [
+      { text: 'Go to api.slack.com/apps → Create New App' },
+      { text: 'Enable "Incoming Webhooks"' },
+      { text: 'Add webhook to your channel' },
+      { text: 'Copy the webhook URL' },
+      { text: 'Paste it below' },
+    ],
   },
   {
     type: 'telegram',
@@ -138,8 +186,13 @@ const CONNECTORS: ConnectorDef[] = [
         placeholder: '-1001234567890',
       },
     ],
-    setupInstructions:
-      '1. Message @BotFather on Telegram > /newbot\n2. Copy the bot token\n3. Add the bot to your group/channel\n4. Get your chat_id (message @userinfobot or use the Telegram API)',
+    setupSteps: [
+      { text: 'Open Telegram, search @BotFather' },
+      { text: 'Send /newbot and follow instructions' },
+      { text: 'Copy the bot token' },
+      { text: 'Add the bot to your group/channel' },
+      { text: 'Get the chat ID (send a message, then check getUpdates)' },
+    ],
   },
   {
     type: 'discord',
@@ -158,8 +211,12 @@ const CONNECTORS: ConnectorDef[] = [
         placeholder: 'https://discord.com/api/webhooks/...',
       },
     ],
-    setupInstructions:
-      '1. Open your Discord server\n2. Go to Server Settings > Integrations > Webhooks\n3. Click "New Webhook", choose a channel\n4. Copy the webhook URL and paste it here',
+    setupSteps: [
+      { text: 'Open your Discord server settings' },
+      { text: 'Go to Integrations → Webhooks → New Webhook' },
+      { text: 'Name it and select the channel' },
+      { text: 'Copy the webhook URL' },
+    ],
   },
   {
     type: 'whatsapp',
@@ -172,21 +229,53 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'notifications',
     status: 'coming_soon',
     fields: [],
-    setupInstructions:
-      'WhatsApp Business integration requires Meta Business verification.\nThis feature is coming in a future release.',
+    setupSteps: [],
   },
   {
     type: 'email',
     nameKey: 'integrations.email',
-    defaultName: 'Email',
+    defaultName: 'Email (SMTP)',
     descKey: 'integrations.email_desc',
-    defaultDesc: 'Receive email notifications (SMTP)',
+    defaultDesc: 'Receive email notifications via custom SMTP server',
     icon: Mail,
     color: 'bg-blue-600',
     category: 'notifications',
-    status: 'coming_soon',
-    fields: [],
-    setupInstructions: 'Email notifications will be available in a future update.',
+    status: 'available',
+    fields: [
+      {
+        key: 'smtp_host',
+        label: 'SMTP Host',
+        placeholder: 'smtp.gmail.com',
+      },
+      {
+        key: 'smtp_port',
+        label: 'Port',
+        placeholder: '587',
+      },
+      {
+        key: 'smtp_username',
+        label: 'Username',
+        placeholder: 'you@example.com',
+      },
+      {
+        key: 'smtp_password',
+        label: 'Password',
+        placeholder: 'App password or SMTP password',
+        type: 'password',
+      },
+      {
+        key: 'from_email',
+        label: 'From Email',
+        placeholder: 'noreply@yourcompany.com',
+      },
+    ],
+    setupSteps: [
+      { text: 'Get your SMTP server details from your email provider' },
+      {
+        text: 'Common: smtp.gmail.com:587 (Gmail), smtp.office365.com:587 (Outlook)',
+      },
+      { text: 'Fill in the fields below' },
+    ],
   },
 
   // ── Automation ─────────────────────────────────────────────────────
@@ -199,9 +288,26 @@ const CONNECTORS: ConnectorDef[] = [
     icon: Globe,
     color: 'bg-gray-600',
     category: 'automation',
-    status: 'info_only',
-    fields: [],
-    setupInstructions: 'Use the Webhooks tab in Settings to configure custom webhook endpoints.',
+    status: 'available',
+    fields: [
+      {
+        key: 'webhook_url',
+        label: 'Endpoint URL',
+        placeholder: 'https://your-server.com/webhooks/openconstructionerp',
+      },
+      {
+        key: 'signing_secret',
+        label: 'Secret (optional)',
+        placeholder: 'HMAC signing secret for payload verification',
+        type: 'password',
+      },
+    ],
+    setupSteps: [
+      { text: 'Enter the URL where you want to receive events' },
+      { text: 'Optionally add a signing secret for HMAC verification' },
+      { text: 'Select which events to subscribe to' },
+    ],
+    eventOptions: AVAILABLE_EVENTS,
   },
   {
     type: 'webhook' as IntegrationType,
@@ -214,8 +320,9 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'automation',
     status: 'info_only',
     fields: [],
-    setupInstructions:
-      '1. In n8n, add a "Webhook" trigger node\n2. Copy the webhook URL from n8n\n3. Go to Settings > Webhooks in this app and add a new endpoint\n4. Paste the n8n webhook URL, select which events to forward',
+    setupSteps: [],
+    infoText:
+      'Use our Webhook integration as a trigger node in n8n. Point your n8n Webhook trigger to: /api/v1/integrations/webhooks',
     externalUrl: 'https://n8n.io',
   },
   {
@@ -229,8 +336,9 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'automation',
     status: 'info_only',
     fields: [],
-    setupInstructions:
-      '1. In Zapier, create a new Zap with "Webhooks by Zapier" as trigger\n2. Choose "Catch Hook" and copy the webhook URL\n3. Go to Settings > Webhooks and add a new endpoint with the Zapier URL\n4. Select which events to forward, then test in Zapier',
+    setupSteps: [],
+    infoText:
+      'Use our Webhook integration as a trigger in Zapier Webhooks. Create a "Catch Hook" Zap and point it to our webhook endpoint.',
     externalUrl: 'https://zapier.com',
   },
   {
@@ -244,8 +352,9 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'automation',
     status: 'info_only',
     fields: [],
-    setupInstructions:
-      '1. In Make, create a new Scenario with a "Webhooks" module\n2. Choose "Custom webhook" and copy the URL\n3. Go to Settings > Webhooks and add a new endpoint with the Make URL\n4. Select events to forward and run a test',
+    setupSteps: [],
+    infoText:
+      'Use our Webhook integration as a trigger in Make. Create a "Custom Webhook" module and subscribe to our events.',
     externalUrl: 'https://www.make.com',
   },
 
@@ -259,9 +368,15 @@ const CONNECTORS: ConnectorDef[] = [
     icon: Calendar,
     color: 'bg-green-600',
     category: 'data',
-    status: 'info_only',
+    status: 'available',
     fields: [],
-    setupInstructions: 'Calendar feeds are available per project. Go to Project Settings > Calendar.',
+    calendarFeedUrl: true,
+    setupSteps: [
+      { text: 'Copy the calendar feed URL below' },
+      { text: 'In Google Calendar: "Other calendars" → "From URL"' },
+      { text: 'In Outlook: "Add calendar" → "Subscribe from web"' },
+      { text: 'Paste the URL and subscribe' },
+    ],
   },
   {
     type: 'email' as IntegrationType,
@@ -274,8 +389,9 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'data',
     status: 'info_only',
     fields: [],
-    setupInstructions:
-      '1. Open your BOQ or cost report\n2. Click Export > Excel (.xlsx)\n3. Open the file in Google Sheets, or use File > Import in Google Drive',
+    setupSteps: [],
+    infoText:
+      'Export your data as Excel from any module → open in Google Sheets. Use File > Import in Google Drive for direct import.',
   },
   {
     type: 'email' as IntegrationType,
@@ -288,8 +404,9 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'data',
     status: 'info_only',
     fields: [],
-    setupInstructions:
-      '1. In Power BI/Tableau, add a new Web/REST API data source\n2. Use your base URL + /api/v1/ endpoints\n3. Authenticate with your API key (Settings > API Keys)\n4. Build custom dashboards from BOQ, cost, and project data',
+    setupSteps: [],
+    infoText:
+      'Connect Power BI or Tableau to our REST API. Use /api/docs for endpoint reference and authenticate with your API key.',
     externalUrl: '/api/docs',
   },
   {
@@ -303,14 +420,22 @@ const CONNECTORS: ConnectorDef[] = [
     category: 'data',
     status: 'info_only',
     fields: [],
-    setupInstructions:
-      '1. Generate an API key in Settings > API Keys\n2. Browse the interactive API docs at /api/docs\n3. Use any HTTP client to integrate with your systems',
+    setupSteps: [],
+    infoText:
+      'Full REST API with interactive OpenAPI docs available at /api/docs. Generate an API key in Settings to authenticate.',
     externalUrl: '/api/docs',
   },
 ];
 
-// Only these types support the connect flow
-const CONNECTABLE_TYPES: IntegrationType[] = ['teams', 'slack', 'telegram', 'discord'];
+// Only these connector types + statuses support the connect flow
+const CONNECTABLE_TYPES: IntegrationType[] = [
+  'teams',
+  'slack',
+  'telegram',
+  'discord',
+  'email',
+  'webhook',
+];
 
 const CATEGORY_LABELS: Record<ConnectorCategory, { key: string; defaultLabel: string }> = {
   notifications: { key: 'integrations.cat_notifications', defaultLabel: 'Notifications' },
@@ -332,6 +457,96 @@ function fetchConfigs(): Promise<IntegrationConfigListResponse> {
   return apiGet('/v1/integrations/configs');
 }
 
+/* ── Info Popover ─────────────────────────────────────────────────────── */
+
+function InfoPopover({
+  text,
+  externalUrl,
+}: {
+  text: string;
+  externalUrl?: string;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className="rounded p-1 text-content-tertiary hover:text-oe-blue hover:bg-surface-secondary transition-colors"
+        title={t('integrations.show_info', 'Show setup info')}
+      >
+        <Info size={15} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-lg border border-border-light bg-surface-primary p-3 shadow-lg animate-fade-in">
+          <p className="text-xs text-content-secondary leading-relaxed">{text}</p>
+          {externalUrl && (
+            <a
+              href={externalUrl}
+              target={externalUrl.startsWith('http') ? '_blank' : undefined}
+              rel={externalUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-oe-blue hover:underline"
+            >
+              {t('integrations.learn_more', 'Learn more')}
+              <ExternalLink size={11} />
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Calendar Card (inline, no modal) ─────────────────────────────────── */
+
+function CalendarFeedSection() {
+  const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
+  const [copied, setCopied] = useState(false);
+  const feedUrl = `${window.location.origin}/api/v1/integrations/calendar/feed.ics`;
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(feedUrl).then(() => {
+      setCopied(true);
+      addToast({
+        type: 'success',
+        title: t('integrations.url_copied', 'URL copied to clipboard'),
+      });
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [feedUrl, addToast, t]);
+
+  return (
+    <div className="mt-2">
+      <p className="mb-2 text-2xs text-content-tertiary">
+        {t('integrations.calendar_hint', 'Subscribe in Google Calendar or Outlook:')}
+      </p>
+      <div className="flex items-center gap-1.5">
+        <code className="flex-1 truncate rounded bg-surface-secondary px-2 py-1.5 text-2xs text-content-secondary font-mono">
+          {feedUrl}
+        </code>
+        <Button variant="secondary" size="sm" onClick={handleCopy} className="shrink-0">
+          {copied ? <Check size={13} className="mr-1" /> : <Copy size={13} className="mr-1" />}
+          {copied ? t('common.copied', 'Copied') : t('common.copy', 'Copy')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Connect Modal ─────────────────────────────────────────────────────── */
 
 function ConnectModal({
@@ -349,15 +564,97 @@ function ConnectModal({
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(connector.fields.map((f) => [f.key, '']))
   );
+  const [selectedEvents, setSelectedEvents] = useState<string[]>(
+    connector.eventOptions ? [] : ['*']
+  );
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  const toggleEvent = useCallback((event: string) => {
+    setSelectedEvents((prev) =>
+      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+    );
+  }, []);
+
+  const selectAllEvents = useCallback(() => {
+    if (connector.eventOptions) {
+      setSelectedEvents((prev) =>
+        prev.length === connector.eventOptions!.length ? [] : [...connector.eventOptions!]
+      );
+    }
+  }, [connector.eventOptions]);
+
+  const handleTest = useCallback(async () => {
+    // Validate all fields are filled before testing
+    for (const f of connector.fields) {
+      if (f.key === 'signing_secret') continue; // optional field
+      if (!fieldValues[f.key]?.trim()) {
+        addToast({
+          type: 'error',
+          title: t('common.validation', 'Validation'),
+          message: `${f.label} ${t('common.is_required', 'is required')}`,
+        });
+        return;
+      }
+    }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await apiPost<{ success: boolean; message: string }>(
+        '/v1/integrations/configs/test-connection',
+        {
+          integration_type: connector.type,
+          config: fieldValues,
+        }
+      );
+      setTestResult(result);
+      if (result.success) {
+        addToast({
+          type: 'success',
+          title: t('integrations.test_ok', 'Test notification sent!'),
+        });
+      } else {
+        addToast({
+          type: 'error',
+          title: result.message || t('integrations.test_failed', 'Test failed'),
+        });
+      }
+    } catch {
+      setTestResult({ success: false, message: 'Connection failed' });
+      addToast({
+        type: 'error',
+        title: t('integrations.test_failed', 'Test failed'),
+      });
+    } finally {
+      setTesting(false);
+    }
+  }, [connector, fieldValues, addToast, t]);
 
   const handleSave = useCallback(async () => {
     // Validate all fields are filled
     for (const f of connector.fields) {
+      if (f.key === 'signing_secret') continue; // optional field
       if (!fieldValues[f.key]?.trim()) {
-        addToast({ type: 'error', title: 'Validation', message: `${f.label} is required` });
+        addToast({
+          type: 'error',
+          title: t('common.validation', 'Validation'),
+          message: `${f.label} ${t('common.is_required', 'is required')}`,
+        });
         return;
       }
+    }
+    // Webhook with event options must have at least one event selected
+    if (connector.eventOptions && selectedEvents.length === 0) {
+      addToast({
+        type: 'error',
+        title: t('common.validation', 'Validation'),
+        message: t('integrations.select_events', 'Select at least one event'),
+      });
+      return;
     }
     setSaving(true);
     try {
@@ -365,27 +662,38 @@ function ConnectModal({
         integration_type: connector.type,
         name: name.trim() || connector.defaultName,
         config: fieldValues,
-        events: ['*'],
+        events: connector.eventOptions ? selectedEvents : ['*'],
       });
-      addToast({ type: 'success', title: t('integrations.connected', 'Connected successfully') });
+      addToast({
+        type: 'success',
+        title: t('integrations.connected', 'Connected successfully'),
+      });
       onSaved();
     } catch {
-      addToast({ type: 'error', title: t('integrations.connect_failed', 'Connection failed') });
+      addToast({
+        type: 'error',
+        title: t('integrations.connect_failed', 'Connection failed'),
+      });
     } finally {
       setSaving(false);
     }
-  }, [connector, name, fieldValues, addToast, t, onSaved]);
+  }, [connector, name, fieldValues, selectedEvents, addToast, t, onSaved]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-xl bg-surface-primary p-6 shadow-xl">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-surface-primary p-6 shadow-xl">
+        {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-white ${connector.color}`}>
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-lg text-white ${connector.color}`}
+            >
               <connector.icon size={20} />
             </div>
             <h2 className="text-lg font-semibold text-primary">
-              {t('integrations.connect_title', 'Connect {{name}}', { name: connector.defaultName })}
+              {t('integrations.connect_title', 'Connect {{name}}', {
+                name: connector.defaultName,
+              })}
             </h2>
           </div>
           <button onClick={onClose} className="text-secondary hover:text-primary">
@@ -393,42 +701,126 @@ function ConnectModal({
           </button>
         </div>
 
-        {/* Setup instructions */}
-        <div className="mb-4 rounded-lg bg-surface-secondary p-3 text-sm text-secondary">
-          <p className="mb-1 font-medium text-primary">
-            {t('integrations.setup_steps', 'Setup instructions')}:
-          </p>
-          <pre className="whitespace-pre-wrap font-sans text-xs">{connector.setupInstructions}</pre>
-        </div>
+        {/* Step-by-step setup instructions */}
+        {connector.setupSteps.length > 0 && (
+          <div className="mb-4 rounded-lg bg-surface-secondary p-3">
+            <p className="mb-2 text-xs font-semibold text-primary">
+              {t('integrations.setup_steps', 'Setup instructions')}
+            </p>
+            <ol className="space-y-1.5">
+              {connector.setupSteps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-content-secondary">
+                  <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-2xs font-bold text-oe-blue mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span className="leading-relaxed">{step.text}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         {/* Name field */}
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-primary">
             {t('common.name', 'Name')}
           </label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={connector.defaultName} />
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={connector.defaultName}
+          />
         </div>
 
         {/* Connector-specific fields */}
         {connector.fields.map((field) => (
           <div key={field.key} className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-primary">{field.label}</label>
+            <label className="mb-1 block text-sm font-medium text-primary">
+              {field.label}
+              {field.key === 'signing_secret' && (
+                <span className="ml-1 text-2xs text-content-tertiary font-normal">
+                  ({t('common.optional', 'optional')})
+                </span>
+              )}
+            </label>
             <Input
               type={field.type || 'text'}
               value={fieldValues[field.key] || ''}
-              onChange={(e) => setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+              onChange={(e) =>
+                setFieldValues((prev) => ({ ...prev, [field.key]: e.target.value }))
+              }
               placeholder={field.placeholder}
             />
           </div>
         ))}
 
+        {/* Event selection for webhooks */}
+        {connector.eventOptions && (
+          <div className="mb-3">
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="text-sm font-medium text-primary">
+                {t('integrations.events', 'Events to subscribe')}
+              </label>
+              <button
+                onClick={selectAllEvents}
+                className="text-2xs text-oe-blue hover:underline"
+              >
+                {selectedEvents.length === connector.eventOptions.length
+                  ? t('common.deselect_all', 'Deselect all')
+                  : t('common.select_all', 'Select all')}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-surface-secondary p-2.5">
+              {connector.eventOptions.map((event) => (
+                <label
+                  key={event}
+                  className="flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-1 text-xs text-content-secondary hover:bg-surface-primary transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedEvents.includes(event)}
+                    onChange={() => toggleEvent(event)}
+                    className="h-3.5 w-3.5 rounded border-border text-oe-blue focus:ring-oe-blue"
+                  />
+                  <code className="text-2xs">{event}</code>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Test result feedback */}
+        {testResult && (
+          <div
+            className={`mb-3 rounded-lg px-3 py-2 text-xs ${
+              testResult.success
+                ? 'bg-semantic-success-bg text-[#15803d]'
+                : 'bg-semantic-error-bg text-semantic-error'
+            }`}
+          >
+            {testResult.success
+              ? t('integrations.test_success_msg', 'Connection test passed successfully!')
+              : testResult.message ||
+                t('integrations.test_failed_msg', 'Connection test failed. Check your settings.')}
+          </div>
+        )}
+
+        {/* Actions */}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             {t('common.cancel', 'Cancel')}
           </Button>
+          <Button variant="secondary" onClick={handleTest} disabled={testing}>
+            {testing ? (
+              <Loader2 size={14} className="mr-1 animate-spin" />
+            ) : (
+              <TestTube2 size={14} className="mr-1" />
+            )}
+            {t('integrations.test_connection', 'Test Connection')}
+          </Button>
           <Button onClick={handleSave} disabled={saving}>
             {saving && <Loader2 size={16} className="mr-1 animate-spin" />}
-            {t('integrations.connect', 'Connect')}
+            {t('common.save', 'Save')}
           </Button>
         </div>
       </div>
@@ -461,21 +853,37 @@ export function IntegrationsPage() {
     mutationFn: (id: string) => apiDelete(`/v1/integrations/configs/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integration-configs'] });
-      addToast({ type: 'success', title: t('integrations.disconnected', 'Disconnected') });
+      addToast({
+        type: 'success',
+        title: t('integrations.disconnected', 'Disconnected'),
+      });
     },
   });
 
   const testMut = useMutation({
-    mutationFn: (id: string) => apiPost<{ success: boolean; message: string }>(`/v1/integrations/configs/${id}/test`, {}),
+    mutationFn: (id: string) =>
+      apiPost<{ success: boolean; message: string }>(
+        `/v1/integrations/configs/${id}/test`,
+        {}
+      ),
     onSuccess: (_data: { success: boolean; message: string }) => {
       if (_data.success) {
-        addToast({ type: 'success', title: t('integrations.test_ok', 'Test notification sent!') });
+        addToast({
+          type: 'success',
+          title: t('integrations.test_ok', 'Test notification sent!'),
+        });
       } else {
-        addToast({ type: 'error', title: _data.message || t('integrations.test_failed', 'Test failed') });
+        addToast({
+          type: 'error',
+          title: _data.message || t('integrations.test_failed', 'Test failed'),
+        });
       }
     },
     onError: () => {
-      addToast({ type: 'error', title: t('integrations.test_failed', 'Test failed') });
+      addToast({
+        type: 'error',
+        title: t('integrations.test_failed', 'Test failed'),
+      });
     },
   });
 
@@ -522,17 +930,28 @@ export function IntegrationsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {categoryConnectors.map((connector) => {
                 const existing = configsByType[connector.type] ?? [];
-                const isConnectable = CONNECTABLE_TYPES.includes(connector.type) && connector.status === 'available';
+                const isConnectable =
+                  CONNECTABLE_TYPES.includes(connector.type) &&
+                  connector.status === 'available';
                 const isConnected = existing.length > 0;
                 const isComingSoon = connector.status === 'coming_soon';
                 const isInfoOnly = connector.status === 'info_only';
                 const Icon = connector.icon;
 
                 return (
-                  <div key={connector.nameKey} className="rounded-xl border border-border-light bg-surface-primary p-4 hover:border-border hover:shadow-sm transition-all">
+                  <div
+                    key={connector.nameKey}
+                    className={`rounded-xl border border-border-light bg-surface-primary p-4 transition-all ${
+                      isComingSoon
+                        ? 'opacity-50 pointer-events-none'
+                        : 'hover:border-border hover:shadow-sm'
+                    }`}
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2.5">
-                        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${CATEGORY_ICON_STYLES[connector.category]}`}>
+                        <div
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${CATEGORY_ICON_STYLES[connector.category]}`}
+                        >
                           <Icon size={18} />
                         </div>
                         <div>
@@ -544,21 +963,35 @@ export function IntegrationsPage() {
                           </p>
                         </div>
                       </div>
-                      {isConnected && (
-                        <Badge variant="success" size="sm">
-                          {t('integrations.connected_label', 'Connected')}
-                        </Badge>
-                      )}
-                      {isComingSoon && (
-                        <Badge variant="neutral" size="sm">
-                          {t('integrations.coming_soon', 'Coming soon')}
-                        </Badge>
-                      )}
-                      {isInfoOnly && !isConnected && (
-                        <Badge variant="blue" size="sm">
-                          {t('integrations.info_label', 'Info')}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {/* Info popover for info-only connectors */}
+                        {isInfoOnly && connector.infoText && (
+                          <InfoPopover
+                            text={connector.infoText}
+                            externalUrl={connector.externalUrl}
+                          />
+                        )}
+                        {isConnected && (
+                          <Badge variant="success" size="sm">
+                            {t('integrations.connected_label', 'Connected')}
+                          </Badge>
+                        )}
+                        {!isConnected && isConnectable && (
+                          <Badge variant="success" size="sm" dot>
+                            {t('integrations.available', 'Available')}
+                          </Badge>
+                        )}
+                        {isComingSoon && (
+                          <Badge variant="neutral" size="sm">
+                            {t('integrations.coming_soon', 'Coming soon')}
+                          </Badge>
+                        )}
+                        {isInfoOnly && !isConnected && (
+                          <Badge variant="blue" size="sm">
+                            {t('integrations.guide_label', 'Guide')}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     <p className="text-xs text-content-secondary mb-3">
@@ -586,11 +1019,22 @@ export function IntegrationsPage() {
                             className="rounded p-1 text-content-secondary hover:bg-surface-primary hover:text-content-primary"
                             title={t('integrations.test', 'Test')}
                           >
-                            {testMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <TestTube2 size={14} />}
+                            {testMut.isPending ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <TestTube2 size={14} />
+                            )}
                           </button>
                           <button
                             onClick={() => {
-                              if (window.confirm(t('integrations.confirm_disconnect', 'Disconnect this integration?'))) {
+                              if (
+                                window.confirm(
+                                  t(
+                                    'integrations.confirm_disconnect',
+                                    'Disconnect this integration?'
+                                  )
+                                )
+                              ) {
                                 deleteMut.mutate(cfg.id);
                               }
                             }}
@@ -603,8 +1047,11 @@ export function IntegrationsPage() {
                       </div>
                     ))}
 
+                    {/* Calendar feed URL (inline, no modal needed) */}
+                    {connector.calendarFeedUrl && <CalendarFeedSection />}
+
                     {/* Connect / Add another button */}
-                    {isConnectable && (
+                    {isConnectable && !connector.calendarFeedUrl && (
                       <Button
                         variant="secondary"
                         size="sm"
@@ -617,22 +1064,32 @@ export function IntegrationsPage() {
                       </Button>
                     )}
 
-                    {/* Info-only cards: show setup hint + optional external link */}
-                    {isInfoOnly && connector.externalUrl && (
+                    {/* Info-only cards: show external link */}
+                    {isInfoOnly && connector.externalUrl && !connector.infoText && (
                       <a
                         href={connector.externalUrl}
-                        target={connector.externalUrl.startsWith('http') ? '_blank' : undefined}
-                        rel={connector.externalUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
-                        className="text-xs text-oe-blue hover:underline"
+                        target={
+                          connector.externalUrl.startsWith('http') ? '_blank' : undefined
+                        }
+                        rel={
+                          connector.externalUrl.startsWith('http')
+                            ? 'noopener noreferrer'
+                            : undefined
+                        }
+                        className="inline-flex items-center gap-1 text-xs text-oe-blue hover:underline"
                       >
                         {t('integrations.learn_more', 'Learn more')}
+                        <ExternalLink size={11} />
                       </a>
                     )}
 
                     {/* Coming soon hint at bottom */}
-                    {isComingSoon && !isConnectable && (
+                    {isComingSoon && (
                       <p className="text-xs text-content-tertiary">
-                        {t('integrations.coming_soon_hint', 'This integration is not yet available.')}
+                        {t(
+                          'integrations.coming_soon_hint',
+                          'This integration is not yet available.'
+                        )}
                       </p>
                     )}
                   </div>
