@@ -720,7 +720,7 @@ export function BOQListPage() {
         <EmptyState
           icon={<Table size={28} strokeWidth={1.5} />}
           title={t('boq.no_boqs', { defaultValue: 'No BOQs yet' })}
-          description={t('boq.no_boqs_hint', { defaultValue: 'Create a project first, then add a Bill of Quantities' })}
+          description={t('boq.no_boqs_hint', { defaultValue: 'A Bill of Quantities is the foundation of your estimate. Start by creating a project, then add sections (trade groups) and positions (work items) with quantities and rates.' })}
           action={{
             label: t('boq.create_boq', { defaultValue: 'Create BOQ' }),
             onClick: () => navigate('/projects/new'),

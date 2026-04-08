@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -310,6 +310,23 @@ function IncidentsTab({ projectId }: { projectId: string }) {
     treatment_type: '' as string,
     location: '',
   });
+  const [incidentErrors, setIncidentErrors] = useState<Record<string, string>>({});
+  const incidentDateRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus incident date when modal opens
+  useEffect(() => {
+    if (showCreate && incidentDateRef.current) {
+      setTimeout(() => incidentDateRef.current?.focus(), 100);
+    }
+  }, [showCreate]);
+
+  const validateIncident = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!incidentForm.incident_date) e.incident_date = t('validation.required', { defaultValue: 'This field is required' });
+    if (!incidentForm.description.trim()) e.description = t('validation.required', { defaultValue: 'This field is required' });
+    setIncidentErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   // Escape key handler for inline modal
   useEffect(() => {
@@ -447,8 +464,8 @@ function IncidentsTab({ projectId }: { projectId: string }) {
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border-light bg-surface-secondary/50">
@@ -540,6 +557,39 @@ function IncidentsTab({ projectId }: { projectId: string }) {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile card view */}
+      <div className="md:hidden p-4 space-y-3">
+        {filtered.length === 0 ? (
+          <p className="text-center text-sm text-content-tertiary py-4">
+            {t('safety.no_incidents_match', { defaultValue: 'No matching incidents' })}
+          </p>
+        ) : filtered.map((inc) => (
+          <Card key={inc.id} className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <span className="text-xs font-mono text-content-tertiary">{inc.incident_number}</span>
+                <span className="ml-2 text-xs text-content-secondary"><DateDisplay value={inc.date} /></span>
+              </div>
+              <Badge variant={INCIDENT_STATUS_COLORS[inc.status] ?? 'neutral'} size="sm">
+                {t(`safety.status_${inc.status}`, { defaultValue: inc.status })}
+              </Badge>
+            </div>
+            <p className="text-sm text-content-primary line-clamp-2 mb-2">{inc.description}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant={INCIDENT_TYPE_COLORS[inc.type] ?? 'neutral'} size="sm">
+                {t(`safety.type_${inc.type}`, { defaultValue: inc.type.replace(/_/g, ' ') })}
+              </Badge>
+              <Badge variant={INCIDENT_SEVERITY_COLORS[inc.severity] ?? 'neutral'} size="sm">
+                {t(`safety.severity_${inc.severity}`, { defaultValue: inc.severity })}
+              </Badge>
+              {inc.days_lost > 0 && (
+                <span className="text-xs font-medium text-semantic-error">{inc.days_lost} {t('safety.days_lost', { defaultValue: 'days lost' })}</span>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
     </Card>
 
     {/* New Incident Modal */}
@@ -565,11 +615,16 @@ function IncidentsTab({ projectId }: { projectId: string }) {
                 {t('safety.date', { defaultValue: 'Date' })} <span className="text-semantic-error">*</span>
               </label>
               <input
+                ref={incidentDateRef}
                 type="date"
                 value={incidentForm.incident_date}
-                onChange={(e) => setIncidentForm((f) => ({ ...f, incident_date: e.target.value }))}
-                className={inputCls}
+                onChange={(e) => {
+                  setIncidentForm((f) => ({ ...f, incident_date: e.target.value }));
+                  if (incidentErrors.incident_date) setIncidentErrors((prev) => { const next = { ...prev }; delete next.incident_date; return next; });
+                }}
+                className={clsx(inputCls, incidentErrors.incident_date && 'border-semantic-error focus:ring-red-300 focus:border-semantic-error')}
               />
+              {incidentErrors.incident_date && <p className="mt-1 text-xs text-semantic-error">{incidentErrors.incident_date}</p>}
             </div>
             {/* Type */}
             <div>
@@ -600,11 +655,15 @@ function IncidentsTab({ projectId }: { projectId: string }) {
               </label>
               <textarea
                 value={incidentForm.description}
-                onChange={(e) => setIncidentForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) => {
+                  setIncidentForm((f) => ({ ...f, description: e.target.value }));
+                  if (incidentErrors.description) setIncidentErrors((prev) => { const next = { ...prev }; delete next.description; return next; });
+                }}
                 rows={3}
-                className={textareaCls}
+                className={clsx(textareaCls, incidentErrors.description && 'border-semantic-error focus:ring-red-300 focus:border-semantic-error')}
                 placeholder={t('safety.incident_desc_placeholder', { defaultValue: 'Describe what happened...' })}
               />
+              {incidentErrors.description && <p className="mt-1 text-xs text-semantic-error">{incidentErrors.description}</p>}
             </div>
             {/* Location */}
             <div>
@@ -642,8 +701,11 @@ function IncidentsTab({ projectId }: { projectId: string }) {
             </Button>
             <Button
               variant="primary"
-              onClick={() => createMut.mutate(incidentForm)}
-              disabled={createMut.isPending || !incidentForm.description.trim() || !incidentForm.incident_date}
+              onClick={() => {
+                if (!validateIncident()) return;
+                createMut.mutate(incidentForm);
+              }}
+              disabled={createMut.isPending}
             >
               {createMut.isPending ? (
                 <Loader2 size={16} className="animate-spin mr-1.5" />
@@ -807,8 +869,8 @@ function ObservationsTab({ projectId }: { projectId: string }) {
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border-light bg-surface-secondary/50">
@@ -889,6 +951,37 @@ function ObservationsTab({ projectId }: { projectId: string }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card view */}
+      <div className="md:hidden p-4 space-y-3">
+        {filtered.length === 0 ? (
+          <p className="text-center text-sm text-content-tertiary py-4">
+            {t('safety.no_observations_match', { defaultValue: 'No matching observations' })}
+          </p>
+        ) : filtered.map((obs) => (
+          <Card key={obs.id} className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <span className="text-xs font-mono text-content-tertiary">{obs.observation_number}</span>
+                <span className="ml-2 text-xs text-content-secondary"><DateDisplay value={obs.date} /></span>
+              </div>
+              <Badge variant={OBS_STATUS_COLORS[obs.status] ?? 'neutral'} size="sm">
+                {t(`safety.obs_status_${obs.status}`, { defaultValue: obs.status.replace(/_/g, ' ') })}
+              </Badge>
+            </div>
+            <p className="text-sm text-content-primary line-clamp-2 mb-2">{obs.description}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant={OBS_TYPE_COLORS[obs.type] ?? 'neutral'} size="sm">
+                {t(`safety.obs_type_${obs.type}`, { defaultValue: obs.type.replace(/_/g, ' ') })}
+              </Badge>
+              <SeverityDots level={obs.severity} />
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${riskScoreColor(obs.risk_score)}`}>
+                {obs.risk_score} {riskScoreLabel(obs.risk_score, t)}
+              </span>
+            </div>
+          </Card>
+        ))}
       </div>
     </Card>
 

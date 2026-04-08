@@ -8,6 +8,7 @@ import { Button, Badge, Breadcrumb } from '@/shared/ui';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
 import { apiGet, apiPost, triggerDownload } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
+import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
   boqApi,
@@ -140,6 +141,19 @@ export function BOQEditorPage() {
 
   const addToast = useToastStore((s) => s.addToast);
   const removeToast = useToastStore((s) => s.removeToast);
+  const addRecent = useRecentStore((s) => s.addRecent);
+
+  // Track BOQ as recent item
+  useEffect(() => {
+    if (boq && boqId) {
+      addRecent({
+        type: 'boq',
+        id: boqId,
+        title: boq.name || 'Untitled BOQ',
+        url: `/boq/${boqId}`,
+      });
+    }
+  }, [boq, boqId, addRecent]);
 
   /* ── Batch selection state ──────────────────────────────────────────── */
 

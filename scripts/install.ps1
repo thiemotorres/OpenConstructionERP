@@ -1,7 +1,7 @@
-# OpenEstimate — One-Line Installer for Windows
+# OpenConstructionERP — One-Line Installer for Windows
 #
 # Usage:
-#   irm https://get.openestimate.io/windows | iex
+#   irm https://get.openconstructionerp.com/windows | iex
 #
 # What it does:
 #   1. If Docker Desktop is running → runs via docker compose
@@ -11,7 +11,7 @@
 $ErrorActionPreference = "Stop"
 
 $OE_VERSION = if ($env:OE_VERSION) { $env:OE_VERSION } else { "latest" }
-$OE_INSTALL_DIR = if ($env:OE_INSTALL_DIR) { $env:OE_INSTALL_DIR } else { "$env:LOCALAPPDATA\OpenEstimate" }
+$OE_INSTALL_DIR = if ($env:OE_INSTALL_DIR) { $env:OE_INSTALL_DIR } else { "$env:LOCALAPPDATA\OpenConstructionERP" }
 $OE_PORT = if ($env:OE_PORT) { $env:OE_PORT } else { "8080" }
 $OE_REPO = "https://github.com/datadrivenconstruction/OpenConstructionERP"
 
@@ -60,10 +60,33 @@ function Install-Docker {
     $url = "$OE_REPO/raw/main/docker-compose.quickstart.yml"
     Invoke-WebRequest -Uri $url -OutFile "docker-compose.yml"
 
-    Write-Info "Starting OpenEstimate..."
+    Write-Info "Starting OpenConstructionERP..."
     & docker compose up -d
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "docker compose up failed (exit code $LASTEXITCODE)"
+        exit 1
+    }
 
-    Write-Ok "OpenEstimate is running at http://localhost:$OE_PORT"
+    # Wait for health check
+    Write-Info "Waiting for health check..."
+    $healthy = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        try {
+            $resp = Invoke-RestMethod -Uri "http://localhost:$OE_PORT/api/health" -TimeoutSec 2
+            if ($resp.status -eq "healthy") {
+                $healthy = $true
+                break
+            }
+        } catch {}
+        Start-Sleep -Seconds 2
+    }
+
+    if ($healthy) {
+        Write-Ok "OpenConstructionERP is running at http://localhost:$OE_PORT"
+    } else {
+        Write-Warn "Service started but health check did not pass within 60s"
+        Write-Host "  Check logs: cd $OE_INSTALL_DIR; docker compose logs -f"
+    }
     Write-Host ""
     Write-Host "Commands:"
     Write-Host "  cd $OE_INSTALL_DIR; docker compose logs -f   # View logs"
@@ -78,8 +101,12 @@ function Install-Uv {
         irm https://astral.sh/uv/install.ps1 | iex
     }
 
-    & uv tool install openestimate
-    Write-Ok "OpenEstimate installed!"
+    & uv tool install openconstructionerp
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "uv tool install failed (exit code $LASTEXITCODE)"
+        exit 1
+    }
+    Write-Ok "OpenConstructionERP installed!"
     Write-Host ""
     Write-Host "Run: openestimate serve --port $OE_PORT --open"
 }
@@ -91,9 +118,13 @@ function Install-Pip {
     & python -m venv "$OE_INSTALL_DIR\venv"
     & "$OE_INSTALL_DIR\venv\Scripts\Activate.ps1"
     & pip install --upgrade pip
-    & pip install openestimate
+    & pip install openconstructionerp
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "pip install failed (exit code $LASTEXITCODE)"
+        exit 1
+    }
 
-    Write-Ok "OpenEstimate installed in $OE_INSTALL_DIR\venv"
+    Write-Ok "OpenConstructionERP installed in $OE_INSTALL_DIR\venv"
 
     # Create start script
     @"
@@ -109,7 +140,7 @@ openestimate serve %*
 # ── Main ─────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "  +===============================================+"
-Write-Host "  |      OpenEstimate Installer                   |"
+Write-Host "  |      OpenConstructionERP Installer            |"
 Write-Host "  |      Construction Cost Estimation Platform    |"
 Write-Host "  +===============================================+"
 Write-Host ""

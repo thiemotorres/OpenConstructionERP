@@ -97,18 +97,24 @@ function CreateRFIModal({
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<RFIFormData>(EMPTY_FORM);
-  const [touched, setTouched] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const set = <K extends keyof RFIFormData>(key: K, value: RFIFormData[K]) =>
+  const set = <K extends keyof RFIFormData>(key: K, value: RFIFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+  };
 
-  const subjectError = touched && form.subject.trim().length === 0;
-  const questionError = touched && form.question.trim().length === 0;
-  const canSubmit = form.subject.trim().length > 0 && form.question.trim().length > 0;
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!form.subject.trim()) e.subject = t('validation.required', { defaultValue: 'This field is required' });
+    if (!form.question.trim()) e.question = t('validation.required', { defaultValue: 'This field is required' });
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const handleSubmit = () => {
-    setTouched(true);
-    if (canSubmit) onSubmit(form);
+    if (!validate()) return;
+    onSubmit(form);
   };
 
   useEffect(() => {
@@ -156,23 +162,20 @@ function CreateRFIModal({
             </label>
             <input
               value={form.subject}
-              onChange={(e) => {
-                set('subject', e.target.value);
-                setTouched(true);
-              }}
+              onChange={(e) => set('subject', e.target.value)}
               placeholder={t('rfi.subject_placeholder', {
                 defaultValue: 'e.g. Clarification on foundation depth at Grid Line A-3',
               })}
               className={clsx(
                 inputCls,
-                subjectError &&
+                errors.subject &&
                   'border-semantic-error focus:ring-red-300 focus:border-semantic-error',
               )}
               autoFocus
             />
-            {subjectError && (
+            {errors.subject && (
               <p className="mt-1 text-xs text-semantic-error">
-                {t('rfi.subject_required', { defaultValue: 'Subject is required' })}
+                {errors.subject}
               </p>
             )}
           </div>
@@ -185,23 +188,20 @@ function CreateRFIModal({
             </label>
             <textarea
               value={form.question}
-              onChange={(e) => {
-                set('question', e.target.value);
-                setTouched(true);
-              }}
+              onChange={(e) => set('question', e.target.value)}
               rows={3}
               className={clsx(
                 textareaCls,
-                questionError &&
+                errors.question &&
                   'border-semantic-error focus:ring-red-300 focus:border-semantic-error',
               )}
               placeholder={t('rfi.question_placeholder', {
                 defaultValue: 'Describe your question in detail...',
               })}
             />
-            {questionError && (
+            {errors.question && (
               <p className="mt-1 text-xs text-semantic-error">
-                {t('rfi.question_required', { defaultValue: 'Question is required' })}
+                {errors.question}
               </p>
             )}
           </div>
@@ -996,42 +996,89 @@ export function RFIPage() {
                 count: filtered.length,
               })}
             </p>
-            <Card padding="none" className="overflow-x-auto">
-              {/* Table header */}
-              <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border-light bg-surface-secondary/30 text-2xs font-medium text-content-tertiary uppercase tracking-wider min-w-[640px]">
-                <span className="w-5" /> {/* Chevron space */}
-                <span className="w-16">#</span>
-                <span className="flex-1">
-                  {t('rfi.col_subject', { defaultValue: 'Subject' })}
-                </span>
-                <span className="w-20 text-center">
-                  {t('rfi.col_status', { defaultValue: 'Status' })}
-                </span>
-                <span className="w-28 hidden md:block">
-                  {t('rfi.col_bic', { defaultValue: 'Ball in Court' })}
-                </span>
-                <span className="w-16 text-right hidden sm:block">
-                  {t('rfi.col_days', { defaultValue: 'Days' })}
-                </span>
-                <span className="w-20 hidden lg:block">
-                  {t('rfi.col_due', { defaultValue: 'Due' })}
-                </span>
-                <span className="w-14 text-right">
-                  {t('rfi.col_impact', { defaultValue: 'Impact' })}
-                </span>
-              </div>
 
-              {/* Rows */}
-              {filtered.map((rfi) => (
-                <RFIRow
-                  key={rfi.id}
-                  rfi={rfi}
-                  onRespond={handleRespond}
-                  onClose={handleClose}
-                  onCreateVariation={handleCreateVariation}
-                />
-              ))}
-            </Card>
+            {/* Desktop table */}
+            <div className="hidden md:block">
+              <Card padding="none" className="overflow-x-auto">
+                {/* Table header */}
+                <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border-light bg-surface-secondary/30 text-2xs font-medium text-content-tertiary uppercase tracking-wider min-w-[640px]">
+                  <span className="w-5" /> {/* Chevron space */}
+                  <span className="w-16">#</span>
+                  <span className="flex-1">
+                    {t('rfi.col_subject', { defaultValue: 'Subject' })}
+                  </span>
+                  <span className="w-20 text-center">
+                    {t('rfi.col_status', { defaultValue: 'Status' })}
+                  </span>
+                  <span className="w-28">
+                    {t('rfi.col_bic', { defaultValue: 'Ball in Court' })}
+                  </span>
+                  <span className="w-16 text-right">
+                    {t('rfi.col_days', { defaultValue: 'Days' })}
+                  </span>
+                  <span className="w-20">
+                    {t('rfi.col_due', { defaultValue: 'Due' })}
+                  </span>
+                  <span className="w-14 text-right">
+                    {t('rfi.col_impact', { defaultValue: 'Impact' })}
+                  </span>
+                </div>
+
+                {/* Rows */}
+                {filtered.map((rfi) => (
+                  <RFIRow
+                    key={rfi.id}
+                    rfi={rfi}
+                    onRespond={handleRespond}
+                    onClose={handleClose}
+                    onCreateVariation={handleCreateVariation}
+                  />
+                ))}
+              </Card>
+            </div>
+
+            {/* Mobile card view */}
+            <div className="md:hidden space-y-3">
+              {filtered.map((rfi) => {
+                const days = daysOpen(rfi.created_at, rfi.closed_at);
+                const isOverdue = rfi.due_date && rfi.status === 'open' && new Date(rfi.due_date) < new Date();
+                const statusCfg = STATUS_CONFIG[rfi.status] ?? STATUS_CONFIG.draft;
+                return (
+                  <Card key={rfi.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-mono text-content-tertiary">#{rfi.rfi_number}</span>
+                        <h4 className="text-sm font-semibold text-content-primary truncate">{rfi.subject}</h4>
+                      </div>
+                      <Badge variant={statusCfg.variant} size="sm" className={statusCfg.cls}>
+                        {t(`rfi.status_${rfi.status}`, { defaultValue: rfi.status.charAt(0).toUpperCase() + rfi.status.slice(1) })}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-content-tertiary space-y-1">
+                      {(rfi.ball_in_court_name || rfi.ball_in_court) && (
+                        <div>{t('rfi.col_bic', { defaultValue: 'Ball in Court' })}: {rfi.ball_in_court_name || rfi.ball_in_court}</div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <span className={isOverdue ? 'text-semantic-error font-semibold' : ''}>{days}d {t('rfi.col_days', { defaultValue: 'open' })}</span>
+                        {rfi.due_date && (
+                          <span className={isOverdue ? 'text-semantic-error font-semibold' : ''}>
+                            {t('rfi.col_due', { defaultValue: 'Due' })}: {new Date(rfi.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {rfi.cost_impact && (
+                          <span className="flex items-center gap-0.5 text-amber-500"><DollarSign size={12} /> {t('rfi.cost_impact', { defaultValue: 'Cost' })}</span>
+                        )}
+                        {rfi.schedule_impact && (
+                          <span className="flex items-center gap-0.5 text-orange-500"><Clock size={12} /> {t('rfi.schedule_impact', { defaultValue: 'Schedule' })}</span>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           </>
         )}
       </div>

@@ -38,7 +38,13 @@ def _validate_date_string(value: str | None, field_name: str) -> str | None:
 class ProjectCreate(BaseModel):
     """Create a new project."""
 
-    name: str = Field(..., min_length=1, max_length=255, examples=["Residential Berlin Mitte"])
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Project name (must be at least 1 character, HTML tags are stripped)",
+        examples=["Residential Berlin Mitte"],
+    )
 
     @field_validator("name", mode="after")
     @classmethod
@@ -49,28 +55,34 @@ class ProjectCreate(BaseModel):
     description: str = Field(
         default="",
         max_length=5000,
+        description="Project scope description (max 5000 characters)",
         examples=["5-story residential building, 48 units, underground parking"],
     )
     region: str = Field(
         default="",
         max_length=100,
-        description="Region/market identifier — user must choose, no default bias",
+        description="Region/market identifier (e.g. DACH, UK, US, Middle East). User must choose, no default bias",
         examples=["DACH"],
     )
     classification_standard: str = Field(
         default="",
         max_length=100,
-        description="Classification standard — accepts any standard identifier",
+        description="Classification standard identifier (e.g. din276, nrm, masterformat, uniclass)",
         examples=["din276"],
     )
     currency: str = Field(
         default="",
         max_length=10,
-        description="ISO 4217 currency code — user must choose, no default bias",
+        description="ISO 4217 currency code (e.g. EUR, GBP, USD). User must choose, no default bias",
         examples=["EUR"],
     )
-    locale: str = Field(default="en", max_length=10)
-    validation_rule_sets: list[str] = Field(default_factory=lambda: ["boq_quality"])
+    locale: str = Field(
+        default="en", max_length=10, description="UI locale code (e.g. en, de, fr)"
+    )
+    validation_rule_sets: list[str] = Field(
+        default_factory=lambda: ["boq_quality"],
+        description="List of validation rule set IDs to apply (e.g. boq_quality, din276, gaeb)",
+    )
 
     # Phase 12 expansion fields (all optional)
     project_code: str | None = Field(default=None, max_length=50)

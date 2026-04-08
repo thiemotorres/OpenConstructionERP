@@ -41,11 +41,13 @@ import {
   Mail,
   Send,
   Plug,
+  History,
   type LucideIcon,
 } from 'lucide-react';
 import { useModuleStore } from '@/stores/useModuleStore';
 import { UpdateNotification } from '@/shared/ui/UpdateChecker';
 import { useViewModeStore } from '@/stores/useViewModeStore';
+import { useRecentStore } from '@/stores/useRecentStore';
 import { getModuleNavItems } from '@/modules/_registry';
 import { APP_VERSION } from '@/shared/lib/version';
 
@@ -334,6 +336,9 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         })}
       </nav>
 
+      {/* Recent items */}
+      <RecentSection onItemClick={onClose} />
+
       {/* Bottom navigation */}
       <div className="border-t border-border-light px-3 py-2">
         <ul className="space-y-0.5">
@@ -482,5 +487,50 @@ function SidebarItem({ item, label, onClick, badge: numericBadge }: { item: NavI
           </span>
         )}
       </NavLink>
+  );
+}
+
+const RECENT_TYPE_ICONS: Record<string, LucideIcon> = {
+  project: FolderOpen,
+  boq: Table2,
+  schedule: CalendarDays,
+  task: ClipboardList,
+  rfi: HelpCircle,
+  contact: Users,
+};
+
+function RecentSection({ onItemClick }: { onItemClick?: () => void }) {
+  const { t } = useTranslation();
+  const recentItems = useRecentStore((s) => s.items);
+
+  if (recentItems.length === 0) return null;
+
+  const displayed = recentItems.slice(0, 3);
+
+  return (
+    <div className="border-t border-border-light px-3 py-2">
+      <span className="mt-1 mb-1 flex items-center gap-1.5 px-2.5 text-2xs font-medium uppercase tracking-wider text-content-tertiary">
+        <History size={11} strokeWidth={2} />
+        {t('nav.recent', { defaultValue: 'Recent' })}
+      </span>
+      <ul className="space-y-0.5">
+        {displayed.map((item) => {
+          const Icon = RECENT_TYPE_ICONS[item.type] || FolderOpen;
+          return (
+            <li key={item.id}>
+              <NavLink
+                to={item.url}
+                onClick={onItemClick}
+                title={item.title}
+                className="flex items-center gap-2 rounded-md px-2.5 py-[5px] text-[13px] font-medium text-content-secondary hover:bg-surface-secondary hover:text-content-primary transition-all duration-fast ease-oe"
+              >
+                <Icon size={14} strokeWidth={1.75} className="shrink-0 text-content-tertiary" />
+                <span className="truncate">{item.title}</span>
+              </NavLink>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

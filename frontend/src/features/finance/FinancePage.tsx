@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -291,7 +291,7 @@ export function FinancePage() {
           })}
           description={t('finance.select_project', {
             defaultValue:
-              'Open a project first to view its financial data',
+              'Track invoices, budgets, and payments here. Select a project to view its financial data, or lock a BOQ to auto-generate budget lines.',
           })}
         />
       ) : (
@@ -320,6 +320,24 @@ function BudgetsTab({ projectId }: { projectId: string }) {
   const [importError, setImportError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [budgetForm, setBudgetForm] = useState({ wbs_code: '', category: '', original_budget: '' });
+  const [budgetErrors, setBudgetErrors] = useState<Record<string, string>>({});
+  const budgetFirstRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus budget WBS input when modal opens
+  useEffect(() => {
+    if (showCreate && budgetFirstRef.current) {
+      setTimeout(() => budgetFirstRef.current?.focus(), 100);
+    }
+  }, [showCreate]);
+
+  const validateBudget = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!budgetForm.category.trim()) e.category = t('validation.required', { defaultValue: 'This field is required' });
+    if (!budgetForm.original_budget.trim()) e.original_budget = t('validation.required', { defaultValue: 'This field is required' });
+    else if (parseFloat(budgetForm.original_budget) <= 0) e.original_budget = t('validation.positive_number', { defaultValue: 'Must be a positive number' });
+    setBudgetErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   // Escape key handler for inline modals
   useEffect(() => {
@@ -426,7 +444,7 @@ function BudgetsTab({ projectId }: { projectId: string }) {
         icon={<Wallet size={28} strokeWidth={1.5} />}
         title={t('finance.no_budgets', { defaultValue: 'No budgets yet' })}
         description={t('finance.no_budgets_desc', {
-          defaultValue: 'Budget lines will appear here when configured',
+          defaultValue: 'Lock your BOQ estimate first to auto-generate budget lines. You can also create budget lines manually for each cost category.',
         })}
       />
     );
@@ -628,6 +646,7 @@ function BudgetsTab({ projectId }: { projectId: string }) {
                 {t('finance.wbs', { defaultValue: 'WBS Code' })}
               </label>
               <input
+                ref={budgetFirstRef}
                 value={budgetForm.wbs_code}
                 onChange={(e) => setBudgetForm((p) => ({ ...p, wbs_code: e.target.value }))}
                 className={inputCls}
@@ -640,10 +659,14 @@ function BudgetsTab({ projectId }: { projectId: string }) {
               </label>
               <input
                 value={budgetForm.category}
-                onChange={(e) => setBudgetForm((p) => ({ ...p, category: e.target.value }))}
-                className={inputCls}
+                onChange={(e) => {
+                  setBudgetForm((p) => ({ ...p, category: e.target.value }));
+                  if (budgetErrors.category) setBudgetErrors((prev) => { const next = { ...prev }; delete next.category; return next; });
+                }}
+                className={clsx(inputCls, budgetErrors.category && 'border-semantic-error focus:ring-red-300 focus:border-semantic-error')}
                 placeholder={t('finance.category_placeholder', { defaultValue: 'e.g. Structural Works' })}
               />
+              {budgetErrors.category && <p className="mt-1 text-xs text-semantic-error">{budgetErrors.category}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-content-primary mb-1.5">
@@ -653,10 +676,14 @@ function BudgetsTab({ projectId }: { projectId: string }) {
                 type="number"
                 step="0.01"
                 value={budgetForm.original_budget}
-                onChange={(e) => setBudgetForm((p) => ({ ...p, original_budget: e.target.value }))}
-                className={inputCls}
+                onChange={(e) => {
+                  setBudgetForm((p) => ({ ...p, original_budget: e.target.value }));
+                  if (budgetErrors.original_budget) setBudgetErrors((prev) => { const next = { ...prev }; delete next.original_budget; return next; });
+                }}
+                className={clsx(inputCls, budgetErrors.original_budget && 'border-semantic-error focus:ring-red-300 focus:border-semantic-error')}
                 placeholder="0.00"
               />
+              {budgetErrors.original_budget && <p className="mt-1 text-xs text-semantic-error">{budgetErrors.original_budget}</p>}
             </div>
           </div>
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-light">
@@ -666,14 +693,14 @@ function BudgetsTab({ projectId }: { projectId: string }) {
             <Button
               variant="primary"
               onClick={() => {
-                if (!budgetForm.category.trim() || !budgetForm.original_budget.trim()) return;
+                if (!validateBudget()) return;
                 createBudgetMut.mutate({
                   wbs_id: budgetForm.wbs_code || null,
                   category: budgetForm.category,
                   original_budget: budgetForm.original_budget,
                 });
               }}
-              disabled={createBudgetMut.isPending || !budgetForm.category.trim() || !budgetForm.original_budget.trim()}
+              disabled={createBudgetMut.isPending}
             >
               {createBudgetMut.isPending ? (
                 <Loader2 size={16} className="animate-spin mr-1.5" />
@@ -811,6 +838,24 @@ function InvoicesTab({ projectId }: { projectId: string }) {
     amount: '',
     description: '',
   });
+  const [invoiceErrors, setInvoiceErrors] = useState<Record<string, string>>({});
+  const invoiceDateRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus invoice date when modal opens
+  useEffect(() => {
+    if (showCreate && invoiceDateRef.current) {
+      setTimeout(() => invoiceDateRef.current?.focus(), 100);
+    }
+  }, [showCreate]);
+
+  const validateInvoice = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!invoiceForm.invoice_date) e.invoice_date = t('validation.required', { defaultValue: 'This field is required' });
+    if (!invoiceForm.amount) e.amount = t('validation.required', { defaultValue: 'This field is required' });
+    else if (parseFloat(invoiceForm.amount) <= 0) e.amount = t('validation.positive_number', { defaultValue: 'Must be a positive number' });
+    setInvoiceErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   // Escape key handler for inline modal
   useEffect(() => {
@@ -964,6 +1009,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
             icon={<Plus size={14} />}
             onClick={() => {
               setInvoiceForm((f) => ({ ...f, direction: subTab }));
+              setInvoiceErrors({});
               setShowCreate(true);
             }}
           >
@@ -1006,132 +1052,157 @@ function InvoicesTab({ projectId }: { projectId: string }) {
             />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border-light bg-surface-secondary/50">
-                  <th className="px-4 py-3 text-left font-medium text-content-tertiary">
-                    {t('finance.invoice_number', { defaultValue: 'Invoice #' })}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-content-tertiary">
-                    {subTab === 'payable'
-                      ? t('finance.vendor', { defaultValue: 'Vendor' })
-                      : t('finance.client', { defaultValue: 'Client' })}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-content-tertiary">
-                    {t('finance.issue_date', { defaultValue: 'Date' })}
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium text-content-tertiary">
-                    {t('finance.due_date', { defaultValue: 'Due Date' })}
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-content-tertiary">
-                    {t('finance.amount', { defaultValue: 'Amount' })}
-                  </th>
-                  <th className="px-4 py-3 text-center font-medium text-content-tertiary">
-                    {t('common.status', { defaultValue: 'Status' })}
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-content-tertiary">
-                    {t('common.actions', { defaultValue: 'Actions' })}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-content-tertiary">
-                      {t('finance.no_invoice_match', { defaultValue: 'No matching invoices' })}
-                    </td>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border-light bg-surface-secondary/50">
+                    <th className="px-4 py-3 text-left font-medium text-content-tertiary">
+                      {t('finance.invoice_number', { defaultValue: 'Invoice #' })}
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-content-tertiary">
+                      {subTab === 'payable'
+                        ? t('finance.vendor', { defaultValue: 'Vendor' })
+                        : t('finance.client', { defaultValue: 'Client' })}
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-content-tertiary">
+                      {t('finance.issue_date', { defaultValue: 'Date' })}
+                    </th>
+                    <th className="px-4 py-3 text-left font-medium text-content-tertiary">
+                      {t('finance.due_date', { defaultValue: 'Due Date' })}
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-content-tertiary">
+                      {t('finance.amount', { defaultValue: 'Amount' })}
+                    </th>
+                    <th className="px-4 py-3 text-center font-medium text-content-tertiary">
+                      {t('common.status', { defaultValue: 'Status' })}
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium text-content-tertiary">
+                      {t('common.actions', { defaultValue: 'Actions' })}
+                    </th>
                   </tr>
-                ) : filtered.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className="border-b border-border-light hover:bg-surface-secondary/30 transition-colors"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs text-content-primary">
-                      {inv.invoice_number}
-                    </td>
-                    <td className="px-4 py-3 text-content-secondary">
-                      <div>{inv.counterparty_name}</div>
-                      {inv.line_items && inv.line_items.length > 0 && inv.line_items.some((li) => li.cost_category || li.wbs_id) && (
-                        <div className="text-2xs text-content-tertiary mt-0.5">
-                          {t('finance.budget_line', { defaultValue: 'Budget' })}:{' '}
-                          {inv.line_items
-                            .filter((li) => li.cost_category || li.wbs_id)
-                            .slice(0, 2)
-                            .map((li) => li.cost_category || li.wbs_id)
-                            .join(', ')}
+                </thead>
+                <tbody>
+                  {filtered.map((inv) => (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-border-light hover:bg-surface-secondary/30 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-mono text-xs text-content-primary">
+                        {inv.invoice_number}
+                      </td>
+                      <td className="px-4 py-3 text-content-secondary">
+                        <div>{inv.counterparty_name}</div>
+                        {inv.line_items && inv.line_items.length > 0 && inv.line_items.some((li) => li.cost_category || li.wbs_id) && (
+                          <div className="text-2xs text-content-tertiary mt-0.5">
+                            {t('finance.budget_line', { defaultValue: 'Budget' })}:{' '}
+                            {inv.line_items
+                              .filter((li) => li.cost_category || li.wbs_id)
+                              .slice(0, 2)
+                              .map((li) => li.cost_category || li.wbs_id)
+                              .join(', ')}
+                          </div>
+                        )}
+                        {inv.description && (!inv.line_items || !inv.line_items.some((li) => li.cost_category || li.wbs_id)) && (
+                          <div className="text-2xs text-content-quaternary mt-0.5 truncate max-w-[200px]">
+                            {inv.description}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-content-secondary">
+                        <DateDisplay value={inv.issue_date} />
+                      </td>
+                      <td className="px-4 py-3 text-content-secondary">
+                        <DateDisplay value={inv.due_date} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <MoneyDisplay amount={inv.amount} currency={inv.currency} />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge
+                          variant={INVOICE_STATUS_COLORS[inv.status] ?? 'neutral'}
+                          size="sm"
+                        >
+                          {t(`finance.status_${inv.status}`, {
+                            defaultValue: inv.status,
+                          })}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {inv.status === 'pending' && isManager && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: t('finance.confirm_approve_title', { defaultValue: 'Approve invoice?' }),
+                                  message: t('finance.confirm_approve_msg', { defaultValue: 'This invoice will be approved for payment.' }),
+                                  confirmLabel: t('finance.approve', { defaultValue: 'Approve' }),
+                                  variant: 'warning',
+                                });
+                                if (ok) approveMutation.mutate(inv.id);
+                              }}
+                              loading={approveMutation.isPending}
+                            >
+                              {t('finance.approve', { defaultValue: 'Approve' })}
+                            </Button>
+                          )}
+                          {inv.status === 'approved' && isManager && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: t('finance.confirm_pay_title', { defaultValue: 'Mark as paid?' }),
+                                  message: t('finance.confirm_pay_msg', { defaultValue: 'This invoice will be recorded as paid.' }),
+                                  confirmLabel: t('finance.mark_paid', { defaultValue: 'Mark Paid' }),
+                                  variant: 'warning',
+                                });
+                                if (ok) markPaidMutation.mutate(inv.id);
+                              }}
+                              loading={markPaidMutation.isPending}
+                            >
+                              {t('finance.mark_paid', { defaultValue: 'Mark Paid' })}
+                            </Button>
+                          )}
                         </div>
-                      )}
-                      {inv.description && (!inv.line_items || !inv.line_items.some((li) => li.cost_category || li.wbs_id)) && (
-                        <div className="text-2xs text-content-quaternary mt-0.5 truncate max-w-[200px]">
-                          {inv.description}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-content-secondary">
-                      <DateDisplay value={inv.issue_date} />
-                    </td>
-                    <td className="px-4 py-3 text-content-secondary">
-                      <DateDisplay value={inv.due_date} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card view */}
+            <div className="md:hidden p-4 space-y-3">
+              {filtered.map((inv) => (
+                <Card key={inv.id} className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-mono text-content-tertiary">{inv.invoice_number}</span>
+                      <h4 className="text-sm font-semibold text-content-primary truncate">{inv.counterparty_name}</h4>
+                    </div>
+                    <Badge variant={INVOICE_STATUS_COLORS[inv.status] ?? 'neutral'} size="sm">
+                      {t(`finance.status_${inv.status}`, { defaultValue: inv.status })}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-content-tertiary">
+                    <span><DateDisplay value={inv.issue_date} /></span>
+                    <span className="font-semibold text-content-primary">
                       <MoneyDisplay amount={inv.amount} currency={inv.currency} />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge
-                        variant={INVOICE_STATUS_COLORS[inv.status] ?? 'neutral'}
-                        size="sm"
-                      >
-                        {t(`finance.status_${inv.status}`, {
-                          defaultValue: inv.status,
-                        })}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {inv.status === 'pending' && isManager && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: t('finance.confirm_approve_title', { defaultValue: 'Approve invoice?' }),
-                                message: t('finance.confirm_approve_msg', { defaultValue: 'This invoice will be approved for payment.' }),
-                                confirmLabel: t('finance.approve', { defaultValue: 'Approve' }),
-                                variant: 'warning',
-                              });
-                              if (ok) approveMutation.mutate(inv.id);
-                            }}
-                            loading={approveMutation.isPending}
-                          >
-                            {t('finance.approve', { defaultValue: 'Approve' })}
-                          </Button>
-                        )}
-                        {inv.status === 'approved' && isManager && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: t('finance.confirm_pay_title', { defaultValue: 'Mark as paid?' }),
-                                message: t('finance.confirm_pay_msg', { defaultValue: 'This invoice will be recorded as paid.' }),
-                                confirmLabel: t('finance.mark_paid', { defaultValue: 'Mark Paid' }),
-                                variant: 'warning',
-                              });
-                              if (ok) markPaidMutation.mutate(inv.id);
-                            }}
-                            loading={markPaidMutation.isPending}
-                          >
-                            {t('finance.mark_paid', { defaultValue: 'Mark Paid' })}
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                  </div>
+                  {inv.due_date && (
+                    <div className="text-xs text-content-tertiary mt-1">
+                      {t('finance.due_date', { defaultValue: 'Due' })}: <DateDisplay value={inv.due_date} />
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          </>
         )}
       </Card>
 
@@ -1209,11 +1280,16 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                   {t('finance.issue_date', { defaultValue: 'Invoice Date' })} <span className="text-semantic-error">*</span>
                 </label>
                 <input
+                  ref={invoiceDateRef}
                   type="date"
                   value={invoiceForm.invoice_date}
-                  onChange={(e) => setInvoiceForm((f) => ({ ...f, invoice_date: e.target.value }))}
-                  className={inputCls}
+                  onChange={(e) => {
+                    setInvoiceForm((f) => ({ ...f, invoice_date: e.target.value }));
+                    if (invoiceErrors.invoice_date) setInvoiceErrors((prev) => { const next = { ...prev }; delete next.invoice_date; return next; });
+                  }}
+                  className={clsx(inputCls, invoiceErrors.invoice_date && 'border-semantic-error focus:ring-red-300 focus:border-semantic-error')}
                 />
+                {invoiceErrors.invoice_date && <p className="mt-1 text-xs text-semantic-error">{invoiceErrors.invoice_date}</p>}
               </div>
               {/* Due date */}
               <div>
@@ -1236,10 +1312,14 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                   type="number"
                   step="0.01"
                   value={invoiceForm.amount}
-                  onChange={(e) => setInvoiceForm((f) => ({ ...f, amount: e.target.value }))}
-                  className={inputCls}
+                  onChange={(e) => {
+                    setInvoiceForm((f) => ({ ...f, amount: e.target.value }));
+                    if (invoiceErrors.amount) setInvoiceErrors((prev) => { const next = { ...prev }; delete next.amount; return next; });
+                  }}
+                  className={clsx(inputCls, invoiceErrors.amount && 'border-semantic-error focus:ring-red-300 focus:border-semantic-error')}
                   placeholder="0.00"
                 />
+                {invoiceErrors.amount && <p className="mt-1 text-xs text-semantic-error">{invoiceErrors.amount}</p>}
               </div>
               {/* Description */}
               <div>
@@ -1260,8 +1340,11 @@ function InvoicesTab({ projectId }: { projectId: string }) {
               </Button>
               <Button
                 variant="primary"
-                onClick={() => createInvoiceMut.mutate(invoiceForm)}
-                disabled={createInvoiceMut.isPending || !invoiceForm.invoice_date || !invoiceForm.amount}
+                onClick={() => {
+                  if (!validateInvoice()) return;
+                  createInvoiceMut.mutate(invoiceForm);
+                }}
+                disabled={createInvoiceMut.isPending}
               >
                 {createInvoiceMut.isPending ? (
                   <Loader2 size={16} className="animate-spin mr-1.5" />

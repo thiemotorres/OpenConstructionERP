@@ -101,11 +101,27 @@ class RefreshRequest(BaseModel):
 class UserCreate(BaseModel):
     """Create a new user."""
 
-    email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
-    full_name: str = Field(..., min_length=1, max_length=255)
-    role: str = Field(default="editor", pattern=r"^(admin|manager|editor|viewer)$")
-    locale: str = Field(default="en", max_length=10)
+    email: EmailStr = Field(..., description="Valid email address (used for login)")
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="Password (min 8 chars, must contain at least one letter and one digit)",
+    )
+    full_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Full display name (HTML tags are stripped)",
+    )
+    role: str = Field(
+        default="editor",
+        pattern=r"^(admin|manager|editor|viewer)$",
+        description="User role. Must be one of: admin, manager, editor, viewer",
+    )
+    locale: str = Field(
+        default="en", max_length=10, description="Preferred locale code (e.g. en, de, fr)"
+    )
 
     @field_validator("password")
     @classmethod

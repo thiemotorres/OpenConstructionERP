@@ -21,11 +21,31 @@ class BOQCreate(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    project_id: UUID
-    name: str = Field(..., min_length=1, max_length=255, examples=["Detailed Estimate Phase 1"])
-    description: str = Field(default="", examples=["Full BOQ for structural and architectural works"])
-    estimate_type: str | None = Field(default=None, max_length=50, examples=["detailed"])
-    base_date: str | None = Field(default=None, max_length=20, examples=["2026-Q2"])
+    project_id: UUID = Field(..., description="UUID of the parent project")
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="BOQ name (must be at least 1 character)",
+        examples=["Detailed Estimate Phase 1"],
+    )
+    description: str = Field(
+        default="",
+        description="Optional description of the BOQ scope",
+        examples=["Full BOQ for structural and architectural works"],
+    )
+    estimate_type: str | None = Field(
+        default=None,
+        max_length=50,
+        description="Estimate type (e.g. detailed, budget, order_of_magnitude)",
+        examples=["detailed"],
+    )
+    base_date: str | None = Field(
+        default=None,
+        max_length=20,
+        description="Base date / price level reference (e.g. 2026-Q2)",
+        examples=["2026-Q2"],
+    )
 
 
 class BOQUpdate(BaseModel):
@@ -83,29 +103,58 @@ class PositionCreate(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    boq_id: UUID
-    parent_id: UUID | None = None
-    ordinal: str = Field(..., min_length=1, max_length=50, examples=["01.02.003"])
+    boq_id: UUID = Field(..., description="UUID of the parent BOQ")
+    parent_id: UUID | None = Field(
+        default=None, description="Parent position UUID for hierarchical grouping"
+    )
+    ordinal: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Position number / ordinal code (e.g. 01.02.003)",
+        examples=["01.02.003"],
+    )
     description: str = Field(
         default="",
+        description="Position description / specification text",
         examples=["Reinforced concrete wall C30/37, 24cm, formwork both sides"],
     )
-    unit: str = Field(..., min_length=1, max_length=20, examples=["m3"])
-    quantity: float = Field(default=0.0, ge=0.0, examples=[125.5])
-    unit_rate: float = Field(default=0.0, ge=0.0, examples=[285.00])
+    unit: str = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description="Unit of measurement (m, m2, m3, kg, pcs, lsum, etc.)",
+        examples=["m3"],
+    )
+    quantity: float = Field(
+        default=0.0, ge=0.0, description="Measured quantity", examples=[125.5]
+    )
+    unit_rate: float = Field(
+        default=0.0, ge=0.0, description="Price per unit", examples=[285.00]
+    )
     classification: dict[str, Any] = Field(
-        default_factory=dict, examples=[{"din276": "330"}]
+        default_factory=dict,
+        description="Classification codes (e.g. din276, nrm, masterformat)",
+        examples=[{"din276": "330"}],
     )
     source: str = Field(
         default="manual",
         pattern=r"^(manual|cad_import|ai_takeoff|gaeb_import|excel_import|takeoff)$",
+        description="Data source. Must be: manual, cad_import, ai_takeoff, gaeb_import, excel_import, or takeoff",
         examples=["manual"],
     )
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    cad_element_ids: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-    wbs_id: str | None = None
-    cost_code_id: str | None = None
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="AI confidence score (0.0-1.0). Only for AI-sourced positions",
+    )
+    cad_element_ids: list[str] = Field(
+        default_factory=list, description="Linked CAD element IDs from canonical format"
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
+    wbs_id: str | None = Field(default=None, description="Linked WBS node ID")
+    cost_code_id: str | None = Field(default=None, description="Linked cost code ID")
 
 
 class SectionCreate(BaseModel):

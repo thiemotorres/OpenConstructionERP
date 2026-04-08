@@ -36,6 +36,7 @@ import { Button, Card, CardHeader, Badge, Skeleton, EmptyState, Breadcrumb } fro
 import { apiGet } from '@/shared/lib/api';
 import { projectsApi } from './api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
+import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -935,12 +936,20 @@ export function ProjectDetailPage() {
     enabled: !!projectId,
   });
 
-  // Set as active project in global context
+  const addRecent = useRecentStore((s) => s.addRecent);
+
+  // Set as active project in global context + track in recent items
   useEffect(() => {
     if (project && projectId) {
       setActiveProject(projectId, project.name);
+      addRecent({
+        type: 'project',
+        id: projectId,
+        title: project.name,
+        url: `/projects/${projectId}`,
+      });
     }
-  }, [project, projectId, setActiveProject]);
+  }, [project, projectId, setActiveProject, addRecent]);
 
   // Fetch BOQ list
   const { data: boqs, isLoading: boqsLoading } = useQuery({

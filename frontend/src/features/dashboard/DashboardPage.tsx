@@ -31,6 +31,8 @@ import {
   ExternalLink,
   AlertTriangle,
   TrendingUp,
+  Users,
+  Lightbulb,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, Skeleton, InfoHint, ActivityFeed as CrossModuleActivityFeed } from '@/shared/ui';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -842,6 +844,164 @@ function PortfolioOverview({ projects: _projects }: { projects: ProjectSummary[]
   );
 }
 
+/* ── Next Steps (context-aware suggestions) ───────────────────────────── */
+
+interface NextStepSuggestion {
+  id: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  actionLabel: string;
+  url: string;
+}
+
+function NextSteps({
+  projects,
+  boqs,
+  schedules,
+  allContacts,
+}: {
+  projects?: ProjectSummary[];
+  boqs?: BOQWithTotal[];
+  schedules?: ScheduleSummary[];
+  allContacts?: number;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const suggestions = useMemo(() => {
+    const items: NextStepSuggestion[] = [];
+
+    const hasProjects = Boolean(projects && projects.length > 0);
+    const hasBoqs = Boolean(boqs && boqs.length > 0);
+    const hasPositions = Boolean(
+      boqs && boqs.some((b) => b.positions && b.positions.length > 0),
+    );
+    const hasRates = Boolean(
+      boqs && boqs.some((b) => b.positions && b.positions.some((p) => p.total > 0)),
+    );
+    const hasSchedules = Boolean(schedules && schedules.length > 0);
+    const hasContacts = Boolean(allContacts && allContacts > 0);
+
+    // If no BOQ -- suggest creating one
+    if (hasProjects && !hasBoqs) {
+      items.push({
+        id: 'create-boq',
+        icon: <FileSpreadsheet size={18} strokeWidth={1.75} />,
+        title: t('dashboard.next_create_boq', { defaultValue: 'Create your first Bill of Quantities' }),
+        description: t('dashboard.next_create_boq_desc', { defaultValue: 'A BOQ is the foundation of your estimate. Add sections and positions to start building your cost breakdown.' }),
+        actionLabel: t('dashboard.next_create_boq_action', { defaultValue: 'Create BOQ' }),
+        url: `/projects/${projects![0]!.id}`,
+      });
+    }
+
+    // If BOQ has no positions -- suggest adding them
+    if (hasBoqs && !hasPositions) {
+      const firstBoq = boqs!.find((b) => !b.positions || b.positions.length === 0) ?? boqs![0];
+      items.push({
+        id: 'add-positions',
+        icon: <FileText size={18} strokeWidth={1.75} />,
+        title: t('dashboard.next_add_positions', { defaultValue: 'Add positions to your estimate' }),
+        description: t('dashboard.next_add_positions_desc', { defaultValue: 'Your BOQ is empty. Add trade sections and work item positions with quantities and unit descriptions.' }),
+        actionLabel: t('dashboard.next_add_positions_action', { defaultValue: 'Open BOQ Editor' }),
+        url: `/boq/${firstBoq!.id}`,
+      });
+    }
+
+    // If positions have no rates -- suggest importing cost database
+    if (hasPositions && !hasRates) {
+      items.push({
+        id: 'import-costs',
+        icon: <Database size={18} strokeWidth={1.75} />,
+        title: t('dashboard.next_import_costs', { defaultValue: 'Import cost database to auto-fill rates' }),
+        description: t('dashboard.next_import_costs_desc', { defaultValue: 'Load regional pricing data with 55,000+ items to automatically match unit rates to your BOQ positions.' }),
+        actionLabel: t('dashboard.next_import_costs_action', { defaultValue: 'Import Database' }),
+        url: '/costs/import',
+      });
+    }
+
+    // If BOQ has rates but not validated -- suggest validation
+    if (hasRates) {
+      items.push({
+        id: 'run-validation',
+        icon: <ShieldCheck size={18} strokeWidth={1.75} />,
+        title: t('dashboard.next_validate', { defaultValue: 'Run validation to check quality' }),
+        description: t('dashboard.next_validate_desc', { defaultValue: 'Check your estimate for missing quantities, zero prices, duplicates, and compliance with industry standards.' }),
+        actionLabel: t('dashboard.next_validate_action', { defaultValue: 'Run Validation' }),
+        url: '/validation',
+      });
+    }
+
+    // If no schedule -- suggest creating one
+    if (hasProjects && !hasSchedules) {
+      items.push({
+        id: 'create-schedule',
+        icon: <Calendar size={18} strokeWidth={1.75} />,
+        title: t('dashboard.next_create_schedule', { defaultValue: 'Create a project schedule' }),
+        description: t('dashboard.next_create_schedule_desc', { defaultValue: 'Plan your project timeline with activities, dependencies, and milestones. The Gantt chart updates automatically.' }),
+        actionLabel: t('dashboard.next_create_schedule_action', { defaultValue: 'Go to Schedule' }),
+        url: '/schedule',
+      });
+    }
+
+    // If no contacts -- suggest adding them
+    if (!hasContacts) {
+      items.push({
+        id: 'add-contacts',
+        icon: <Users size={18} strokeWidth={1.75} />,
+        title: t('dashboard.next_add_contacts', { defaultValue: 'Add your team contacts' }),
+        description: t('dashboard.next_add_contacts_desc', { defaultValue: 'Store clients, subcontractors, and suppliers in your contacts directory. Import from CSV or add manually.' }),
+        actionLabel: t('dashboard.next_add_contacts_action', { defaultValue: 'Add Contacts' }),
+        url: '/contacts',
+      });
+    }
+
+    return items.slice(0, 3);
+  }, [projects, boqs, schedules, allContacts, t]);
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div
+      className="animate-card-in"
+      style={{ animationDelay: '90ms' }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Lightbulb size={16} className="text-amber-500" strokeWidth={1.75} />
+        <h3 className="text-sm font-semibold text-content-primary">
+          {t('dashboard.next_steps', { defaultValue: 'Suggested Next Steps' })}
+        </h3>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {suggestions.map((s, i) => (
+          <button
+            key={s.id}
+            onClick={() => navigate(s.url)}
+            className="group flex flex-col items-start gap-2 rounded-xl border border-border-light bg-surface-primary p-4 text-left transition-all duration-normal ease-oe hover:border-oe-blue/30 hover:bg-oe-blue-subtle/20 hover:shadow-sm animate-stagger-in"
+            style={{ animationDelay: `${100 + i * 60}ms` }}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 transition-transform group-hover:scale-110">
+              {s.icon}
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-content-primary leading-snug">
+                {s.title}
+              </h4>
+              <p className="mt-1 text-xs leading-relaxed text-content-tertiary line-clamp-2">
+                {s.description}
+              </p>
+            </div>
+            <span className="mt-auto flex items-center gap-1 text-xs font-medium text-oe-blue">
+              {s.actionLabel}
+              <ArrowRight size={12} strokeWidth={2} />
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Page ─────────────────────────────────────────────────────────── */
 
 export function DashboardPage() {
@@ -928,6 +1088,15 @@ export function DashboardPage() {
     enabled: Boolean(projects && projects.length > 0),
     retry: false,
   });
+
+  // Fetch contacts count for NextSteps suggestions
+  const { data: contactsList } = useQuery({
+    queryKey: ['dashboard-contacts-count'],
+    queryFn: () => apiGet<{ id: string }[]>('/v1/contacts/').catch(() => []),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const contactsCount = contactsList?.length ?? 0;
 
   // Determine the most recently updated BOQ for "Continue your work"
   const lastBoq = useMemo(() => {
@@ -1150,6 +1319,14 @@ export function DashboardPage() {
 
       {/* KPI Ribbon */}
       <KpiRibbon boqs={allBoqs} schedules={allSchedules} projects={projects} />
+
+      {/* Context-aware Next Steps */}
+      <NextSteps
+        projects={projects}
+        boqs={allBoqs}
+        schedules={allSchedules}
+        allContacts={contactsCount}
+      />
 
       {/* Portfolio Overview Stats */}
       {projects && projects.length > 1 && (

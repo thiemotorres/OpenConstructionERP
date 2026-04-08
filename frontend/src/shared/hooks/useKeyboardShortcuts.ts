@@ -37,10 +37,13 @@ export interface UseKeyboardShortcutsOptions {
  *   g a - Assemblies
  *   g v - Validation
  *   g s - 4D Schedule
+ *   g f - Finance
  *   g 5 - 5D Cost Model
  *   g r - Reports
  *   g t - Tendering
  *   n p - New Project
+ *   n b - New BOQ (via projects page)
+ *   n t - New Task
  */
 export function useKeyboardShortcuts({
   onOpenSearch,
@@ -69,12 +72,15 @@ export function useKeyboardShortcuts({
         a: '/assemblies',
         v: '/validation',
         s: '/schedule',
+        f: '/finance',
         '5': '/5d',
         r: '/reports',
         t: '/tendering',
       },
       n: {
         p: '/projects/new',
+        b: '/boq',
+        t: '/tasks',
       },
     };
 

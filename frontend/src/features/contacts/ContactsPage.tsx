@@ -122,17 +122,25 @@ function AddContactModal({
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<ContactFormData>(EMPTY_FORM);
-  const [touched, setTouched] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const set = <K extends keyof ContactFormData>(key: K, value: ContactFormData[K]) =>
+  const set = <K extends keyof ContactFormData>(key: K, value: ContactFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+  };
 
-  const companyError = touched && form.company_name.trim().length === 0;
-  const canSubmit = form.company_name.trim().length > 0;
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!form.company_name.trim() && !form.contact_name.trim()) {
+      e.company_name = t('contacts.company_or_name_required', { defaultValue: 'Company name or contact name is required' });
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const handleSubmit = () => {
-    setTouched(true);
-    if (canSubmit) onSubmit(form);
+    if (!validate()) return;
+    onSubmit(form);
   };
 
   useEffect(() => {
@@ -170,23 +178,20 @@ function AddContactModal({
             </label>
             <input
               value={form.company_name}
-              onChange={(e) => {
-                set('company_name', e.target.value);
-                setTouched(true);
-              }}
+              onChange={(e) => set('company_name', e.target.value)}
               placeholder={t('contacts.company_placeholder', {
                 defaultValue: 'e.g. Acme Construction Ltd.',
               })}
               className={clsx(
                 inputCls,
-                companyError &&
+                errors.company_name &&
                   'border-semantic-error focus:ring-red-300 focus:border-semantic-error',
               )}
               autoFocus
             />
-            {companyError && (
+            {errors.company_name && (
               <p className="mt-1 text-xs text-semantic-error">
-                {t('contacts.company_required', { defaultValue: 'Company name is required' })}
+                {errors.company_name}
               </p>
             )}
           </div>
@@ -844,7 +849,7 @@ export function ContactsPage() {
                     defaultValue: 'Try adjusting your search or filters',
                   })
                 : t('contacts.no_contacts_hint', {
-                    defaultValue: 'Add your first contact to get started',
+                    defaultValue: 'Your contacts directory stores clients, subcontractors, and suppliers. Import from CSV or add them manually to build your network.',
                   })
             }
             action={

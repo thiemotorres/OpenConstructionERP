@@ -604,7 +604,7 @@ function GanttChart({
         icon={<Calendar size={28} strokeWidth={1.5} />}
         title={t('schedule.no_activities', { defaultValue: 'No activities yet' })}
         description={t('schedule.no_activities_hint', {
-          defaultValue: 'Add activities to build your project schedule',
+          defaultValue: 'Add activities to build your project timeline. Set start dates, durations, and dependencies -- the Gantt chart and critical path will update automatically.',
         })}
       />
     );
@@ -1594,7 +1594,7 @@ function ProjectSchedules({
           icon={<Calendar size={28} strokeWidth={1.5} />}
           title={t('schedule.no_schedules', { defaultValue: 'No schedules yet' })}
           description={t('schedule.no_schedules_hint', {
-            defaultValue: 'Create a schedule to start planning your project timeline',
+            defaultValue: 'The schedule shows when each activity happens. Create activities, set dependencies, and let the automatic CPM calculation find your critical path.',
           })}
           action={{
             label: t('schedule.create_schedule', { defaultValue: 'Create Schedule' }),

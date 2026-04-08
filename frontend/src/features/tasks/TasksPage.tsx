@@ -107,17 +107,23 @@ function AddTaskModal({
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<TaskFormData>(EMPTY_FORM);
-  const [touched, setTouched] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const set = <K extends keyof TaskFormData>(key: K, value: TaskFormData[K]) =>
+  const set = <K extends keyof TaskFormData>(key: K, value: TaskFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors((prev) => { const next = { ...prev }; delete next[key]; return next; });
+  };
 
-  const titleError = touched && form.title.trim().length === 0;
-  const canSubmit = form.title.trim().length > 0;
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!form.title.trim()) e.title = t('validation.required', { defaultValue: 'This field is required' });
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const handleSubmit = () => {
-    setTouched(true);
-    if (canSubmit) onSubmit(form);
+    if (!validate()) return;
+    onSubmit(form);
   };
 
   useEffect(() => {
@@ -165,23 +171,20 @@ function AddTaskModal({
             </label>
             <input
               value={form.title}
-              onChange={(e) => {
-                set('title', e.target.value);
-                setTouched(true);
-              }}
+              onChange={(e) => set('title', e.target.value)}
               placeholder={t('tasks.title_placeholder', {
                 defaultValue: 'e.g. Review structural drawings for Level 5',
               })}
               className={clsx(
                 inputCls,
-                titleError &&
+                errors.title &&
                   'border-semantic-error focus:ring-red-300 focus:border-semantic-error',
               )}
               autoFocus
             />
-            {titleError && (
+            {errors.title && (
               <p className="mt-1 text-xs text-semantic-error">
-                {t('tasks.title_required', { defaultValue: 'Title is required' })}
+                {errors.title}
               </p>
             )}
           </div>

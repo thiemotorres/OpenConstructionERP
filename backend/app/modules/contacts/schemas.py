@@ -17,27 +17,50 @@ class ContactCreate(BaseModel):
     contact_type: str = Field(
         ...,
         pattern=r"^(client|subcontractor|supplier|consultant|internal)$",
+        description="Contact role. Must be one of: client, subcontractor, supplier, consultant, internal",
         examples=["subcontractor"],
     )
     is_platform_user: bool = False
     user_id: UUID | None = None
 
-    first_name: str | None = Field(default=None, max_length=255, examples=["Max"])
-    last_name: str | None = Field(default=None, max_length=255, examples=["Mustermann"])
-    company_name: str | None = Field(
-        default=None, max_length=255, examples=["Acme Construction GmbH"]
+    first_name: str | None = Field(
+        default=None, max_length=255, description="Contact's first name", examples=["Max"]
     )
-    legal_name: str | None = Field(default=None, max_length=255)
-    vat_number: str | None = Field(default=None, max_length=50, examples=["DE123456789"])
+    last_name: str | None = Field(
+        default=None, max_length=255, description="Contact's last name", examples=["Mustermann"]
+    )
+    company_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Company or organization name",
+        examples=["Acme Construction GmbH"],
+    )
+    legal_name: str | None = Field(
+        default=None, max_length=255, description="Registered legal entity name"
+    )
+    vat_number: str | None = Field(
+        default=None, max_length=50, description="VAT registration number", examples=["DE123456789"]
+    )
 
-    country_code: str | None = Field(default=None, max_length=2, examples=["DE"])
+    country_code: str | None = Field(
+        default=None,
+        max_length=2,
+        description="ISO 3166-1 alpha-2 country code (e.g. DE, GB, US)",
+        examples=["DE"],
+    )
     address: dict[str, Any] | None = None
 
     primary_email: str | None = Field(
-        default=None, max_length=255, examples=["info@acme-construction.de"]
+        default=None,
+        max_length=255,
+        description="Primary email address",
+        examples=["info@acme-construction.de"],
     )
     primary_phone: str | None = Field(
-        default=None, max_length=50, examples=["+49 170 1234567"]
+        default=None,
+        max_length=50,
+        description="Primary phone number with country code",
+        examples=["+49 170 1234567"],
     )
     website: str | None = Field(default=None, max_length=500)
 

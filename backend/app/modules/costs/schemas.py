@@ -12,18 +12,39 @@ from pydantic import BaseModel, ConfigDict, Field
 class CostItemCreate(BaseModel):
     """Create a new cost item."""
 
-    code: str = Field(..., min_length=1, max_length=100)
-    description: str = Field(default="")
-    descriptions: dict[str, str] = Field(default_factory=dict)
-    unit: str = Field(..., min_length=1, max_length=20)
-    rate: float = Field(..., ge=0)
-    currency: str = Field(default="EUR", max_length=10)
-    source: str = Field(default="cwicr", max_length=50)
-    classification: dict[str, str] = Field(default_factory=dict)
-    components: list[dict[str, Any]] = Field(default_factory=list)
-    tags: list[str] = Field(default_factory=list)
-    region: str | None = Field(default=None, max_length=50)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    code: str = Field(
+        ..., min_length=1, max_length=100, description="Unique cost item code / rate code"
+    )
+    description: str = Field(default="", description="Cost item description text")
+    descriptions: dict[str, str] = Field(
+        default_factory=dict,
+        description="Localized descriptions keyed by locale (e.g. {\"en\": \"...\", \"de\": \"...\"})",
+    )
+    unit: str = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+        description="Unit of measurement (m, m2, m3, kg, pcs, hr, etc.)",
+    )
+    rate: float = Field(..., ge=0, description="Unit rate (must be >= 0)")
+    currency: str = Field(
+        default="EUR", max_length=10, description="ISO 4217 currency code"
+    )
+    source: str = Field(
+        default="cwicr", max_length=50, description="Data source (e.g. cwicr, rsmeans, manual)"
+    )
+    classification: dict[str, str] = Field(
+        default_factory=dict,
+        description="Classification codes (e.g. {\"din276\": \"330\", \"masterformat\": \"03 30 00\"})",
+    )
+    components: list[dict[str, Any]] = Field(
+        default_factory=list, description="Assembly components (labor, material, equipment breakdown)"
+    )
+    tags: list[str] = Field(default_factory=list, description="Searchable tags")
+    region: str | None = Field(
+        default=None, max_length=50, description="Regional identifier (e.g. DACH, UK, US)"
+    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata")
 
 
 class CostItemUpdate(BaseModel):

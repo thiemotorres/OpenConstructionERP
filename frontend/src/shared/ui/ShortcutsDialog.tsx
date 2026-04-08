@@ -38,6 +38,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['g', 'a'], descriptionKey: 'shortcuts.nav_assemblies' },
       { keys: ['g', 'v'], descriptionKey: 'shortcuts.nav_validation' },
       { keys: ['g', 's'], descriptionKey: 'shortcuts.nav_schedule' },
+      { keys: ['g', 'f'], descriptionKey: 'shortcuts.nav_finance' },
       { keys: ['g', '5'], descriptionKey: 'shortcuts.nav_5d' },
       { keys: ['g', 'r'], descriptionKey: 'shortcuts.nav_reports' },
       { keys: ['g', 't'], descriptionKey: 'shortcuts.nav_tendering' },
@@ -47,6 +48,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     titleKey: 'shortcuts.group.actions',
     items: [
       { keys: ['n', 'p'], descriptionKey: 'shortcuts.new_project' },
+      { keys: ['n', 'b'], descriptionKey: 'shortcuts.new_boq' },
+      { keys: ['n', 't'], descriptionKey: 'shortcuts.new_task' },
     ],
   },
   {

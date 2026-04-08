@@ -253,6 +253,11 @@ def create_app() -> FastAPI:
 
     app.add_middleware(SecurityHeadersMiddleware)
 
+    # ── Slow request logger (warns on > 500ms responses) ──────────────────
+    from app.middleware.slow_request_logger import SlowRequestLoggerMiddleware
+
+    app.add_middleware(SlowRequestLoggerMiddleware)
+
     # ── Accept-Language (sets i18n context locale per request) ────────────
     from app.middleware.accept_language import AcceptLanguageMiddleware
 
@@ -295,15 +300,57 @@ def create_app() -> FastAPI:
 
     app.include_router(activity_router)
 
+    # Store startup time for uptime calculation
+    _startup_time: float = time.time()
+
     @app.get("/api/health", tags=["System"])
     async def health_check() -> dict[str, Any]:
-        return {
+        import os as _os
+
+        result: dict[str, Any] = {
             "status": "healthy",
             "version": settings.app_version,
             "env": settings.app_env,
             "instance_id": _INSTANCE_ID,
             "build": f"DDC-{_BUILD_HASH}",
+            "modules_loaded": len(module_loader.list_modules()),
+            "uptime_seconds": int(time.time() - _startup_time),
         }
+
+        # Database connectivity (fast ping)
+        try:
+            from sqlalchemy import text
+
+            from app.database import engine
+
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            result["database"] = "ok"
+        except Exception:
+            result["database"] = "error"
+            result["status"] = "degraded"
+
+        # Process memory (RSS) in MB — available on all platforms
+        try:
+            import resource
+
+            rss_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # macOS returns bytes, Linux returns KB
+            if _os.uname().sysname == "Darwin":
+                result["memory_mb"] = round(rss_bytes / (1024 * 1024), 1)
+            else:
+                result["memory_mb"] = round(rss_bytes / 1024, 1)
+        except Exception:
+            try:
+                # Windows / fallback via psutil if available
+                import psutil
+
+                proc = psutil.Process(_os.getpid())
+                result["memory_mb"] = round(proc.memory_info().rss / (1024 * 1024), 1)
+            except Exception:
+                pass  # Memory reporting is best-effort
+
+        return result
 
     @app.get("/api/source", tags=["System"])
     async def source_code() -> dict:
