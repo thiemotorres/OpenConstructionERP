@@ -137,12 +137,29 @@ def serialize_row(row: Any) -> dict[str, Any]:
     return d
 
 
+def _parse_date(val: Any) -> Any:
+    """Parse ISO-format date strings back to Python datetime objects.
+
+    Backup export serialises datetime columns as ISO strings, but SQLite
+    DateTime columns require actual datetime objects on insert.
+    """
+    if isinstance(val, str):
+        try:
+            return datetime.fromisoformat(val.replace("Z", "+00:00"))
+        except ValueError:
+            return val
+    return val
+
+
 def deserialize_row(model_class: type, data: dict[str, Any]) -> Any:
-    """Create a model instance from a dict, converting UUID strings back.
+    """Create a model instance from a dict, converting UUID strings and dates back.
 
     Checks each column's type: if it uses the ``GUID`` custom type (which wraps
     UUID values as String(36)), string values are converted back to ``uuid.UUID``.
+    DateTime columns are parsed from ISO strings back to Python datetime objects.
     """
+    from sqlalchemy import DateTime
+
     from app.database import GUID
 
     kwargs: dict[str, Any] = {}
@@ -150,13 +167,16 @@ def deserialize_row(model_class: type, data: dict[str, Any]) -> Any:
         if col.key not in data:
             continue
         val = data[col.key]
-        # Convert UUID strings back to uuid.UUID for GUID columns
         col_type = col.type
+        # Convert UUID strings back to uuid.UUID for GUID columns
         if isinstance(col_type, GUID) and val is not None and isinstance(val, str):
             try:
                 val = uuid.UUID(val)
             except ValueError:
                 pass  # leave as-is if not a valid UUID string
+        # Convert ISO date strings back to datetime for DateTime columns
+        elif isinstance(col_type, DateTime) and val is not None and isinstance(val, str):
+            val = _parse_date(val)
         kwargs[col.key] = val
     return model_class(**kwargs)
 
@@ -384,16 +404,26 @@ async def restore_backup(
 
     total_imported = sum(imported.values())
     total_skipped = sum(skipped.values())
+
+    # Determine actual restore status based on results
+    if total_imported == 0 and total_skipped > 0:
+        restore_status = "failed"
+    elif total_skipped > 0 or warnings:
+        restore_status = "partial"
+    else:
+        restore_status = "success"
+
     logger.info(
-        "Backup restored: mode=%s imported=%d skipped=%d warnings=%d",
+        "Backup restored: mode=%s status=%s imported=%d skipped=%d warnings=%d",
         mode,
+        restore_status,
         total_imported,
         total_skipped,
         len(warnings),
     )
 
     return RestoreResponse(
-        status="success",
+        status=restore_status,
         mode=mode,
         imported=imported,
         skipped=skipped,

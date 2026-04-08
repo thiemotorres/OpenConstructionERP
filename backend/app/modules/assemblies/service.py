@@ -265,20 +265,30 @@ class AssemblyService:
         """
         await self.get_assembly(assembly_id)
 
-        total = _compute_component_total(data.factor, data.quantity, data.unit_cost)
+        # Resolve aliased fields: name→description, unit_rate→unit_cost
+        description = data.get_description()
+        unit_cost = data.get_unit_cost()
+
+        total = _compute_component_total(data.factor, data.quantity, unit_cost)
         max_order = await self.component_repo.get_max_sort_order(assembly_id)
+
+        # Store resource_type in component metadata if provided
+        comp_metadata: dict = {}
+        if data.resource_type:
+            comp_metadata["resource_type"] = data.resource_type
 
         component = Component(
             assembly_id=assembly_id,
             cost_item_id=data.cost_item_id,
             catalog_resource_id=data.catalog_resource_id,
-            description=data.description,
+            description=description,
             factor=str(data.factor),
             quantity=str(data.quantity),
             unit=data.unit,
-            unit_cost=str(data.unit_cost),
+            unit_cost=str(unit_cost),
             total=total,
             sort_order=max_order + 1,
+            metadata_=comp_metadata,
         )
         component = await self.component_repo.create(component)
 

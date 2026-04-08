@@ -909,6 +909,21 @@ export function SettingsPage() {
         <BackupRestore />
       </div>
 
+      {/* Databases & Resources */}
+      <Card className="animate-card-in" style={{ animationDelay: '400ms' }}>
+        <CardHeader
+          title={t('settings.databases_title', { defaultValue: 'Databases & Resources' })}
+          subtitle={t('settings.databases_subtitle', { defaultValue: 'Load cost databases, resource catalogs, and demo projects' })}
+        />
+        <CardContent>
+          <Link to="/setup/databases">
+            <Button variant="secondary">
+              {t('settings.open_databases', { defaultValue: 'Open Databases & Resources' })}
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Setup Wizard */}
       <Card className="animate-card-in" style={{ animationDelay: '430ms' }}>
         <CardHeader

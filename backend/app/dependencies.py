@@ -13,6 +13,7 @@ Usage in routers:
 """
 
 import logging
+from datetime import UTC
 from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
@@ -119,8 +120,14 @@ async def get_current_user_payload(
             async with async_session_factory() as session:
                 user = await session.get(_UserModel, UUID(str(user_sub)))
                 if user is not None and user.password_changed_at is not None:
-                    pwd_changed_ts = int(user.password_changed_at.timestamp())
-                    if int(iat) < pwd_changed_ts:
+                    pwd_changed = user.password_changed_at
+                    # SQLite may return naive datetimes — assume UTC if no tz info
+                    if pwd_changed.tzinfo is None:
+                        pwd_changed = pwd_changed.replace(tzinfo=UTC)
+                    pwd_changed_ts = int(pwd_changed.timestamp())
+                    # iat may be int or float depending on jose version
+                    iat_ts = int(float(iat))
+                    if iat_ts < pwd_changed_ts:
                         raise HTTPException(
                             status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Token has been invalidated by a password change. Please log in again.",

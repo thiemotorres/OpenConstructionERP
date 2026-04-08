@@ -1633,37 +1633,57 @@ class BOQService:
         positions, _ = await self.position_repo.list_for_boq(boq_id)
         old_to_new: dict[uuid.UUID, uuid.UUID] = {}
 
+        # Eagerly capture all attributes from source positions BEFORE any
+        # flush/bulk_create that may expire the ORM objects (MissingGreenlet fix).
+        captured_positions: list[dict] = []
         new_positions: list[Position] = []
         for pos in positions:
+            pos_id = pos.id
+            pos_parent_id = pos.parent_id
+            pos_ordinal = pos.ordinal
+            pos_description = pos.description
+            pos_unit = pos.unit
+            pos_quantity = pos.quantity
+            pos_unit_rate = pos.unit_rate
+            pos_total = pos.total
+            pos_classification = dict(pos.classification) if pos.classification else {}
+            pos_source = pos.source
+            pos_confidence = pos.confidence
+            pos_cad_element_ids = list(pos.cad_element_ids) if pos.cad_element_ids else []
+            pos_metadata = dict(pos.metadata_) if pos.metadata_ else {}
+            pos_sort_order = pos.sort_order
+
+            captured_positions.append({"id": pos_id, "parent_id": pos_parent_id})
+
             new_pos = Position(
                 boq_id=new_boq_id,
                 parent_id=None,  # will be remapped after insert
-                ordinal=pos.ordinal,
-                description=pos.description,
-                unit=pos.unit,
-                quantity=pos.quantity,
-                unit_rate=pos.unit_rate,
-                total=pos.total,
-                classification=dict(pos.classification) if pos.classification else {},
-                source=pos.source,
-                confidence=pos.confidence,
-                cad_element_ids=list(pos.cad_element_ids) if pos.cad_element_ids else [],
+                ordinal=pos_ordinal,
+                description=pos_description,
+                unit=pos_unit,
+                quantity=pos_quantity,
+                unit_rate=pos_unit_rate,
+                total=pos_total,
+                classification=pos_classification,
+                source=pos_source,
+                confidence=pos_confidence,
+                cad_element_ids=pos_cad_element_ids,
                 validation_status="pending",
-                metadata_=dict(pos.metadata_) if pos.metadata_ else {},
-                sort_order=pos.sort_order,
+                metadata_=pos_metadata,
+                sort_order=pos_sort_order,
             )
             new_positions.append(new_pos)
 
         created_positions = await self.position_repo.bulk_create(new_positions)
 
-        # Build old→new ID mapping
-        for old_pos, new_pos in zip(positions, created_positions, strict=False):
-            old_to_new[old_pos.id] = new_pos.id
+        # Build old→new ID mapping using eagerly captured data
+        for cap, new_pos in zip(captured_positions, created_positions, strict=False):
+            old_to_new[cap["id"]] = new_pos.id
 
-        # Second pass: remap parent_id references
-        for old_pos, new_pos in zip(positions, created_positions, strict=False):
-            if old_pos.parent_id is not None and old_pos.parent_id in old_to_new:
-                await self.position_repo.update_fields(new_pos.id, parent_id=old_to_new[old_pos.parent_id])
+        # Second pass: remap parent_id references using captured data
+        for cap, new_pos in zip(captured_positions, created_positions, strict=False):
+            if cap["parent_id"] is not None and cap["parent_id"] in old_to_new:
+                await self.position_repo.update_fields(new_pos.id, parent_id=old_to_new[cap["parent_id"]])
 
         # Copy markups
         markups = await self.markup_repo.list_for_boq(boq_id)

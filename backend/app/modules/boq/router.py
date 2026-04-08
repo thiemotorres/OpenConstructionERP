@@ -22,6 +22,8 @@ Endpoints:
     POST   /boqs/{boq_id}/markups/apply-defaults — Apply regional default markups
     POST   /boqs/{boq_id}/duplicate            — Duplicate a BOQ with all data
     POST   /positions/{position_id}/duplicate  — Duplicate a single position
+    POST   /boqs/{boq_id}/lock                 — Lock BOQ (prevent edits)
+    POST   /boqs/{boq_id}/unlock               — Unlock BOQ (admin/manager only)
     POST   /boqs/{boq_id}/recalculate-rates    — Recalculate unit_rates from resources
     POST   /boqs/{boq_id}/validate             — Validate a BOQ against rule sets
     GET    /boqs/{boq_id}/export/csv           — Export BOQ as CSV
@@ -1095,6 +1097,47 @@ async def lock_boq(
         approved_by=user_id,
         approved_at=now_iso,
         status="final",
+    )
+    boq = await service.get_boq(boq_id)
+    return BOQResponse.model_validate(boq)
+
+
+@router.post(
+    "/boqs/{boq_id}/unlock",
+    response_model=BOQResponse,
+    summary="Unlock BOQ",
+    dependencies=[Depends(RequirePermission("boq.update"))],
+)
+async def unlock_boq(
+    boq_id: uuid.UUID,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    service: BOQService = Depends(_get_service),
+) -> BOQResponse:
+    """Unlock a previously locked BOQ, allowing further edits.
+
+    Only admin or manager roles can unlock. Sets is_locked=False and
+    status back to "draft". Returns a warning if revisions exist.
+    """
+
+    role = payload.get("role", "")
+    if role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin or manager can unlock a BOQ.",
+        )
+
+    boq = await service.get_boq(boq_id)
+    if not boq.is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="BOQ is not locked.",
+        )
+
+    await service.boq_repo.update_fields(
+        boq_id,
+        is_locked=False,
+        status="draft",
     )
     boq = await service.get_boq(boq_id)
     return BOQResponse.model_validate(boq)

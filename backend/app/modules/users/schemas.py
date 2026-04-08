@@ -1,10 +1,16 @@
 """User Pydantic schemas for request/response validation."""
 
+import re
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+
+def _sanitize_name(name: str) -> str:
+    """Strip HTML tags from a name to prevent XSS."""
+    return re.sub(r"<[^>]+>", "", name).strip()
 
 # A small set of common/leaked passwords to reject outright. Cheap defence
 # against the most embarrassing weak passwords without bringing in a 100k+
@@ -106,6 +112,11 @@ class UserCreate(BaseModel):
     def _check_password_strength(cls, v: str) -> str:
         return _validate_strong_password(v)
 
+    @field_validator("full_name")
+    @classmethod
+    def _sanitize_full_name(cls, v: str) -> str:
+        return _sanitize_name(v)
+
 
 class UserUpdate(BaseModel):
     """Update user profile."""
@@ -120,6 +131,13 @@ class UserUpdate(BaseModel):
     date_format: str | None = Field(default=None, max_length=20)
     currency_code: str | None = Field(default=None, max_length=10)
 
+    @field_validator("full_name")
+    @classmethod
+    def _sanitize_full_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _sanitize_name(v)
+        return v
+
 
 class UserAdminUpdate(BaseModel):
     """Admin-level user update (role, active status)."""
@@ -128,6 +146,13 @@ class UserAdminUpdate(BaseModel):
     role: str | None = Field(default=None, pattern=r"^(admin|manager|editor|viewer)$")
     is_active: bool | None = None
     locale: str | None = Field(default=None, max_length=10)
+
+    @field_validator("full_name")
+    @classmethod
+    def _sanitize_full_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _sanitize_name(v)
+        return v
 
 
 class UserResponse(BaseModel):
@@ -203,12 +228,12 @@ class ForgotPasswordRequest(BaseModel):
 class ForgotPasswordResponse(BaseModel):
     """Forgot password response.
 
-    Always returns a success message to prevent email enumeration.
-    Token is included only in dev mode for testing.
+    Always returns a generic message to prevent email enumeration.
+    The reset token is NEVER included in the response — it must only
+    be delivered via a secure side-channel (email).
     """
 
     message: str
-    token: str | None = None
 
 
 class ResetPasswordRequest(BaseModel):

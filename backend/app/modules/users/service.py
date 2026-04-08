@@ -296,16 +296,17 @@ class UserService:
         """Generate a password-reset token if the email exists.
 
         Always returns a generic success message to prevent email enumeration.
-        In dev mode, the reset token is included in the response for testing.
+        The token is NEVER included in the HTTP response — it must be
+        delivered only via a secure side-channel (email).
         """
         user = await self.user_repo.get_by_email(data.email)
 
         # Generic message regardless of whether the email exists
-        message = "If this email exists, a reset link has been sent"
+        message = "If this email exists, a password reset link has been sent."
 
         if user is None or not user.is_active:
             logger.info("Password reset requested for unknown/inactive email: %s", data.email)
-            return ForgotPasswordResponse(message=message, token=None)
+            return ForgotPasswordResponse(message=message)
 
         token = create_reset_token(user, self.settings)
 
@@ -317,12 +318,11 @@ class UserService:
 
         logger.info("Password reset token generated for user %s", user.email)
 
-        # Include token in response only in dev mode (no email service yet)
-        include_token = not self.settings.is_production
-        return ForgotPasswordResponse(
-            message=message,
-            token=token if include_token else None,
-        )
+        # TODO: Send token via email service. For now, token is logged at DEBUG
+        # level only and never exposed in the HTTP response.
+        logger.debug("Reset token for %s (dev-only log): %s", user.email, token)
+
+        return ForgotPasswordResponse(message=message)
 
     async def reset_password(self, data: ResetPasswordRequest) -> ResetPasswordResponse:
         """Reset user password using a valid reset token.

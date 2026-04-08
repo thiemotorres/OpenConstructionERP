@@ -16,17 +16,36 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ComponentCreate(BaseModel):
-    """Create a new assembly component."""
+    """Create a new assembly component.
+
+    Accepts ``name`` as an alias for ``description`` and ``unit_rate`` as an
+    alias for ``unit_cost`` so that the AI-generate preview payload can be
+    forwarded directly without field remapping on the frontend.
+    ``resource_type`` is stored in the component metadata.
+    """
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
     cost_item_id: UUID | None = None
     catalog_resource_id: UUID | None = None
     description: str = Field(default="", max_length=500)
+    name: str | None = Field(default=None, max_length=500, exclude=True)
     factor: float = Field(default=1.0)
     quantity: float = Field(default=1.0)
     unit: str = Field(..., min_length=1, max_length=20)
     unit_cost: float = Field(default=0.0, ge=0.0)
+    unit_rate: float | None = Field(default=None, ge=0.0, exclude=True)
+    resource_type: str | None = Field(default=None, max_length=50, exclude=True)
+
+    def get_description(self) -> str:
+        """Return description, falling back to name if description is empty."""
+        return self.description or self.name or ""
+
+    def get_unit_cost(self) -> float:
+        """Return unit_cost, falling back to unit_rate if unit_cost is zero."""
+        if self.unit_cost > 0:
+            return self.unit_cost
+        return self.unit_rate if self.unit_rate is not None else 0.0
 
 
 class ComponentUpdate(BaseModel):
