@@ -291,7 +291,7 @@ async def respond_to_rfi(
     return _to_response(rfi)
 
 
-@router.post("/{rfi_id}/create-variation")
+@router.post("/{rfi_id}/create-variation", status_code=201)
 async def create_variation_from_rfi(
     rfi_id: uuid.UUID,
     user_id: CurrentUserId,

@@ -46,6 +46,7 @@ class Markup(Base):
         nullable=True,
     )
     linked_boq_position_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    layer: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -56,7 +57,7 @@ class Markup(Base):
     created_by: Mapped[str] = mapped_column(String(255), nullable=False, default="")
 
     def __repr__(self) -> str:
-        return f"<Markup {self.type} page={self.page} ({self.status})>"
+        return f"<Markup {self.type} page={self.page} layer={self.layer} ({self.status})>"
 
 
 class ScaleConfig(Base):

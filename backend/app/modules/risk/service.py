@@ -26,6 +26,46 @@ SEVERITY_NUMERIC: dict[str, int] = {
     "critical": 4,
 }
 
+# 5x5 matrix scoring: maps probability to a 1-5 score
+PROBABILITY_SCORE_MAP: list[tuple[float, int]] = [
+    (0.2, 1),   # very low
+    (0.4, 2),   # low
+    (0.6, 3),   # medium
+    (0.8, 4),   # high
+    (1.0, 5),   # very high
+]
+
+# Impact severity to 1-5 score for 5x5 matrix
+IMPACT_SCORE_MAP: dict[str, int] = {
+    "low": 1,
+    "medium": 2,
+    "high": 4,
+    "critical": 5,
+}
+
+
+def _probability_to_score(probability: float) -> int:
+    """Map probability (0.0-1.0) to a 1-5 score for the 5x5 matrix."""
+    for threshold, score in PROBABILITY_SCORE_MAP:
+        if probability <= threshold:
+            return score
+    return 5
+
+
+def _compute_risk_tier(prob_score: int, impact_score: int) -> str:
+    """Compute risk tier from probability_score x impact_score (1-25 range).
+
+    1-4: low, 5-9: medium, 10-15: high, 16-25: critical
+    """
+    product = prob_score * impact_score
+    if product >= 16:
+        return "critical"
+    if product >= 10:
+        return "high"
+    if product >= 5:
+        return "medium"
+    return "low"
+
 
 def _compute_risk_score(probability: float, severity: str) -> float:
     """Compute risk score as probability x severity_numeric."""
@@ -48,6 +88,11 @@ class RiskService:
 
         risk_score = _compute_risk_score(data.probability, data.impact_severity)
 
+        # 5x5 matrix scoring
+        prob_score = _probability_to_score(data.probability)
+        impact_score = IMPACT_SCORE_MAP.get(data.impact_severity, 2)
+        risk_tier = _compute_risk_tier(prob_score, impact_score)
+
         item = RiskItem(
             project_id=data.project_id,
             code=code,
@@ -59,6 +104,10 @@ class RiskService:
             impact_schedule_days=data.impact_schedule_days,
             impact_severity=data.impact_severity,
             risk_score=str(risk_score),
+            probability_score=prob_score,
+            impact_score_cost=impact_score,
+            impact_score_time=impact_score,
+            risk_tier=risk_tier,
             mitigation_strategy=data.mitigation_strategy,
             contingency_plan=data.contingency_plan,
             owner_name=data.owner_name,
@@ -119,11 +168,17 @@ class RiskService:
         if not fields:
             return item
 
-        # Recalculate risk_score if probability or severity changed
+        # Recalculate risk_score and 5x5 matrix scoring if probability or severity changed
         probability = fields.get("probability", float(item.probability))
         severity = fields.get("impact_severity", item.impact_severity)
         if "probability" in fields or "impact_severity" in fields:
             fields["risk_score"] = str(_compute_risk_score(probability, severity))
+            prob_score = _probability_to_score(probability)
+            impact_score = IMPACT_SCORE_MAP.get(severity, 2)
+            fields["probability_score"] = prob_score
+            fields["impact_score_cost"] = impact_score
+            fields["impact_score_time"] = impact_score
+            fields["risk_tier"] = _compute_risk_tier(prob_score, impact_score)
 
         # Convert float fields to strings for storage
         for key in ("probability", "impact_cost", "response_cost"):
@@ -166,8 +221,8 @@ class RiskService:
             by_status[item.status] = by_status.get(item.status, 0) + 1
             by_category[item.category] = by_category.get(item.category, 0) + 1
 
-            # Tier breakdown by impact_severity
-            tier = item.impact_severity or "medium"
+            # Tier breakdown by risk_tier (computed from 5x5 matrix)
+            tier = item.risk_tier or item.impact_severity or "medium"
             by_tier[tier] = by_tier.get(tier, 0) + 1
 
             if item.impact_severity in ("high", "critical"):

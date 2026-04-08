@@ -17,6 +17,7 @@ Endpoints:
 import logging
 import time
 import uuid
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -78,6 +79,7 @@ def _component_to_response(comp: object) -> ComponentResponse:
         id=comp.id,  # type: ignore[attr-defined]
         assembly_id=comp.assembly_id,  # type: ignore[attr-defined]
         cost_item_id=comp.cost_item_id,  # type: ignore[attr-defined]
+        catalog_resource_id=getattr(comp, "catalog_resource_id", None),  # type: ignore[attr-defined]
         description=comp.description,  # type: ignore[attr-defined]
         factor=_str_to_float(comp.factor),  # type: ignore[attr-defined]
         quantity=_str_to_float(comp.quantity),  # type: ignore[attr-defined]
@@ -415,21 +417,23 @@ async def add_component(
         # Fallback: construct from known data
         from datetime import datetime
 
-        total = _str_to_float(data.factor) * _str_to_float(data.quantity) * _str_to_float(data.unit_cost)
+        total = data.factor * data.quantity * data.unit_cost
+        now = datetime.now(UTC)
         return ComponentResponse(
             id=component.id,
             assembly_id=assembly_id,
             cost_item_id=data.cost_item_id,
+            catalog_resource_id=data.catalog_resource_id,
             description=data.description,
-            factor=_str_to_float(data.factor),
-            quantity=_str_to_float(data.quantity),
+            factor=data.factor,
+            quantity=data.quantity,
             unit=data.unit,
-            unit_cost=_str_to_float(data.unit_cost),
+            unit_cost=data.unit_cost,
             total=round(total, 2),
             sort_order=0,
             metadata_={},
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=now,
+            updated_at=now,
         )
 
 

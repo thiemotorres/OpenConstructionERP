@@ -242,34 +242,38 @@ async def adjust_prices(
             detail=f"Factor must be between 0 (exclusive) and 10 (inclusive), got {factor}",
         )
 
-    from sqlalchemy import text
+    from sqlalchemy import func, select
 
-    filter_clauses = ["is_active = 1"]
-    params: dict[str, object] = {"factor": factor}
+    from app.modules.catalog.models import CatalogResource
+
+    # Build filter conditions using SQLAlchemy (DB-agnostic)
+    conditions = [CatalogResource.is_active.is_(True)]
     if resource_type:
-        filter_clauses.append("resource_type = :resource_type")
-        params["resource_type"] = resource_type
+        conditions.append(CatalogResource.resource_type == resource_type)
     if category:
-        filter_clauses.append("category = :category")
-        params["category"] = category
+        conditions.append(CatalogResource.category == category)
     if region:
-        filter_clauses.append("region = :region")
-        params["region"] = region
+        conditions.append(CatalogResource.region == region)
 
-    where = " AND ".join(filter_clauses)
+    # Count matching rows first
+    count_stmt = select(func.count()).select_from(CatalogResource).where(*conditions)
+    count = (await session.execute(count_stmt)).scalar_one()
 
-    sql = text(f"""
-        UPDATE oe_catalog_resource
-        SET base_price = CAST(ROUND(CAST(base_price AS REAL) * :factor, 2) AS TEXT),
-            min_price = CAST(ROUND(CAST(min_price AS REAL) * :factor, 2) AS TEXT),
-            max_price = CAST(ROUND(CAST(max_price AS REAL) * :factor, 2) AS TEXT),
-            updated_at = datetime('now')
-        WHERE {where}
-    """)
+    if count > 0:
+        # Fetch and update in batches via ORM to stay DB-agnostic
+        stmt = select(CatalogResource).where(*conditions)
+        result = await session.execute(stmt)
+        resources = list(result.scalars().all())
 
-    result = await session.execute(sql, params)
-    await session.commit()
-    count = result.rowcount
+        for res in resources:
+            try:
+                res.base_price = str(round(float(res.base_price) * factor, 2))
+                res.min_price = str(round(float(res.min_price) * factor, 2))
+                res.max_price = str(round(float(res.max_price) * factor, 2))
+            except (ValueError, TypeError):
+                pass
+
+        await session.flush()
 
     logger.info(
         "Adjusted %d resource prices by factor %.4f (type=%s, category=%s, region=%s)",

@@ -5,6 +5,7 @@ No business logic — pure data access.
 """
 
 import uuid
+from typing import Any
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,7 @@ class MarkupRepository:
         status_filter: str | None = None,
         document_id: str | None = None,
         page: int | None = None,
+        layer: str | None = None,
     ) -> tuple[list[Markup], int]:
         """List markups for a project with pagination and filters."""
         base = select(Markup).where(Markup.project_id == project_id)
@@ -63,6 +65,8 @@ class MarkupRepository:
             base = base.where(Markup.type == type_filter)
         if status_filter is not None:
             base = base.where(Markup.status == status_filter)
+        if layer is not None:
+            base = base.where(Markup.layer == layer)
 
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
@@ -73,7 +77,7 @@ class MarkupRepository:
 
         return items, total
 
-    async def summary_for_project(self, project_id: uuid.UUID) -> dict[str, dict[str, int]]:
+    async def summary_for_project(self, project_id: uuid.UUID) -> dict[str, Any]:
         """Get markup counts grouped by type and status for a project."""
         items = await self.all_for_project(project_id)
 

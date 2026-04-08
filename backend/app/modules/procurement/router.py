@@ -164,7 +164,7 @@ async def update_purchase_order(
     return POResponse.model_validate(po)
 
 
-@router.post("/{po_id}/create-invoice")
+@router.post("/{po_id}/create-invoice", status_code=201)
 async def create_invoice_from_po(
     po_id: uuid.UUID,
     user_id: CurrentUserId,

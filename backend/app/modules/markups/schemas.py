@@ -41,6 +41,7 @@ class MarkupCreate(BaseModel):
     measurement_unit: str | None = Field(default=None, max_length=20)
     stamp_template_id: UUID | None = None
     linked_boq_position_id: str | None = Field(default=None, max_length=255)
+    layer: str = Field(default="default", max_length=100)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -70,6 +71,7 @@ class MarkupUpdate(BaseModel):
     measurement_unit: str | None = Field(default=None, max_length=20)
     stamp_template_id: UUID | None = None
     linked_boq_position_id: str | None = Field(default=None, max_length=255)
+    layer: str | None = Field(default=None, max_length=100)
     metadata: dict[str, Any] | None = None
 
 
@@ -95,6 +97,7 @@ class MarkupResponse(BaseModel):
     measurement_unit: str | None = None
     stamp_template_id: UUID | None = None
     linked_boq_position_id: str | None = None
+    layer: str = "default"
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_by: str = ""
     created_at: datetime

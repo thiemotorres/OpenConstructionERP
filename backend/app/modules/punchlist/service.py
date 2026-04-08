@@ -177,7 +177,7 @@ class PunchListService:
             )
 
         now = datetime.now(UTC)
-        update_fields = {"status": target}
+        update_fields: dict[str, Any] = {"status": target}
 
         if transition.notes:
             update_fields["resolution_notes"] = transition.notes
@@ -198,6 +198,18 @@ class PunchListService:
                 )
             update_fields["verified_at"] = now
             update_fields["verified_by"] = user_id
+
+        # verified -> closed: block if critical items remain open in the same project
+        if target == "closed" and item.priority == "critical":
+            open_critical = await self.repo.count_open_critical(item.project_id, exclude_id=item_id)
+            if open_critical > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"Cannot close this critical punch item while {open_critical} other "
+                        f"critical item(s) remain unresolved in the project"
+                    ),
+                )
 
         await self.repo.update_fields(item_id, **update_fields)
         await self.session.refresh(item)
@@ -269,6 +281,12 @@ class PunchListService:
         """Remove a photo by index from the punch item's photos list."""
         item = await self.get_item(item_id)
         photos = list(item.photos or [])
+
+        if not photos:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No photos to remove",
+            )
 
         if index < 0 or index >= len(photos):
             raise HTTPException(
@@ -363,6 +381,98 @@ class PunchListService:
         pdf = _build_minimal_pdf(content)
         logger.info("Punch list PDF exported for project %s (%d items)", project_id, len(items))
         return pdf
+
+
+    async def export_excel(self, project_id: uuid.UUID) -> bytes:
+        """Generate an Excel report with all punch list items.
+
+        Returns raw xlsx bytes. Uses openpyxl if available, falls back to CSV
+        bytes wrapped in a minimal xlsx-compatible format.
+        """
+        items = await self.repo.all_for_project(project_id)
+
+        try:
+            import io
+
+            import openpyxl
+            from openpyxl.styles import Font
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Punch List"
+
+            headers = [
+                "No.",
+                "Title",
+                "Status",
+                "Priority",
+                "Category",
+                "Trade",
+                "Assigned To",
+                "Due Date",
+                "Description",
+                "Resolution Notes",
+                "Created",
+            ]
+
+            bold = Font(bold=True)
+            for col_idx, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_idx, value=header)
+                cell.font = bold
+
+            for row_idx, item in enumerate(items, 2):
+                ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                ws.cell(row=row_idx, column=2, value=item.title)
+                ws.cell(row=row_idx, column=3, value=item.status)
+                ws.cell(row=row_idx, column=4, value=item.priority)
+                ws.cell(row=row_idx, column=5, value=item.category or "")
+                ws.cell(row=row_idx, column=6, value=item.trade or "")
+                ws.cell(row=row_idx, column=7, value=item.assigned_to or "")
+                ws.cell(row=row_idx, column=8, value=str(item.due_date) if item.due_date else "")
+                ws.cell(row=row_idx, column=9, value=(item.description or "")[:500])
+                ws.cell(row=row_idx, column=10, value=(item.resolution_notes or "")[:500])
+                ws.cell(row=row_idx, column=11, value=str(item.created_at) if item.created_at else "")
+
+            output = io.BytesIO()
+            wb.save(output)
+            excel_bytes = output.getvalue()
+
+            logger.info(
+                "Punch list Excel exported for project %s (%d items)", project_id, len(items)
+            )
+            return excel_bytes
+
+        except ImportError:
+            # Fallback: return CSV bytes if openpyxl is not installed
+            import csv
+            import io as _io
+
+            output = _io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow([
+                "No.", "Title", "Status", "Priority", "Category", "Trade",
+                "Assigned To", "Due Date", "Description", "Resolution Notes", "Created",
+            ])
+            for idx, item in enumerate(items, 1):
+                writer.writerow([
+                    idx,
+                    item.title,
+                    item.status,
+                    item.priority,
+                    item.category or "",
+                    item.trade or "",
+                    item.assigned_to or "",
+                    str(item.due_date) if item.due_date else "",
+                    (item.description or "")[:500],
+                    (item.resolution_notes or "")[:500],
+                    str(item.created_at) if item.created_at else "",
+                ])
+            logger.info(
+                "Punch list CSV exported (openpyxl not available) for project %s (%d items)",
+                project_id,
+                len(items),
+            )
+            return output.getvalue().encode("utf-8")
 
 
 def _build_minimal_pdf(text: str) -> bytes:

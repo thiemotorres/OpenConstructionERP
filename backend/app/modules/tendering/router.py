@@ -327,17 +327,6 @@ async def export_tender_pdf(
         _w(f"{idx} 0 obj\n")
         return idx
 
-    # Header
-    _w("%PDF-1.4\n")
-
-    # Catalog (obj 1)
-    _obj()
-    _w("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
-
-    # Pages (obj 2)
-    _obj()
-    _w("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
-
     # Build page content lines
     lines: list[str] = []
     lines.append(f"Tender Package: {package.name}")
@@ -384,15 +373,19 @@ async def export_tender_pdf(
     stream_lines.append("ET")
     stream_content = "\n".join(stream_lines)
 
-    # Stream (obj 4)
-    _obj()
-    _w(f"<< /Length {len(stream_content)} >>\nstream\n{stream_content}\nendstream\nendobj\n")
+    # Header
+    _w("%PDF-1.4\n")
 
-    # Font (obj 5)
+    # Object layout: 1=Catalog, 2=Pages, 3=Page, 4=Stream, 5=Font
+    # Catalog (obj 1)
     _obj()
-    _w("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n")
+    _w("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
 
-    # Page (obj 3) — must reference stream (4) and font (5)
+    # Pages (obj 2)
+    _obj()
+    _w("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
+
+    # Page (obj 3) — references stream (4) and font (5)
     _obj()
     _w(
         "<< /Type /Page /Parent 2 0 R "
@@ -401,6 +394,14 @@ async def export_tender_pdf(
         "/Resources << /Font << /F1 5 0 R >> >> "
         ">>\nendobj\n"
     )
+
+    # Stream (obj 4)
+    _obj()
+    _w(f"<< /Length {len(stream_content)} >>\nstream\n{stream_content}\nendstream\nendobj\n")
+
+    # Font (obj 5)
+    _obj()
+    _w("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n")
 
     # Cross-reference table
     xref_offset = buf.tell()

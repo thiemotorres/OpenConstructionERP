@@ -76,6 +76,7 @@ def _markup_to_response(item: object) -> MarkupResponse:
         measurement_unit=item.measurement_unit,  # type: ignore[attr-defined]
         stamp_template_id=item.stamp_template_id,  # type: ignore[attr-defined]
         linked_boq_position_id=item.linked_boq_position_id,  # type: ignore[attr-defined]
+        layer=getattr(item, "layer", "default"),  # type: ignore[attr-defined]
         metadata=getattr(item, "metadata_", {}),  # type: ignore[attr-defined]
         created_by=item.created_by,  # type: ignore[attr-defined]
         created_at=item.created_at,  # type: ignore[attr-defined]
@@ -214,6 +215,7 @@ async def list_markups(
     page: int | None = Query(default=None, ge=1),
     type: str | None = Query(default=None, alias="type"),
     status_filter: str | None = Query(default=None, alias="status"),
+    layer: str | None = Query(default=None),
     query: str | None = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
@@ -233,6 +235,7 @@ async def list_markups(
         status_filter=status_filter,
         document_id=document_id,
         page=page,
+        layer=layer,
     )
     return [_markup_to_response(i) for i in items]
 

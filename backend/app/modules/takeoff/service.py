@@ -222,6 +222,16 @@ class TakeoffService:
         }
 
     async def delete_document(self, doc_id: str) -> None:
+        """Delete a takeoff document and its stored PDF file."""
+        doc = await self.repo.get_by_id(uuid.UUID(doc_id))
+        if doc is not None and doc.file_path:
+            try:
+                file_path = Path(doc.file_path)
+                if file_path.exists():
+                    file_path.unlink()
+                    logger.info("Removed takeoff PDF file: %s", file_path)
+            except Exception:
+                logger.warning("Failed to remove takeoff PDF file: %s", doc.file_path)
         await self.repo.delete(uuid.UUID(doc_id))
 
     # ── Measurement CRUD ─────────────────────────────────────────────────

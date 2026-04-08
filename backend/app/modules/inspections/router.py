@@ -199,7 +199,7 @@ async def delete_inspection(
     await service.delete_inspection(inspection_id)
 
 
-@router.post("/{inspection_id}/create-defect")
+@router.post("/{inspection_id}/create-defect", status_code=201)
 async def create_defect_from_inspection(
     inspection_id: uuid.UUID,
     user_id: CurrentUserId,

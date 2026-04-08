@@ -166,12 +166,23 @@ class DocumentService:
 
     # ── Update ─────────────────────────────────────────────────────────────
 
+    # Valid CDE state transitions (ISO 19650 workflow)
+    VALID_CDE_TRANSITIONS: dict[str, list[str]] = {
+        "wip": ["shared"],
+        "shared": ["published", "wip"],
+        "published": ["archived", "wip"],
+        "archived": ["wip"],
+    }
+
     async def update_document(
         self,
         document_id: uuid.UUID,
         data: DocumentUpdate,
     ) -> Document:
-        """Update document metadata fields."""
+        """Update document metadata fields.
+
+        Validates CDE state transitions if cde_state is being changed.
+        """
         document = await self.get_document(document_id)
 
         fields = data.model_dump(exclude_unset=True)
@@ -180,6 +191,21 @@ class DocumentService:
 
         if not fields:
             return document
+
+        # Validate CDE state transition
+        if "cde_state" in fields and fields["cde_state"] is not None:
+            new_state = fields["cde_state"]
+            current_state = document.cde_state
+            if current_state is not None:
+                allowed = self.VALID_CDE_TRANSITIONS.get(current_state, [])
+                if new_state not in allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=(
+                            f"Invalid CDE state transition: '{current_state}' -> '{new_state}'. "
+                            f"Allowed: {allowed}"
+                        ),
+                    )
 
         await self.repo.update_fields(document_id, **fields)
         await self.session.refresh(document)

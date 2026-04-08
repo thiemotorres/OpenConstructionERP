@@ -317,3 +317,26 @@ async def export_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=punchlist_{project_id}.pdf"},
     )
+
+
+@router.get("/export/excel")
+async def export_excel(
+    project_id: uuid.UUID = Query(...),
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    service: PunchListService = Depends(_get_service),
+) -> Response:
+    """Export punch list as an Excel spreadsheet."""
+    excel_bytes = await service.export_excel(project_id)
+    # Determine media type: openpyxl produces xlsx, fallback produces CSV
+    is_xlsx = excel_bytes[:4] == b"PK\x03\x04"
+    if is_xlsx:
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ext = "xlsx"
+    else:
+        media_type = "text/csv"
+        ext = "csv"
+    return Response(
+        content=excel_bytes,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename=punchlist_{project_id}.{ext}"},
+    )

@@ -795,6 +795,7 @@ class CadGroupElementsRequest(BaseModel):
 )
 async def get_group_elements(
     body: CadGroupElementsRequest,
+    db_session: SessionDep = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """Get individual elements for a specific group.
 
@@ -803,14 +804,14 @@ async def get_group_elements(
     """
     _cleanup_memory_sessions()
 
-    session = _cad_sessions.get(body.session_id)
-    if not session:
+    cad_session = await _get_cad_session(db_session, body.session_id)
+    if not cad_session:
         raise HTTPException(
             status_code=404,
             detail=("Session not found or expired. Please re-upload the CAD file via POST /cad-columns."),
         )
 
-    elements: list[dict] = session["elements"]
+    elements: list[dict] = cad_session["elements"]
 
     # Filter elements matching all key-value pairs in group_key
     matching: list[dict] = []
@@ -876,6 +877,7 @@ class CreateBOQFromCadRequest(BaseModel):
 
 @router.post(
     "/cad-group/create-boq",
+    status_code=201,
     dependencies=[Depends(RequirePermission("takeoff.create"))],
 )
 async def create_boq_from_cad_qto(
@@ -1775,6 +1777,7 @@ def _get_service(session: SessionDep) -> TakeoffService:
 
 @router.post(
     "/documents/upload",
+    status_code=201,
     dependencies=[Depends(RequirePermission("takeoff.create"))],
 )
 async def upload_document(

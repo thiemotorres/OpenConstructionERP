@@ -1102,6 +1102,7 @@ async def lock_boq(
 
 @router.post(
     "/boqs/{boq_id}/create-budget",
+    status_code=201,
     summary="Create budget from BOQ",
     description="Create project budget lines from BOQ sections/positions. "
     "BOQ must be locked first. Groups positions by WBS or section.",

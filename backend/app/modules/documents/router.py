@@ -72,6 +72,15 @@ def _doc_to_response(doc: object) -> DocumentResponse:
         metadata=getattr(doc, "metadata_", {}),  # type: ignore[attr-defined]
         created_at=doc.created_at,  # type: ignore[attr-defined]
         updated_at=doc.updated_at,  # type: ignore[attr-defined]
+        # CDE / revision-chain fields
+        cde_state=getattr(doc, "cde_state", None),  # type: ignore[attr-defined]
+        suitability_code=getattr(doc, "suitability_code", None),  # type: ignore[attr-defined]
+        revision_code=getattr(doc, "revision_code", None),  # type: ignore[attr-defined]
+        drawing_number=getattr(doc, "drawing_number", None),  # type: ignore[attr-defined]
+        is_current_revision=getattr(doc, "is_current_revision", True),  # type: ignore[attr-defined]
+        parent_document_id=getattr(doc, "parent_document_id", None),  # type: ignore[attr-defined]
+        security_classification=getattr(doc, "security_classification", None),  # type: ignore[attr-defined]
+        discipline=getattr(doc, "discipline", None),  # type: ignore[attr-defined]
     )
 
 

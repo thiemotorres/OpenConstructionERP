@@ -110,6 +110,7 @@ class TakeoffMeasurementCreate(BaseModel):
         ...,
         min_length=1,
         max_length=50,
+        pattern=r"^(distance|area|count|polyline|volume)$",
         description="Measurement type: distance, area, count, polyline, volume",
     )
     group_name: str = Field(default="General", max_length=100)

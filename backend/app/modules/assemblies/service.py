@@ -271,6 +271,7 @@ class AssemblyService:
         component = Component(
             assembly_id=assembly_id,
             cost_item_id=data.cost_item_id,
+            catalog_resource_id=data.catalog_resource_id,
             description=data.description,
             factor=str(data.factor),
             quantity=str(data.quantity),
@@ -424,6 +425,7 @@ class AssemblyService:
                     id=comp.id,
                     assembly_id=comp.assembly_id,
                     cost_item_id=comp.cost_item_id,
+                    catalog_resource_id=comp.catalog_resource_id,
                     description=comp.description,
                     factor=_str_to_float(comp.factor),
                     quantity=_str_to_float(comp.quantity),
@@ -515,9 +517,12 @@ class AssemblyService:
 
         ordinal = data.ordinal if data.ordinal else f"ASM-{assembly.code}"
 
+        # Fetch components separately to avoid MissingGreenlet (noload on get_assembly)
+        components = await self.component_repo.list_for_assembly(assembly_id)
+
         # Build resource list from assembly components
         resources = []
-        for comp in assembly.components:
+        for comp in components:
             res_type = "material"  # default
             desc_lower = (comp.description or "").lower()
             if any(w in desc_lower for w in ("labor", "worker", "crew", "работ", "труд")):
@@ -636,6 +641,7 @@ class AssemblyService:
             cloned_comp = Component(
                 assembly_id=cloned.id,
                 cost_item_id=comp.cost_item_id,
+                catalog_resource_id=comp.catalog_resource_id,
                 description=comp.description,
                 factor=comp.factor,
                 quantity=comp.quantity,

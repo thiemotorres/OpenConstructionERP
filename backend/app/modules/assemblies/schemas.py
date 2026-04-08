@@ -21,6 +21,7 @@ class ComponentCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     cost_item_id: UUID | None = None
+    catalog_resource_id: UUID | None = None
     description: str = Field(default="", max_length=500)
     factor: float = Field(default=1.0)
     quantity: float = Field(default=1.0)
@@ -34,6 +35,7 @@ class ComponentUpdate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     cost_item_id: UUID | None = None
+    catalog_resource_id: UUID | None = None
     description: str | None = Field(default=None, max_length=500)
     factor: float | None = None
     quantity: float | None = None
@@ -51,6 +53,7 @@ class ComponentResponse(BaseModel):
     id: UUID
     assembly_id: UUID
     cost_item_id: UUID | None
+    catalog_resource_id: UUID | None = None
     description: str
     factor: float
     quantity: float

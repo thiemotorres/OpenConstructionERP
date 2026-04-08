@@ -94,3 +94,26 @@ class PunchListRepository:
             .subquery()
         )
         return (await self.session.execute(stmt)).scalar_one()
+
+    async def count_open_critical(
+        self,
+        project_id: uuid.UUID,
+        *,
+        exclude_id: uuid.UUID | None = None,
+    ) -> int:
+        """Count critical punch items that are not yet verified or closed.
+
+        Optionally excludes a specific item (the one being transitioned).
+        """
+        base = (
+            select(PunchItem)
+            .where(
+                PunchItem.project_id == project_id,
+                PunchItem.priority == "critical",
+                PunchItem.status.notin_(["verified", "closed"]),
+            )
+        )
+        if exclude_id is not None:
+            base = base.where(PunchItem.id != exclude_id)
+        stmt = select(func.count()).select_from(base.subquery())
+        return (await self.session.execute(stmt)).scalar_one()

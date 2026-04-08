@@ -140,12 +140,13 @@ async def get_report(
 
 @router.delete(
     "/reports/{report_id}",
+    status_code=204,
     dependencies=[Depends(RequirePermission("boq.update"))],
 )
 async def delete_report(
     report_id: uuid.UUID,
     service: ValidationModuleService = Depends(_get_service),
-) -> dict[str, Any]:
+) -> None:
     """Delete a validation report."""
     deleted = await service.delete_report(report_id)
     if not deleted:
@@ -153,7 +154,6 @@ async def delete_report(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Validation report {report_id} not found",
         )
-    return {"deleted": True, "id": str(report_id)}
 
 
 # ── GET /rule-sets — List available rule sets ─────────────────────────────

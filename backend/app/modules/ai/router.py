@@ -376,6 +376,7 @@ async def file_estimate(
 
 @router.post(
     "/estimate/{job_id}/create-boq",
+    status_code=201,
     dependencies=[Depends(RequirePermission("ai.create_boq"))],
 )
 async def create_boq_from_estimate(

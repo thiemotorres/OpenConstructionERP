@@ -78,6 +78,36 @@ DEFAULT_STAMPS: list[dict[str, Any]] = [
 ]
 
 
+def _validate_geometry(geometry: dict[str, Any], markup_type: str) -> None:
+    """Validate that geometry coordinates are reasonable for the given markup type.
+
+    Checks that coordinate values are finite numbers. Does not enforce strict
+    ranges because coordinate systems vary per viewer/document.
+
+    Raises HTTPException on invalid data.
+    """
+    if not geometry:
+        return
+
+    # Check that any coordinate-like values are finite numbers
+    for key, value in geometry.items():
+        if isinstance(value, (int, float)):
+            if not (-1e9 < value < 1e9):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Geometry value '{key}' is out of range: {value}",
+                )
+        elif isinstance(value, list):
+            for i, item in enumerate(value):
+                if isinstance(item, dict):
+                    for coord_key, coord_val in item.items():
+                        if isinstance(coord_val, (int, float)) and not (-1e9 < coord_val < 1e9):
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=f"Geometry point[{i}].{coord_key} is out of range: {coord_val}",
+                            )
+
+
 class MarkupsService:
     """Business logic for markups, scales, and stamp templates."""
 
@@ -91,6 +121,7 @@ class MarkupsService:
 
     async def create_markup(self, data: MarkupCreate, user_id: str) -> Markup:
         """Create a new markup annotation."""
+        _validate_geometry(data.geometry, data.type)
         item = Markup(
             project_id=data.project_id,
             document_id=data.document_id,
@@ -108,6 +139,7 @@ class MarkupsService:
             measurement_unit=data.measurement_unit,
             stamp_template_id=data.stamp_template_id,
             linked_boq_position_id=data.linked_boq_position_id,
+            layer=data.layer,
             metadata_=data.metadata,
             created_by=user_id,
         )
@@ -135,6 +167,7 @@ class MarkupsService:
         status_filter: str | None = None,
         document_id: str | None = None,
         page: int | None = None,
+        layer: str | None = None,
     ) -> tuple[list[Markup], int]:
         """List markups for a project with pagination and filters."""
         return await self.markup_repo.list_for_project(
@@ -145,6 +178,7 @@ class MarkupsService:
             status_filter=status_filter,
             document_id=document_id,
             page=page,
+            layer=layer,
         )
 
     async def update_markup(
@@ -154,6 +188,9 @@ class MarkupsService:
     ) -> Markup:
         """Update markup fields."""
         item = await self.get_markup(markup_id)
+
+        if data.geometry is not None:
+            _validate_geometry(data.geometry, data.type or item.type)
 
         fields = data.model_dump(exclude_unset=True)
         if "metadata" in fields:
@@ -194,6 +231,7 @@ class MarkupsService:
                 measurement_unit=data.measurement_unit,
                 stamp_template_id=data.stamp_template_id,
                 linked_boq_position_id=data.linked_boq_position_id,
+                layer=data.layer,
                 metadata_=data.metadata,
                 created_by=user_id,
             )

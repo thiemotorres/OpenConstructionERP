@@ -359,7 +359,7 @@ def _rows_to_elements(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/upload")
+@router.post("/upload", status_code=201)
 async def upload_bim_data(
     project_id: str = Query(..., description="Project UUID"),
     name: str = Query(default="Imported Model", max_length=255),
@@ -542,7 +542,7 @@ _ALLOWED_CAD_EXTENSIONS = {".rvt", ".ifc", ".dwg", ".dgn", ".fbx", ".obj", ".3ds
 _CAD_MAX_SIZE = 500 * 1024 * 1024  # 500 MB
 
 
-@router.post("/upload-cad")
+@router.post("/upload-cad", status_code=201)
 async def upload_cad_file(
     project_id: str = Query(..., description="Project UUID"),
     name: str = Query(default="", max_length=255),
