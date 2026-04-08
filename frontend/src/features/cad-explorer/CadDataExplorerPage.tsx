@@ -1055,7 +1055,6 @@ interface PivotBOQModalProps {
 
 function CreateBOQFromPivotModal({ open, onClose, groups, groupByColumns, aggColumns }: PivotBOQModalProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
 
