@@ -263,10 +263,18 @@ export function BOQEditorPage() {
     mutationFn: () => apiPost(`/v1/boq/boqs/${boqId}/lock`, {}),
     onSuccess: () => {
       invalidateAll();
-      addToast({
-        type: 'success',
-        title: t('boq.locked_success', { defaultValue: 'Estimate locked' }),
-      });
+      addToast(
+        {
+          type: 'success',
+          title: t('boq.locked_success', { defaultValue: 'Estimate locked' }),
+          message: t('boq.locked_next', { defaultValue: 'Estimate locked. Create project budget?' }),
+          action: {
+            label: t('boq.create_budget', { defaultValue: 'Create Budget' }),
+            onClick: () => createBudgetMutation.mutate(),
+          },
+        },
+        { duration: 8000 },
+      );
     },
     onError: (err) => {
       addToast({
@@ -2045,6 +2053,8 @@ export function BOQEditorPage() {
   /** Comment drawer state */
   const [commentPositionId, setCommentPositionId] = useState<string | null>(null);
   const userEmail = useAuthStore((s) => s.userEmail) ?? '';
+  const userRole = useAuthStore((s) => s.userRole);
+  const isManager = userRole === 'admin' || userRole === 'manager';
 
   const handleAddComment = useCallback(
     (positionId: string) => {
@@ -2149,7 +2159,7 @@ export function BOQEditorPage() {
             <p className="text-sm text-content-secondary truncate flex-1">{boq.description}</p>
           )}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {!boq.is_locked && (
+            {!boq.is_locked && isManager && (
               <Button variant="secondary" size="sm" onClick={handleLock} disabled={lockMutation.isPending}>
                 <Lock size={14} className="mr-1" />
                 {t('boq.lock', { defaultValue: 'Lock Estimate' })}

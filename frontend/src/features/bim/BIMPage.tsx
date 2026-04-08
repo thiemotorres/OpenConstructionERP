@@ -785,8 +785,8 @@ export function BIMPage() {
 
   // Breadcrumb
   const breadcrumbItems = useMemo(() => {
-    const items = [
-      { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
+    const items: { label: string; to?: string }[] = [
+      { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
     ];
     if (projectId && contextProjectName) {
       items.push({
@@ -794,7 +794,7 @@ export function BIMPage() {
         to: `/projects/${projectId}`,
       });
     }
-    items.push({ label: t('bim.title', { defaultValue: 'BIM Viewer' }), to: '' });
+    items.push({ label: t('bim.title', { defaultValue: 'BIM Viewer' }) });
     return items;
   }, [t, projectId, contextProjectName]);
 

@@ -139,7 +139,7 @@ async def _handle_safety_observation_high_risk(event: Event) -> None:
                     "risk_score": risk_score,
                     "description": description[:200],
                 },
-                action_url=f"/safety?observation={observation_id}",
+                action_url=f"/projects/{data.get('project_id')}/safety?observation={observation_id}",
             )
             await session.commit()
 

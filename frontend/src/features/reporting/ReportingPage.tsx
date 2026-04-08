@@ -178,7 +178,7 @@ const TABS: { key: DashboardTab; labelKey: string; defaultLabel: string; icon: R
 
 export function ReportingPage() {
   const { t } = useTranslation();
-  const { activeProjectId } = useProjectContextStore();
+  const { activeProjectId, activeProjectName } = useProjectContextStore();
 
   const [tab, setTab] = useState<DashboardTab>('executive');
   const [loading, setLoading] = useState(true);
@@ -291,6 +291,9 @@ export function ReportingPage() {
       <Breadcrumb
         items={[
           { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
+          ...(activeProjectName
+            ? [{ label: activeProjectName, to: `/projects/${activeProjectId}` }]
+            : []),
           { label: t('reporting.title', { defaultValue: 'Reporting Dashboards' }) },
         ]}
         className="mb-4"

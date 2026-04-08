@@ -243,7 +243,7 @@ export function SafetyPage() {
       {/* No-project warning */}
       {!projectId && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_first', { defaultValue: 'Please select a project to continue.' })}
+          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 

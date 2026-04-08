@@ -53,6 +53,17 @@ interface BudgetLine {
   updated_at: string;
 }
 
+interface InvoiceLineItem {
+  id: string;
+  description: string;
+  quantity: string;
+  unit: string | null;
+  unit_rate: string;
+  amount: string;
+  wbs_id: string | null;
+  cost_category: string | null;
+}
+
 interface Invoice {
   id: string;
   project_id: string;
@@ -65,6 +76,7 @@ interface Invoice {
   currency: string;
   status: string;
   description: string;
+  line_items?: InvoiceLineItem[];
   created_at: string;
   updated_at: string;
 }
@@ -245,7 +257,7 @@ export function FinancePage() {
       {/* No-project warning */}
       {!projectId && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_first', { defaultValue: 'Please select a project to continue.' })}
+          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
@@ -784,6 +796,9 @@ function InvoicesTab({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const { confirm, ...confirmProps } = useConfirm();
+  const userRole = useAuthStore((s) => s.userRole);
+  const invoiceProjectName = useProjectContextStore((s) => s.activeProjectName);
+  const isManager = userRole === 'admin' || userRole === 'manager';
   const [subTab, setSubTab] = useState<InvoiceSubTab>('payable');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -1036,7 +1051,22 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                       {inv.invoice_number}
                     </td>
                     <td className="px-4 py-3 text-content-secondary">
-                      {inv.counterparty_name}
+                      <div>{inv.counterparty_name}</div>
+                      {inv.line_items && inv.line_items.length > 0 && inv.line_items.some((li) => li.cost_category || li.wbs_id) && (
+                        <div className="text-2xs text-content-tertiary mt-0.5">
+                          {t('finance.budget_line', { defaultValue: 'Budget' })}:{' '}
+                          {inv.line_items
+                            .filter((li) => li.cost_category || li.wbs_id)
+                            .slice(0, 2)
+                            .map((li) => li.cost_category || li.wbs_id)
+                            .join(', ')}
+                        </div>
+                      )}
+                      {inv.description && (!inv.line_items || !inv.line_items.some((li) => li.cost_category || li.wbs_id)) && (
+                        <div className="text-2xs text-content-quaternary mt-0.5 truncate max-w-[200px]">
+                          {inv.description}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-content-secondary">
                       <DateDisplay value={inv.issue_date} />
@@ -1059,7 +1089,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {inv.status === 'pending' && (
+                        {inv.status === 'pending' && isManager && (
                           <Button
                             variant="secondary"
                             size="sm"
@@ -1077,7 +1107,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                             {t('finance.approve', { defaultValue: 'Approve' })}
                           </Button>
                         )}
-                        {inv.status === 'approved' && (
+                        {inv.status === 'approved' && isManager && (
                           <Button
                             variant="primary"
                             size="sm"
@@ -1110,9 +1140,19 @@ function InvoicesTab({ projectId }: { projectId: string }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-lg bg-surface-elevated rounded-xl shadow-xl border border-border animate-card-in mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-label={t('finance.new_invoice', { defaultValue: 'New Invoice' })}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-              <h2 className="text-lg font-semibold text-content-primary">
-                {t('finance.new_invoice', { defaultValue: 'New Invoice' })}
-              </h2>
+              <div>
+                <h2 className="text-lg font-semibold text-content-primary">
+                  {t('finance.new_invoice', { defaultValue: 'New Invoice' })}
+                </h2>
+                {invoiceProjectName && (
+                  <p className="text-xs text-content-tertiary mt-0.5">
+                    {t('common.creating_in_project', {
+                      defaultValue: 'In {{project}}',
+                      project: invoiceProjectName,
+                    })}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowCreate(false)}
                 aria-label={t('common.close', { defaultValue: 'Close' })}

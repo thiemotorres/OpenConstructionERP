@@ -32,6 +32,8 @@ export interface Task {
   due_date: string | null;
   checklist: ChecklistItem[];
   created_by: string | null;
+  meeting_id: string | null;
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

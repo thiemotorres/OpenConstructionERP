@@ -118,10 +118,12 @@ function CreateInspectionModal({
   onClose,
   onSubmit,
   isPending,
+  projectName,
 }: {
   onClose: () => void;
   onSubmit: (data: InspectionFormData) => void;
   isPending: boolean;
+  projectName?: string;
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<InspectionFormData>(EMPTY_FORM);
@@ -152,9 +154,19 @@ function CreateInspectionModal({
       <div className="w-full max-w-2xl bg-surface-elevated rounded-xl shadow-xl border border-border animate-card-in mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-label={t('inspections.new_inspection', { defaultValue: 'New Inspection' })}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="text-lg font-semibold text-content-primary">
-            {t('inspections.new_inspection', { defaultValue: 'New Inspection' })}
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary">
+              {t('inspections.new_inspection', { defaultValue: 'New Inspection' })}
+            </h2>
+            {projectName && (
+              <p className="text-xs text-content-tertiary mt-0.5">
+                {t('common.creating_in_project', {
+                  defaultValue: 'In {{project}}',
+                  project: projectName,
+                })}
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             aria-label={t('common.close', { defaultValue: 'Close' })}
@@ -584,12 +596,25 @@ export function InspectionsPage() {
 
   const completeMut = useMutation({
     mutationFn: (id: string) => completeInspection(id),
-    onSuccess: () => {
+    onSuccess: (data) => {
       invalidateAll();
-      addToast({
-        type: 'success',
-        title: t('inspections.completed', { defaultValue: 'Inspection completed' }),
-      });
+      const isFail = data?.result === 'fail' || data?.result === 'partial';
+      addToast(
+        {
+          type: 'success',
+          title: t('inspections.completed', { defaultValue: 'Inspection completed' }),
+          message: isFail
+            ? t('inspections.completed_fail_hint', { defaultValue: 'Inspection failed. Create a punchlist item?' })
+            : undefined,
+          action: isFail && data?.id
+            ? {
+                label: t('inspections.create_defect', { defaultValue: 'Create Punchlist Item' }),
+                onClick: () => createDefectMut.mutate(data.id),
+              }
+            : undefined,
+        },
+        isFail ? { duration: 8000 } : undefined,
+      );
     },
     onError: (e: Error) =>
       addToast({
@@ -749,7 +774,7 @@ export function InspectionsPage() {
       {/* No-project warning */}
       {!projectId && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_first', { defaultValue: 'Please select a project to continue.' })}
+          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
@@ -917,6 +942,7 @@ export function InspectionsPage() {
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateSubmit}
           isPending={createMut.isPending}
+          projectName={projectName}
         />
       )}
 

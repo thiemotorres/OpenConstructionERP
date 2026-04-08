@@ -114,10 +114,12 @@ function CreateMeetingModal({
   onClose,
   onSubmit,
   isPending,
+  projectName,
 }: {
   onClose: () => void;
   onSubmit: (data: MeetingFormData) => void;
   isPending: boolean;
+  projectName?: string;
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<MeetingFormData>(EMPTY_FORM);
@@ -148,9 +150,19 @@ function CreateMeetingModal({
       <div className="w-full max-w-2xl bg-surface-elevated rounded-xl shadow-xl border border-border animate-card-in mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-label={t('meetings.new_meeting', { defaultValue: 'New Meeting' })}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="text-lg font-semibold text-content-primary">
-            {t('meetings.new_meeting', { defaultValue: 'New Meeting' })}
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary">
+              {t('meetings.new_meeting', { defaultValue: 'New Meeting' })}
+            </h2>
+            {projectName && (
+              <p className="text-xs text-content-tertiary mt-0.5">
+                {t('common.creating_in_project', {
+                  defaultValue: 'In {{project}}',
+                  project: projectName,
+                })}
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             aria-label={t('common.close', { defaultValue: 'Close' })}
@@ -812,14 +824,31 @@ export function MeetingsPage() {
 
   const completeMut = useMutation({
     mutationFn: (id: string) => completeMeeting(id),
-    onSuccess: () => {
+    onSuccess: (data) => {
       invalidateAll();
       qc.invalidateQueries({ queryKey: ['tasks'] });
-      addToast({
-        type: 'success',
-        title: t('meetings.completed', { defaultValue: 'Meeting completed' }),
-        message: t('meetings.tasks_created', { defaultValue: 'Meeting completed. Action item tasks have been created.' }),
-      });
+      const actionCount = data?.action_items?.length ?? 0;
+      addToast(
+        {
+          type: 'success',
+          title: t('meetings.completed', { defaultValue: 'Meeting completed' }),
+          message: actionCount > 0
+            ? t('meetings.tasks_created_count', {
+                defaultValue: 'Meeting completed. {{count}} tasks created from action items.',
+                count: actionCount,
+              })
+            : t('meetings.tasks_created', { defaultValue: 'Meeting completed. Action item tasks have been created.' }),
+          action: actionCount > 0
+            ? {
+                label: t('meetings.view_tasks', { defaultValue: 'View Tasks' }),
+                onClick: () => {
+                  window.location.href = '/tasks';
+                },
+              }
+            : undefined,
+        },
+        actionCount > 0 ? { duration: 8000 } : undefined,
+      );
     },
     onError: (e: Error) =>
       addToast({
@@ -973,7 +1002,7 @@ export function MeetingsPage() {
       {/* No-project warning */}
       {!projectId && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_first', { defaultValue: 'Please select a project to continue.' })}
+          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
@@ -1157,6 +1186,7 @@ export function MeetingsPage() {
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateSubmit}
           isPending={createMut.isPending}
+          projectName={projectName}
         />
       )}
 

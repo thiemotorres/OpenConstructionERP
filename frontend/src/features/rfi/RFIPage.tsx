@@ -88,10 +88,12 @@ function CreateRFIModal({
   onClose,
   onSubmit,
   isPending,
+  projectName,
 }: {
   onClose: () => void;
   onSubmit: (data: RFIFormData) => void;
   isPending: boolean;
+  projectName?: string;
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<RFIFormData>(EMPTY_FORM);
@@ -122,9 +124,19 @@ function CreateRFIModal({
       <div className="w-full max-w-2xl bg-surface-elevated rounded-xl shadow-xl border border-border animate-card-in mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-label={t('rfi.new_rfi', { defaultValue: 'New RFI' })}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="text-lg font-semibold text-content-primary">
-            {t('rfi.new_rfi', { defaultValue: 'New RFI' })}
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary">
+              {t('rfi.new_rfi', { defaultValue: 'New RFI' })}
+            </h2>
+            {projectName && (
+              <p className="text-xs text-content-tertiary mt-0.5">
+                {t('common.creating_in_project', {
+                  defaultValue: 'In {{project}}',
+                  project: projectName,
+                })}
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             aria-label={t('common.close', { defaultValue: 'Close' })}
@@ -759,11 +771,20 @@ export function RFIPage() {
         {},
       ),
     onSuccess: (data) => {
-      addToast({
-        type: 'success',
-        title: t('rfi.variation_created', { defaultValue: 'Variation created' }),
-        message: `${data.code}: ${data.title}`,
-      });
+      addToast(
+        {
+          type: 'success',
+          title: t('rfi.variation_created', { defaultValue: 'Variation created' }),
+          message: `${data.code}: ${data.title}`,
+          action: {
+            label: t('rfi.view_change_orders', { defaultValue: 'View Change Orders' }),
+            onClick: () => {
+              window.location.href = '/changeorders';
+            },
+          },
+        },
+        { duration: 8000 },
+      );
     },
     onError: (e: Error) =>
       addToast({
@@ -852,7 +873,7 @@ export function RFIPage() {
       {/* No-project warning */}
       {!projectId && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_first', { defaultValue: 'Please select a project to continue.' })}
+          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
@@ -1021,6 +1042,7 @@ export function RFIPage() {
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateSubmit}
           isPending={createMut.isPending}
+          projectName={projectName}
         />
       )}
 

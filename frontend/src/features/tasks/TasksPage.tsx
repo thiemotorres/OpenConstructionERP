@@ -15,6 +15,7 @@ import {
   Upload,
   Loader2,
   FileDown,
+  Link2,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, SkeletonGrid } from '@/shared/ui';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -97,10 +98,12 @@ function AddTaskModal({
   onClose,
   onSubmit,
   isPending,
+  projectName,
 }: {
   onClose: () => void;
   onSubmit: (data: TaskFormData) => void;
   isPending: boolean;
+  projectName?: string;
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<TaskFormData>(EMPTY_FORM);
@@ -130,9 +133,19 @@ function AddTaskModal({
       <div className="w-full max-w-2xl bg-surface-elevated rounded-xl shadow-xl border border-border animate-card-in mx-4 max-h-[90vh] overflow-y-auto" role="dialog" aria-label={t('tasks.new_task', { defaultValue: 'New Task' })}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="text-lg font-semibold text-content-primary">
-            {t('tasks.new_task', { defaultValue: 'New Task' })}
-          </h2>
+          <div>
+            <h2 className="text-lg font-semibold text-content-primary">
+              {t('tasks.new_task', { defaultValue: 'New Task' })}
+            </h2>
+            {projectName && (
+              <p className="text-xs text-content-tertiary mt-0.5">
+                {t('common.creating_in_project', {
+                  defaultValue: 'In {{project}}',
+                  project: projectName,
+                })}
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             aria-label={t('common.close', { defaultValue: 'Close' })}
@@ -331,18 +344,33 @@ const TaskCard = React.memo(function TaskCard({
             defaultValue: task.task_type.charAt(0).toUpperCase() + task.task_type.slice(1),
           })}
         </span>
-        <h4
-          className={clsx(
-            'text-sm font-semibold line-clamp-2',
-            task.status === 'completed'
-              ? 'text-content-tertiary line-through'
-              : isOverdue
-                ? 'text-semantic-error'
-                : 'text-content-primary',
+        <div className="flex-1 min-w-0">
+          <h4
+            className={clsx(
+              'text-sm font-semibold line-clamp-2',
+              task.status === 'completed'
+                ? 'text-content-tertiary line-through'
+                : isOverdue
+                  ? 'text-semantic-error'
+                  : 'text-content-primary',
+            )}
+          >
+            {task.title}
+          </h4>
+          {/* Source indicator */}
+          {(task.meeting_id || (task.metadata && typeof task.metadata.source === 'string')) && (
+            <span className="inline-flex items-center gap-1 mt-0.5 text-2xs text-content-quaternary">
+              <Link2 size={9} className="shrink-0" />
+              {task.meeting_id
+                ? t('tasks.from_meeting', { defaultValue: 'From meeting' })
+                : String(task.metadata?.source) === 'rfi'
+                  ? t('tasks.from_rfi', { defaultValue: 'From RFI' })
+                  : String(task.metadata?.source) === 'inspection'
+                    ? t('tasks.from_inspection', { defaultValue: 'From inspection' })
+                    : t('tasks.source_linked', { defaultValue: 'Linked' })}
+            </span>
           )}
-        >
-          {task.title}
-        </h4>
+        </div>
       </div>
 
       {/* Assignee + due date row */}
@@ -741,7 +769,7 @@ export function TasksPage() {
       {/* No-project warning */}
       {!projectId && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_first', { defaultValue: 'Please select a project to continue.' })}
+          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
@@ -893,6 +921,7 @@ export function TasksPage() {
           onClose={() => setShowAddModal(false)}
           onSubmit={handleCreateSubmit}
           isPending={createMut.isPending}
+          projectName={projectName}
         />
       )}
 

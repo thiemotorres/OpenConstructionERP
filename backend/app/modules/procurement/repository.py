@@ -24,8 +24,23 @@ class PurchaseOrderRepository:
         self.session = session
 
     async def get(self, po_id: uuid.UUID) -> PurchaseOrder | None:
-        """Get PO by ID (with items and GRs via selectin)."""
-        return await self.session.get(PurchaseOrder, po_id)
+        """Get PO by ID (with items and GRs via selectin).
+
+        Uses ``selectinload`` to eagerly load items and goods_receipts
+        so they are available outside the async context.
+        """
+        from sqlalchemy.orm import selectinload
+
+        stmt = (
+            select(PurchaseOrder)
+            .options(
+                selectinload(PurchaseOrder.items),
+                selectinload(PurchaseOrder.goods_receipts),
+            )
+            .where(PurchaseOrder.id == po_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def list(
         self,
@@ -56,9 +71,15 @@ class PurchaseOrderRepository:
         return items, total
 
     async def create(self, po: PurchaseOrder) -> PurchaseOrder:
-        """Insert a new PO."""
+        """Insert a new PO.
+
+        After flush we refresh to eagerly load ``selectin`` relationships
+        (items, goods_receipts) so the caller can safely serialize the object
+        outside the async greenlet context.
+        """
         self.session.add(po)
         await self.session.flush()
+        await self.session.refresh(po)
         return po
 
     async def update(self, po_id: uuid.UUID, **fields: object) -> None:
